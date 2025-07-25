@@ -1,0 +1,15 @@
+build/
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+.idea/
+android/.gradle/
+android/app/key.properties
+*.iml
+*.lock
+*.log
+*.tmp
+*.swp
+*.bak
+*.DS_Store
