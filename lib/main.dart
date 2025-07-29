@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/services.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/kategori_screen.dart';
 import 'screens/quiz_screen.dart';
@@ -11,12 +12,38 @@ import 'models/question.dart';
 import 'services/ai_api_service.dart';
 import 'services/database_helper.dart';
 import 'screens/test_sonucu_screen.dart';
+import 'widgets/my_native_ad.dart';
+import 'services/notification_service.dart';
+import 'services/update_control.dart';
+import 'services/requestExactAlarmPermissionIfNeeded.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  print('dotenv yükleniyor...');
-  await dotenv.load();
-  print('dotenv yüklendi!');
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  try {
+    await NotificationPermissionManager.requestNotificationPermissionsSimple()
+        .timeout(Duration(seconds: 5));
+  } catch (_) {
+    print("Bildirim izni istenemedi");
+  }
+
+  await NotificationService.init();
+  // Uygulama başlarken veya ayarlar sayfasında
+  await NotificationService.showDailyRewardNotification();
+  await NotificationService.showAiQuestionReminderNotification(1);
+  await NotificationService.showAiQuestionReminderNotification(2);
+
+  // Paralel olarak dotenv ve reklam başlatma işlemleri
+  await Future.wait([
+    dotenv.load(),
+    MobileAds.instance.initialize(),
+  ]);
+
   runApp(const MyApp());
 }
 
@@ -199,6 +226,7 @@ class _QuizFlowState extends State<QuizFlow> {
           score: _score,
           onRestart: _onRestartQuiz,
           onBackToWelcome: _onBackToWelcome,
+          difficulty: _selectedDifficulty,
         );
       default:
         return loading_screen();

@@ -4,12 +4,19 @@
     <!-- İzinler -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+
 
     <application
         android:label="EmilekBul"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="false"
         android:fullBackupContent="false">
+        <meta-data
+                android:name="com.google.android.gms.ads.APPLICATION_ID"
+                android:value="ca-app-pub-2034009761866400~7088040494"/>
 
         <activity
             android:name=".MainActivity"
@@ -22,6 +29,7 @@
             android:supportsPictureInPicture="true"
             android:resizeableActivity="true"
             android:enableOnBackInvokedCallback="true">
+            
 
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"

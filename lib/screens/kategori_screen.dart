@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:emilekbul/screens/past_tests_screen.dart';
 import 'package:emilekbul/services/database_helper.dart';
+import 'package:emilekbul/widgets/token_widget.dart';
+import 'package:emilekbul/services/token_service.dart';
 
 class KategoriScreen extends StatefulWidget {
   final Function(String category, String difficulty, int duration) onStartQuiz;
@@ -89,28 +91,28 @@ class _KategoriScreenState extends State<KategoriScreen>
       Color(0xFF96CEB4),
       Icons.sentiment_satisfied,
       'Kolay-Orta',
-      '15 saniye',
+      '10 saniye',
     ),
     DifficultyItem(
       'Orta',
       Color(0xFFFECA57),
       Icons.sentiment_neutral,
       'Orta',
-      '25 saniye',
+      '15 saniye',
     ),
     DifficultyItem(
       'Orta-Zor',
       Color(0xFFFF6B6B),
       Icons.sentiment_very_dissatisfied,
       'Orta-Zor',
-      '35 saniye',
+      '20 saniye',
     ),
     DifficultyItem(
       'İmkansız',
       Color(0xFF22223B),
       Icons.warning_amber_rounded,
       'Aşırı zor',
-      '50 saniye',
+      '25 saniye',
     ),
   ];
 
@@ -282,8 +284,8 @@ class _KategoriScreenState extends State<KategoriScreen>
             ),
           ),
           Positioned(
-            top: 28,
-            left: 8,
+            top: 16,
+            left: 14,
             child: GestureDetector(
               onTap: () {
                 Navigator.of(context).pushAndRemoveUntil(
@@ -313,6 +315,11 @@ class _KategoriScreenState extends State<KategoriScreen>
                 ),
               ),
             ),
+          ),
+          Positioned(
+            top: 16,
+            right: 14,
+            child: const TokenWidget(),
           ),
         ],
       ),
@@ -771,6 +778,32 @@ class _KategoriScreenState extends State<KategoriScreen>
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildPreviewItem(
+                    Icons.token,
+                    'Maliyet',
+                    '10 Token',
+                  ),
+                ),
+                Expanded(
+                  child: _buildPreviewItem(
+                    Icons.card_giftcard,
+                    'Doğru Cevap',
+                    '${_getTokenRewardForDifficulty(_selectedDifficulty!)} Token',
+                  ),
+                ),
+                Expanded(
+                  child: _buildPreviewItem(
+                    Icons.card_giftcard,
+                    'Joker',
+                    'Kullanım başına: 3-4-5 Token',
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -811,15 +844,15 @@ class _KategoriScreenState extends State<KategoriScreen>
     int getDurationForDifficulty(String? difficulty) {
       switch (difficulty) {
         case 'Kolay-Orta':
-          return 15;
+          return 10;
         case 'Orta':
-          return 25;
+          return 15;
         case 'Orta-Zor':
-          return 35;
+          return 20;
         case 'İmkansız':
-          return 50;
+          return 25;
         default:
-          return 35;
+          return 20;
       }
     }
 
@@ -862,7 +895,22 @@ class _KategoriScreenState extends State<KategoriScreen>
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: isEnabled
-                        ? () {
+                        ? () async {
+                            // Token kontrolü
+                            final hasEnoughTokens =
+                                await TokenService.spendQuizTokens();
+                            if (!hasEnoughTokens) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      '❌ Yetersiz token! Quiz başlatmak için 10 token gereklidir.'),
+                                  backgroundColor: Colors.red,
+                                  duration: Duration(seconds: 3),
+                                ),
+                              );
+                              return;
+                            }
+
                             print('Quiz başlatılıyor');
                             widget.onStartQuiz(
                               _selectedCategory!,
@@ -910,6 +958,36 @@ class _KategoriScreenState extends State<KategoriScreen>
 
   void _triggerHapticFeedback() {
     HapticFeedback.lightImpact();
+  }
+
+  int _getTokenRewardForDifficulty(String difficulty) {
+    switch (difficulty) {
+      case 'Kolay-Orta':
+      return 1;
+      case 'Orta':
+        return 2;
+      case 'Orta-Zor':
+        return 3;
+      case 'İmkansız':
+        return 4;
+      default:
+        return 2;
+    }
+  }
+
+  int _getDurationForDifficulty(String difficulty) {
+    switch (difficulty) {
+      case 'Kolay-Orta':
+        return 10;
+      case 'Orta':
+        return 15;
+      case 'Orta-Zor':
+        return 20;
+      case 'İmkansız':
+        return 25;
+      default:
+        return 20;
+    }
   }
 }
 

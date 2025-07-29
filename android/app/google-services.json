@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "561094034943",
+    "project_id": "emilekbul-c292c",
+    "storage_bucket": "emilekbul-c292c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:561094034943:android:e10e4a2ae28424b213d3ca",
+        "android_client_info": {
+          "package_name": "com.abdullahekici.emilekbul"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBaH82UqOFeNkEOi2dFgstOAgeKwblSaf4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

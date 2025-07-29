@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/question.dart';
+import '../widgets/my_native_ad.dart';
+import '../widgets/token_widget.dart';
+import '../services/token_service.dart';
 
 class TestSonucuScreen extends StatefulWidget {
   final List<Question> questions;
@@ -7,6 +10,7 @@ class TestSonucuScreen extends StatefulWidget {
   final int score;
   final VoidCallback onRestart;
   final VoidCallback onBackToWelcome;
+  final String difficulty;
 
   const TestSonucuScreen({
     super.key,
@@ -15,6 +19,7 @@ class TestSonucuScreen extends StatefulWidget {
     required this.score,
     required this.onRestart,
     required this.onBackToWelcome,
+    required this.difficulty,
   });
 
   @override
@@ -50,6 +55,9 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
 
     _fadeController.forward();
     _scaleController.forward();
+
+    // Token ödülü ver
+    _awardTokens();
   }
 
   @override
@@ -57,6 +65,29 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
     _fadeController.dispose();
     _scaleController.dispose();
     super.dispose();
+  }
+
+  Future<void> _awardTokens() async {
+    // Quiz sonucuna göre token ver
+    await TokenService.awardTokensForQuiz(
+      widget.difficulty,
+      widget.score,
+    );
+
+    // Token ödülü bildirimi
+    if (widget.score > 0) {
+      final tokensPerAnswer =
+          TokenService.getTokensForCorrectAnswer(widget.difficulty);
+      final totalTokens = widget.score * tokensPerAnswer;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('🎉 $totalTokens token kazandınız!'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   @override
@@ -93,13 +124,18 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
                   ),
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
 
                 // Results List - Ana içerik alanı
                 Expanded(child: _buildResultsList()),
+                //Container(
+                //  margin: const EdgeInsets.symmetric(horizontal: 20),
+                //  child: MyNativeAd(),
+                //),
 
                 // Action Buttons - En altta sabit
                 _buildActionButtons(),
+                // Native Ad - Stats section ile Results list arasına eklendi
               ],
             ),
           ),
@@ -109,16 +145,23 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: const Center(
-        child: Text(
-          'Test Sonucu',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+    return SafeArea(
+      // <- Notch ve status bar'dan otomatik korur
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Test Sonucu',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const TokenWidget(),
+          ],
         ),
       ),
     );

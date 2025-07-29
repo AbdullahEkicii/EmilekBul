@@ -3,6 +3,7 @@ import 'package:emilekbul/screens/test_detail_screen.dart';
 import 'package:emilekbul/services/database_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../widgets/my_native_ad.dart';
 
 class PastTestsScreen extends StatefulWidget {
   const PastTestsScreen({super.key});
@@ -34,9 +35,9 @@ class _PastTestsScreenState extends State<PastTestsScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              // Header Section
+              // Header Section - Küçültüldü
               Container(
-                padding: EdgeInsets.all(24),
+                padding: EdgeInsets.all(20), // 24'ten 20'ye düşürüldü
                 child: Column(
                   children: [
                     // Back Button ve Title
@@ -90,28 +91,28 @@ class _PastTestsScreenState extends State<PastTestsScreen> {
                         ),
                       ],
                     ),
-                    SizedBox(height: 24),
+                    SizedBox(height: 16), // 24'ten 16'ya düşürüldü
 
-                    // Header Icon ve Açıklama
+                    // Header Icon ve Açıklama - Küçültüldü
                     Icon(
                       Icons.history,
-                      size: 48,
+                      size: 36, // 48'den 36'ya düşürüldü
                       color: Colors.white.withOpacity(0.9),
                     ),
-                    SizedBox(height: 12),
+                    SizedBox(height: 8), // 12'den 8'e düşürüldü
                     Text(
                       'Test Geçmişiniz',
                       style: TextStyle(
-                        fontSize: 24,
+                        fontSize: 20, // 24'ten 20'ye düşürüldü
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
-                    SizedBox(height: 8),
+                    SizedBox(height: 6), // 8'den 6'ya düşürüldü
                     Text(
                       'Önceki test sonuçlarınızı inceleyin',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 13, // 14'ten 13'e düşürüldü
                         color: Colors.white.withOpacity(0.8),
                       ),
                     ),
@@ -119,7 +120,7 @@ class _PastTestsScreenState extends State<PastTestsScreen> {
                 ),
               ),
 
-              // Tests List Container
+              // Tests List Container - Yukarı çıkarıldı
               Expanded(
                 child: Container(
                   margin: EdgeInsets.symmetric(horizontal: 16),
@@ -192,7 +193,11 @@ class _PastTestsScreenState extends State<PastTestsScreen> {
                 ),
               ),
 
-              SizedBox(height: 16),
+              // Native Ad eklendi
+              Container(
+                margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: MyNativeAd(),
+              ),
             ],
           ),
         ),
@@ -357,8 +362,8 @@ class _PastTestsScreenState extends State<PastTestsScreen> {
                       color: successRate >= 70
                           ? Color(0xFF4CAF50)
                           : successRate >= 50
-                          ? Color(0xFF2196F3)
-                          : Color(0xFFFF5722),
+                              ? Color(0xFF2196F3)
+                              : Color(0xFFFF5722),
                     ),
                   ),
                 ],
@@ -533,9 +538,9 @@ class _PastTestsScreenState extends State<PastTestsScreen> {
       case 'coğrafya':
         return Icons.public;
       case 'türkçe':
-      case 'edebiyat':
+      case 'Dini':
         return Icons.menu_book;
-      case 'İngilizce':
+      case 'Genel Kültür':
         return Icons.language;
       default:
         return Icons.quiz;

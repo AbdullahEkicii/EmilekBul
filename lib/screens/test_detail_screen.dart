@@ -1,5 +1,6 @@
 import 'package:emilekbul/models/test_result.dart';
 import 'package:flutter/material.dart';
+import '../widgets/my_native_ad.dart';
 
 class TestDetailScreen extends StatelessWidget {
   final TestResult test;
@@ -28,9 +29,9 @@ class TestDetailScreen extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
-              // Header Section
+              // Header Section - Küçültüldü
               Container(
-                padding: EdgeInsets.all(24),
+                padding: EdgeInsets.all(20), // 24'ten 20'ye düşürüldü
                 child: Column(
                   children: [
                     // Back Button ve Title
@@ -64,28 +65,28 @@ class TestDetailScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    SizedBox(height: 24),
+                    SizedBox(height: 16), // 24'ten 16'ya düşürüldü
 
-                    // Test Icon ve Bilgi
+                    // Test Icon ve Bilgi - Küçültüldü
                     Icon(
                       Icons.quiz,
-                      size: 48,
+                      size: 36, // 48'den 36'ya düşürüldü
                       color: Colors.white.withOpacity(0.9),
                     ),
-                    SizedBox(height: 12),
+                    SizedBox(height: 8), // 12'den 8'e düşürüldü
                     Text(
                       'Test Analizi',
                       style: TextStyle(
-                        fontSize: 24,
+                        fontSize: 20, // 24'ten 20'ye düşürüldü
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
-                    SizedBox(height: 8),
+                    SizedBox(height: 6), // 8'den 6'ya düşürüldü
                     Text(
                       'Tüm sorularınızı detaylı olarak inceleyin',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 13, // 14'ten 13'e düşürüldü
                         color: Colors.white.withOpacity(0.8),
                       ),
                     ),
@@ -128,7 +129,7 @@ class TestDetailScreen extends StatelessWidget {
                 ),
               ),
 
-              SizedBox(height: 24),
+              SizedBox(height: 16), // 24'ten 16'ya düşürüldü
 
               // Questions List
               Expanded(
@@ -136,9 +137,8 @@ class TestDetailScreen extends StatelessWidget {
                   margin: EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
+                    borderRadius:
+                        BorderRadius.circular(24), // Yuvarlak şekil eklendi
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.1),
@@ -455,7 +455,11 @@ class TestDetailScreen extends StatelessWidget {
                 ),
               ),
 
-              SizedBox(height: 16),
+              // Native Ad eklendi
+              Container(
+                margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: MyNativeAd(),
+              ),
             ],
           ),
         ),

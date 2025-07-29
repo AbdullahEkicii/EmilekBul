@@ -1,64 +1,68 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
+    // START: FlutterFire Configuration
+    id("com.google.gms.google-services")
+    // END: FlutterFire Configuration
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-import java.util.Properties
-import java.io.FileInputStream
-
-val keystoreProperties = Properties().apply {
-    load(FileInputStream(rootProject.file("key.properties")))
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
     namespace = "com.abdullahekici.emilekbul"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
-    }
 
     defaultConfig {
         applicationId = "com.abdullahekici.emilekbul"
-        minSdk = flutter.minSdkVersion
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
-        versionCode = 3
-        versionName = "1.1.0"
+        versionCode = 8
+        versionName = "1.3.1"
     }
 
     signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
             storeFile = file(keystoreProperties["storeFile"] as String)
             storePassword = keystoreProperties["storePassword"] as String
+            keyAlias = keystoreProperties["keyAlias"] as String
+            keyPassword = keystoreProperties["keyPassword"] as String
         }
     }
 
     buildTypes {
         getByName("release") {
-            isMinifyEnabled = false
-            isShrinkResources = false
             signingConfig = signingConfigs.getByName("release")
+            isShrinkResources = true
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 
-    packaging {
-        jniLibs {
-            useLegacyPackaging = true
-        }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
+        
+    }
+
+    kotlinOptions {
+        jvmTarget = "11"
     }
 }
 
-flutter {
-    source = "../.."
+dependencies {
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.0")
+    implementation("com.google.android.gms:play-services-ads:22.1.0")
+    coreLibraryDesugaring ("com.android.tools:desugar_jdk_libs:2.1.4")
 }

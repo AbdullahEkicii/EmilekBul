@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:emilekbul/services/database_helper.dart';
 import 'package:emilekbul/screens/welcome_screen.dart';
 import 'package:emilekbul/screens/past_tests_screen.dart';
+import '../widgets/my_native_ad.dart';
 
 class BasariHesaplaScreen extends StatefulWidget {
   final VoidCallback onStart;
@@ -85,9 +86,14 @@ class _BasariHesaplaScreenState extends State<BasariHesaplaScreen>
                     child: _loading
                         ? _buildLoadingState()
                         : _categoryStats.isEmpty
-                        ? _buildEmptyState()
-                        : _buildStatsList(),
+                            ? _buildEmptyState()
+                            : _buildStatsList(),
                   ),
+                  // Native Ad - Detaylı İncele butonunun üstüne eklendi
+                 // Padding(
+                   // padding: const EdgeInsets.symmetric(horizontal: 20),
+                   // child: MyNativeAd(),
+                 // ),
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 20,
@@ -123,27 +129,26 @@ class _BasariHesaplaScreenState extends State<BasariHesaplaScreen>
                               pageBuilder:
                                   (context, animation, secondaryAnimation) =>
                                       const PastTestsScreen(),
-                              transitionsBuilder:
-                                  (
-                                    context,
-                                    animation,
-                                    secondaryAnimation,
-                                    child,
-                                  ) {
-                                    return SlideTransition(
-                                      position: animation.drive(
-                                        Tween(
-                                          begin: const Offset(1.0, 0.0),
-                                          end: Offset.zero,
-                                        ).chain(
-                                          CurveTween(
-                                            curve: Curves.easeOutCubic,
-                                          ),
-                                        ),
+                              transitionsBuilder: (
+                                context,
+                                animation,
+                                secondaryAnimation,
+                                child,
+                              ) {
+                                return SlideTransition(
+                                  position: animation.drive(
+                                    Tween(
+                                      begin: const Offset(1.0, 0.0),
+                                      end: Offset.zero,
+                                    ).chain(
+                                      CurveTween(
+                                        curve: Curves.easeOutCubic,
                                       ),
-                                      child: child,
-                                    );
-                                  },
+                                    ),
+                                  ),
+                                  child: child,
+                                );
+                              },
                               transitionDuration: const Duration(
                                 milliseconds: 400,
                               ),
@@ -471,8 +476,8 @@ class _BasariHesaplaScreenState extends State<BasariHesaplaScreen>
 
   Widget _buildBackButton() {
     return Positioned(
-      top: 28,
-      left: 8,
+      top: 18,
+      left: 12,
       child: GestureDetector(
         onTap: () {
           Navigator.of(context).pushAndRemoveUntil(
