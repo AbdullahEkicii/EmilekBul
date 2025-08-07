@@ -1,9 +1,25 @@
+EmilekBul
 
+EmilekBul — Dart ve Flutter ile geliştirilmiş modern ve şık bir Quiz uygulaması.
+Özellikler & Vizyon
+
+  Modern görünüm ve akıcı performans: Hafif yapı sayesinde hem mobil hem de web platformlarında hızlı çalışır.
+
+  Token sistemi ile öğrenme deneyimi: Kullanıcı dostu, sade ve ilgi çekici bir quiz formatı.
   
-  
-  
-  
-  
+  Api bağlantısı ile yapay zekaya prompt gönderimi ve gelen soruların kullanıcıya sunumu.
+
+  Geleceğe dönük tasarım: Reaktif mimarisiyle kolay genişletilebilir modüller ve esnek kullanıcı arayüzü.
+
+  Sqlite ile testlerin local saklanması ve kullanıcıya istediği zaman tüm ayrıntıları ile gösterilmesi.
+
+  Firebase kullanıcı girişi/kayıtı ve firebase database ile kullanıcı bilgilerinin saklanması.
+
+  Kullanıcıların kategorilere göre en yüksek puan alanlarının sıralanması.
+
+  Uygulama kapalı beta sürecinde uzun süredir test ediliyor son haline yaklaşmış durumda çok yakında google play store da herkese açık hale gelecektir.
+
+  Google admob ile reklam entegrasyonu.
   
 ---EKRAN GÖRÜNTÜLERİ---
 <img width="1530" height="3036" alt="Screenshot_1754554774-portrait" src="https://github.com/user-attachments/assets/ac54a6f6-e28f-461f-afbc-f67ce203a126" />
