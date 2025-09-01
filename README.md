@@ -1,9 +1,11 @@
 EmilekBul
 
 EmilekBul — Dart ve Flutter ile geliştirilmiş modern ve şık bir Quiz uygulaması.
-Özellikler & Vizyon
 
-  Modern görünüm ve akıcı performans: Hafif yapı sayesinde hem mobil hem de web platformlarında hızlı çalışır.
+Özellikler & Vizyon:
+
+
+  Modern görünüm ve akıcı performans: Hafif yapı sayesinde mobil platformlarında hızlı çalışır.
 
   Token sistemi ile öğrenme deneyimi: Kullanıcı dostu, sade ve ilgi çekici bir quiz formatı.
   
@@ -17,7 +19,7 @@ EmilekBul — Dart ve Flutter ile geliştirilmiş modern ve şık bir Quiz uygul
 
   Kullanıcıların kategorilere göre en yüksek puan alanlarının sıralanması.
 
-  Uygulama kapalı beta sürecinde uzun süredir test ediliyor son haline yaklaşmış durumda çok yakında google play store da herkese açık hale gelecektir.
+  Google Play : https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul
 
   Google admob ile reklam entegrasyonu.
   
