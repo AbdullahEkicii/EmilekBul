@@ -24,11 +24,13 @@ EmilekBul — Dart ve Flutter ile geliştirilmiş modern ve şık bir Quiz uygul
   Google admob ile reklam entegrasyonu.
   
 ---EKRAN GÖRÜNTÜLERİ---
-<img width="1530" height="3036" alt="Screenshot_1754554774-portrait" src="https://github.com/user-attachments/assets/ac54a6f6-e28f-461f-afbc-f67ce203a126" />
-<img width="1530" height="3036" alt="Screenshot_1754554806-portrait" src="https://github.com/user-attachments/assets/e237938c-d17a-46d4-99a0-5154665e15f7" />
-<img width="1530" height="3036" alt="Screenshot_1754554791-portrait" src="https://github.com/user-attachments/assets/a6719242-ad05-46aa-889f-980500c8a79e" />
-<img width="1530" height="3036" alt="Screenshot_1754554840-portrait" src="https://github.com/user-attachments/assets/53e2a6ca-373a-411d-a673-f302c2a512fc" />
-<img width="1530" height="3036" alt="Screenshot_1754554850-portrait" src="https://github.com/user-attachments/assets/ce814fbd-3a67-4f60-82e7-8ba25f22b5d0" />
-<img width="1530" height="3036" alt="Screenshot_1754554856-portrait" src="https://github.com/user-attachments/assets/863fa6f9-94e6-4657-b19e-5c300a83bac1" />
-<img width="1530" height="3036" alt="Screenshot_1754554973-portrait" src="https://github.com/user-attachments/assets/7460e62a-1623-47c4-8028-36a5fa424998" />
-<img width="1530" height="3036" alt="Screenshot_1754554988-portrait" src="https://github.com/user-attachments/assets/4f3420c8-ea38-4c09-8382-fbfb88ce3a61" />
+<img width="1152" height="2645" alt="1" src="https://github.com/user-attachments/assets/c24d644d-a20a-4a17-9825-e3d13cc92230" />
+
+<img width="1152" height="2645" alt="2" src="https://github.com/user-attachments/assets/f2eaf041-0b2c-4063-8ac5-6718dfa69e16" />
+<img width="1152" height="2645" alt="3" src="https://github.com/user-attachments/assets/b76afb72-82c9-42e1-8129-fd2caa5a749f" />
+<img width="1152" height="2645" alt="4" src="https://github.com/user-attachments/assets/98f3d96b-e324-4f0c-b109-c75d19ff233f" />
+<img width="1152" height="2645" alt="4" src="https://github.com/user-attachments/assets/ec1256a4-5731-4e56-9bfc-72cdb0cfb818" />
+<img width="1152" height="2645" alt="5" src="https://github.com/user-attachments/assets/d781364a-565d-49d0-8850-4da09526b732" />
+
+<img width="1152" height="2645" alt="6" src="https://github.com/user-attachments/assets/9bb9458d-7a3e-43fc-8a4d-4f4b1eb22770" />
+
