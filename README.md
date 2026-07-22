@@ -1,27 +1,43 @@
 EmilekBul
 
-EmilekBul — Dart ve Flutter ile geliştirilmiş modern ve şık bir Quiz uygulaması.
+🚀 EmilekBul – AI-Powered Adaptive Quiz Application
 
-Özellikler & Vizyon:
+EmilekBul is a modern, high-performance mobile quiz application built with Flutter and Dart. Designed with a clean architecture and smooth UI/UX, it leverages Generative AI to deliver dynamic, tailored questions, providing an engaging and interactive learning experience for users.
+✨ Key Features & Highlights
 
+    🧠 AI-Driven Question Generation: Integrates with external AI APIs via secure prompt engineering to dynamically generate unique, context-aware quiz questions in real time.
 
-  Modern görünüm ve akıcı performans: Hafif yapı sayesinde mobil platformlarında hızlı çalışır.
+    🚀 High Performance & Smooth UI: Optimized reactive architecture ensuring a lightweight footprint, fast render times, and smooth transitions across mobile platforms.
 
-  Token sistemi ile öğrenme deneyimi: Kullanıcı dostu, sade ve ilgi çekici bir quiz formatı.
-  
-  Api bağlantısı ile yapay zekaya prompt gönderimi ve gelen soruların kullanıcıya sunumu.
+    ⚡ Token-Based Learning System: A gamified experience that rewards user progress and encourages continuous engagement.
 
-  Geleceğe dönük tasarım: Reaktif mimarisiyle kolay genişletilebilir modüller ve esnek kullanıcı arayüzü.
+    💾 Offline-First Local Storage (SQLite): Quiz history, detailed performance breakdowns, and local states are safely stored on-device via SQLite for instant offline access.
 
-  Sqlite ile testlerin local saklanması ve kullanıcıya istediği zaman tüm ayrıntıları ile gösterilmesi.
+    🔐 Secure Firebase Auth & Cloud Sync: Seamless authentication flows (Sign Up / Sign In) managed by Firebase Auth, paired with real-time user data and score synchronization in Firebase Database.
 
-  Firebase kullanıcı girişi/kayıtı ve firebase database ile kullanıcı bilgilerinin saklanması.
+    🏆 Category-Based Leaderboards: Competitive ranking system tracking and displaying top performers across various quiz categories.
 
-  Kullanıcıların kategorilere göre en yüksek puan alanlarının sıralanması.
+    💰 Monetization Ready (Google AdMob): Seamlessly integrated AdMob units optimized for a non-intrusive user experience.
 
-  Google Play : https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul
+🛠 Tech Stack & Architecture
 
-  Google admob ile reklam entegrasyonu.
+    Framework: Flutter (Dart)
+
+    Authentication & Cloud DB: Firebase Auth & Firebase Realtime Database / Firestore
+
+    Local Persistence: SQLite (sqflite)
+
+    AI Integration: RESTful API Integration / Generative AI Prompts
+
+    Monetization: Google AdMob SDK
+
+    Architecture: Clean, modular, and reactive architecture designed for high scalability.
+
+📱 Download & Store Link
+
+EmilekBul is live on the Google Play Store! Try it out here:
+
+👉 Download on Google Play Store
   
 ---EKRAN GÖRÜNTÜLERİ---
 <img width="1152" height="2645" alt="1" src="https://github.com/user-attachments/assets/c24d644d-a20a-4a17-9825-e3d13cc92230" />
