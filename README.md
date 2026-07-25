@@ -1,4 +1,4 @@
-<img width="1080" height="1920" alt="girisekrani" src="https://github.com/user-attachments/assets/0a7872a5-6865-41d0-a66e-a16f273d8a20" />🚀 EmilekBul – AI-Powered Adaptive Quiz Application
+🚀 EmilekBul – AI-Powered Adaptive Quiz Application
 
 EmilekBul is a modern, high-performance mobile quiz application built with Flutter and Dart. Designed with a clean architecture and smooth UI/UX, it leverages Generative AI to deliver dynamic, tailored questions, providing an engaging and interactive learning experience for users.(+1000 download)
 ✨ Key Features & Highlights
