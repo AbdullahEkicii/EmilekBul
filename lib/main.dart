@@ -1,50 +1,81 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/services.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'screens/animated_splash_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/kategori_screen.dart';
 import 'screens/quiz_screen.dart';
-import 'models/test_result.dart';
 import 'screens/loading_screen.dart';
 import 'models/question.dart';
 import 'services/ai_api_service.dart';
-import 'services/database_helper.dart';
 import 'screens/test_sonucu_screen.dart';
-import 'widgets/my_native_ad.dart';
 import 'services/notification_service.dart';
-import 'services/update_control.dart';
-import 'services/requestExactAlarmPermissionIfNeeded.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'services/user_service.dart';
+import 'services/database_helper.dart';
+import 'services/sound_service.dart';
+import 'services/performance_service.dart';
+import 'constants/offline_questions.dart';
+import 'services/fullscreen_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await FullScreenService.init();
+
+  // Kritik başlatmaları paralel yap — main thread'i minimum blokla
   try {
-    await NotificationPermissionManager.requestNotificationPermissionsSimple()
-        .timeout(Duration(seconds: 5));
-  } catch (_) {
-    print("Bildirim izni istenemedi");
+    await Future.wait([
+      Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform),
+      dotenv.load(),
+      EasyLocalization.ensureInitialized(),
+      SoundService.init(),
+      PerformanceService.init(),
+    ]);
+    
+    await FirebaseAppCheck.instance.activate(
+      androidProvider: AndroidProvider.playIntegrity, // Production provider
+    );
+  } catch (e) {
+    print("Kritik başlatma hatası: $e");
   }
 
-  await NotificationService.init();
-  // Uygulama başlarken veya ayarlar sayfasında
-  await NotificationService.showDailyRewardNotification();
-  await NotificationService.showAiQuestionReminderNotification(1);
-  await NotificationService.showAiQuestionReminderNotification(2);
+  // Arka planda başlasınlar, açılışı geciktirmesinler
+  Future(() {
+    // Ads init + config birlikte — race condition düzeltmesi
+    MobileAds.instance.initialize().then((_) {
+      RequestConfiguration configuration = RequestConfiguration(
+          testDeviceIds: ["5a60f6ab-9ccf-4ef5-802f-10bdf30314ff"]);
+      MobileAds.instance.updateRequestConfiguration(configuration);
+    }).catchError((e) {
+      print("Ads error: $e");
+    });
 
-  // Paralel olarak dotenv ve reklam başlatma işlemleri
-  await Future.wait([
-    dotenv.load(),
-    MobileAds.instance.initialize(),
-  ]);
+    NotificationService.init().catchError((e) => print("Notif init error: $e"));
+  });
 
-  runApp(const MyApp());
+  runApp(
+    EasyLocalization(
+      supportedLocales: const [
+        Locale('tr'),
+        Locale('en'),
+        Locale('ru'),
+        Locale('ar'),
+        Locale('es'),
+        Locale('fr'),
+      ],
+      path: 'assets/translations',
+      fallbackLocale: const Locale('en'),
+      // startLocale removed to allow auto-detection of device locale
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -55,10 +86,13 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Quiz Oyunu',
       debugShowCheckedModeBanner: false,
+      localizationsDelegates: context.localizationDelegates,
+      supportedLocales: context.supportedLocales,
+      locale: context.locale,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: QuizFlow(),
+      home: const AnimatedSplashScreen(),
     );
   }
 }
@@ -84,6 +118,7 @@ class _QuizFlowState extends State<QuizFlow> {
   String? _screenState; // welcome, category, quiz, result
   String? _error;
   bool _loading = false;
+  bool _isDataReady = false;
 
   List<Question> _questions = [];
   List<int?> _userAnswers = [];
@@ -91,21 +126,100 @@ class _QuizFlowState extends State<QuizFlow> {
   String _selectedDifficulty = '';
   int _score = 0;
   int _duration = 60;
+  bool _isOnboarding = false;
+  int _currentQuestionCount = 5;
+  bool _isDuel = false;
+  int _botScore = 0;
+  String _botName = 'Rakip';
+  String _botAvatar = 'avatars/avatar_1.jpg';
+  bool _playerFinishedFirst = false;
 
   @override
   void initState() {
     super.initState();
 
+    // Bildirim izinlerini kontrol et ve planla (UI render olduktan sonra)
+    // NOT: Artık bu işlem WelcomeScreen veya LoginRegisterScreen içinde yapılıyor
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   _checkPermissions();
+    // });
+
     if (widget.initialCategory != null &&
         widget.initialDifficulty != null &&
         widget.initialDuration != null) {
-      _startQuiz(
-        widget.initialCategory!,
-        widget.initialDifficulty!,
-        widget.initialDuration!,
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Since we only pass these parameters for the forced initial quiz from WelcomeScreen,
+        // it's safe to assume this is an onboarding flow.
+        if (mounted) {
+          setState(() {
+            _isOnboarding = true;
+          });
+          _startQuiz(
+            widget.initialCategory!,
+            widget.initialDifficulty!,
+            widget.initialDuration!,
+          );
+        }
+      });
     } else {
-      _screenState = 'welcome';
+      // Check if user is logged in
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        // Not logged in -> Auto Guest Login
+        _autoLoginAndSetup();
+      } else {
+        // Logged in -> Go to Welcome (or standard flow)
+        _screenState = 'welcome';
+      }
+    }
+  }
+
+  Future<void> _autoLoginAndSetup() async {
+    setState(() {
+      _loading = true; // Show loading screen while logging in
+    });
+
+    try {
+      print("_autoLoginAndSetup: Starting Guest Login...");
+      // 1. Auto Guest Login
+      final userCredential = await UserService.signInAsGuest().timeout(const Duration(seconds: 10), onTimeout: () {
+        print("_autoLoginAndSetup: Guest Login timeout after 10s");
+        throw Exception("Guest Login Timeout");
+      });
+      print("_autoLoginAndSetup: Guest Login completed, userCredential: ${userCredential?.user?.uid}");
+
+      if (userCredential != null) {
+        // 2. Onboarding quiz başlat (setState dışında çağır — async race condition düzeltmesi)
+        if (mounted) {
+          _isOnboarding = true;
+          // SharedPreferences'ta onboarding görüldü olarak işaretle
+          SharedPreferences.getInstance().then((prefs) {
+            prefs.setBool('has_seen_onboarding_v2', true);
+            prefs.setInt('user_tokens', 50); // Initialize guest tokens locally
+          }).catchError((e) {
+            print("Onboarding pref set error: $e");
+          });
+          _startQuiz('Genel Kültür', 'Orta', 30, count: 5);
+        }
+      } else {
+        // Fallback if guest login fails (extremely rare)
+        if (mounted) {
+          setState(() {
+            _error = "Guest login failed. Please check your connection.";
+            _loading = false;
+            _screenState = 'welcome';
+          });
+        }
+      }
+    } catch (e) {
+      print("_autoLoginAndSetup: Error caught: $e");
+      if (mounted) {
+        setState(() {
+          _error = "Auto login error: $e";
+          _loading = false;
+          _screenState = 'welcome';
+        });
+      }
     }
   }
 
@@ -124,16 +238,22 @@ class _QuizFlowState extends State<QuizFlow> {
   Future<void> _startQuiz(
     String category,
     String difficulty,
-    int duration,
-  ) async {
-    print('Quiz başlatılıyor: $category, $difficulty, $duration');
+    int duration, {
+    int count = 5,
+    bool isDuel = false,
+  }) async {
+    print('Quiz başlatılıyor: $category, $difficulty, $duration, isDuel: $isDuel');
+    final languageCode = context.locale.languageCode;
 
     setState(() {
       _loading = true;
+      _isDataReady = false;
       _screenState = 'quiz';
       _selectedCategory = category;
       _selectedDifficulty = difficulty;
       _duration = duration;
+      _currentQuestionCount = count;
+      _isDuel = isDuel;
       _questions = [];
       _userAnswers = [];
       _score = 0;
@@ -142,44 +262,88 @@ class _QuizFlowState extends State<QuizFlow> {
 
     try {
       print('API çağrısı yapılıyor...');
-      final questions = await _apiService.fetchQuestions(
-        category: category,
-        difficulty: difficulty,
-        count: 5,
-      );
+
+      final results = await Future.wait([
+        _apiService.fetchQuestions(
+          category: category,
+          difficulty: difficulty,
+          languageCode: languageCode,
+          count: count,
+        ),
+      ]);
+
+      final questions = results[0];
       print('API çağrısı başarılı, ${questions.length} soru alındı');
 
       if (!mounted) return;
       setState(() {
         _questions = questions;
-        _loading = false;
+        _isDataReady = true;
       });
-      print('State güncellendi, quiz başlayabilir');
+      print('Data hazır. Kullanıcı onayı bekleniyor.');
     } catch (e) {
       print('API çağrısı hatası: $e');
+      
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = 'İnternet bağlantısı yok veya bir hata oluştu. Lütfen tekrar deneyin.';
         _loading = false;
+        if (_screenState != 'welcome' &&
+            _screenState != 'category' &&
+            _screenState != 'result') {
+          _screenState = 'category';
+        }
       });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('İnternet bağlantısı yok. Lütfen tekrar deneyin.'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
-  void _onQuizFinished({required List<int?> userAnswers, required int score}) {
+  void _onQuizFinished({
+    required List<int?> userAnswers,
+    required int score,
+    int? botScore,
+    String? botName,
+    String? botAvatar,
+    bool? playerFinishedFirst,
+  }) {
     setState(() {
       _userAnswers = userAnswers;
       _score = score;
+      _botScore = botScore ?? 0;
+      _botName = botName ?? 'Rakip';
+      _botAvatar = botAvatar ?? 'avatars/avatar_1.jpg';
+      _playerFinishedFirst = playerFinishedFirst ?? false;
       _screenState = 'result';
     });
   }
 
   void _onRestartQuiz() {
-    setState(() {
-      _screenState = 'category';
-      _questions = [];
-      _userAnswers = [];
-      _score = 0;
-    });
+    _isOnboarding = false;
+    _startQuiz(
+      _selectedCategory,
+      _selectedDifficulty,
+      _duration,
+      count: _currentQuestionCount,
+      isDuel: _isDuel,
+    );
+  }
+
+  void _onContinueWithDifficulty(String difficulty) {
+    _isOnboarding = false;
+    _startQuiz(
+      _selectedCategory,
+      difficulty,
+      _duration,
+      count: _currentQuestionCount,
+      isDuel: _isDuel,
+    );
   }
 
   void _onBackToWelcome() {
@@ -190,17 +354,39 @@ class _QuizFlowState extends State<QuizFlow> {
       _score = 0;
       _selectedCategory = '';
       _selectedDifficulty = '';
+      _isOnboarding = false;
+      _currentQuestionCount = 5;
+    });
+  }
+
+  void _onStartQuizTransition() {
+    setState(() {
+      _loading = false;
+      _isDataReady = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return loading_screen();
+      // If we are doing the initial guest login, just show a blank dark screen
+      // so it seamlessly transitions from AnimatedSplashScreen without a 3rd splash
+      if (_screenState == null) {
+        return const Scaffold(
+          backgroundColor: Color(0xFF0F172A),
+          body: Center(
+            child: CircularProgressIndicator(color: Colors.blueAccent),
+          ),
+        );
+      }
+      return LoadingScreen(
+        isDataReady: _isDataReady,
+        onStart: _onStartQuizTransition,
+      );
     }
     switch (_screenState) {
       case 'welcome':
-        return WelcomeScreen(onStart: _showCategoryScreen);
+        return WelcomeScreen(onStart: _showCategoryScreen, skipLoading: true);
       case 'category':
         return KategoriScreen(
           onStartQuiz: _startQuiz,
@@ -208,15 +394,26 @@ class _QuizFlowState extends State<QuizFlow> {
         );
       case 'quiz':
         if (_questions.isEmpty) {
-          return loading_screen();
+          return LoadingScreen(
+            isDataReady: _isDataReady,
+            onStart: _onStartQuizTransition,
+          );
         }
         return QuizScreen(
           questions: _questions,
           category: _selectedCategory,
           difficulty: _selectedDifficulty,
           duration: _duration,
-          onFinished: (List<int?> userAnswers, int score) {
-            _onQuizFinished(userAnswers: userAnswers, score: score);
+          isDuel: _isDuel,
+          onFinished: (List<int?> userAnswers, int score, {int? botScore, String? botName, String? botAvatar, bool? playerFinishedFirst}) {
+            _onQuizFinished(
+              userAnswers: userAnswers,
+              score: score,
+              botScore: botScore,
+              botName: botName,
+              botAvatar: botAvatar,
+              playerFinishedFirst: playerFinishedFirst,
+            );
           },
         );
       case 'result':
@@ -226,10 +423,19 @@ class _QuizFlowState extends State<QuizFlow> {
           score: _score,
           onRestart: _onRestartQuiz,
           onBackToWelcome: _onBackToWelcome,
+          onContinueWithDifficulty: _onContinueWithDifficulty,
           difficulty: _selectedDifficulty,
+          category: _selectedCategory,
+          isOnboarding: _isOnboarding,
+          isDuel: _isDuel,
+          botScore: _botScore,
+          botName: _botName,
+          botAvatar: _botAvatar,
+          playerFinishedFirst: _playerFinishedFirst,
         );
       default:
-        return loading_screen();
+        // Default loading screen with no data ready if just initializing
+        return const LoadingScreen();
     }
   }
 }

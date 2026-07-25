@@ -1,14 +1,17 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'user_service.dart';
 
 class TokenService {
   static const String _tokenKey = 'user_tokens';
   static const String _lastDailyRewardKey = 'last_daily_reward';
   static const int _dailyRewardAmount = 100;
   static const int _quizCost = 10;
+  static const int _duelCost = 20;
+  static const int _duelReward = 40;
 
   // SharedPreferences instance'ı için cache
   static SharedPreferences? _prefs;
-  
+
   static Future<SharedPreferences> _getPrefs() async {
     _prefs ??= await SharedPreferences.getInstance();
     return _prefs!;
@@ -24,6 +27,8 @@ class TokenService {
   static Future<void> updateTokenAmount(int amount) async {
     final prefs = await _getPrefs();
     await prefs.setInt(_tokenKey, amount);
+    // Firestore'u da güncelle (TokenWidget reactivity için)
+    await UserService.updateUserTokens(amount);
   }
 
   // Token ekle
@@ -45,6 +50,16 @@ class TokenService {
   // Quiz için token harca
   static Future<bool> spendQuizTokens() async {
     return await spendTokens(_quizCost);
+  }
+
+  // Düello için token harca
+  static Future<bool> spendDuelTokens() async {
+    return await spendTokens(_duelCost);
+  }
+
+  // Düello galibiyeti için token ver
+  static Future<void> awardTokensForDuelWin() async {
+    await addTokens(_duelReward);
   }
 
   // Günlük ödül kontrolü
@@ -83,18 +98,19 @@ class TokenService {
   // Zorluk seviyesine göre token kazanma
   static int getTokensForCorrectAnswer(String difficulty) {
     switch (difficulty) {
-      case 'Kolay-Orta':
-      return 1;
-      case 'Orta':
+      case 'Kolay':
         return 2;
-      case 'Orta-Zor':
+      case 'Orta':
         return 3;
-      case 'İmkansız':
+      case 'Zor':
         return 4;
+      case 'Imkansız':
+        return 6;
       default:
-        return 1;
+        return 3;
     }
   }
+
   // Quiz sonucuna göre token ver
   static Future<void> awardTokensForQuiz(
       String difficulty, int correctAnswers) async {

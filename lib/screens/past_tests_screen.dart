@@ -4,6 +4,9 @@ import 'package:emilekbul/services/database_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../widgets/my_native_ad.dart';
+import '../widgets/glass_container.dart';
+import 'package:easy_localization/easy_localization.dart';
+import '../constants/app_categories.dart';
 
 class PastTestsScreen extends StatefulWidget {
   const PastTestsScreen({super.key});
@@ -12,360 +15,276 @@ class PastTestsScreen extends StatefulWidget {
   _PastTestsScreenState createState() => _PastTestsScreenState();
 }
 
-class _PastTestsScreenState extends State<PastTestsScreen> {
+class _PastTestsScreenState extends State<PastTestsScreen>
+    with TickerProviderStateMixin {
   late Future<List<TestResult>> _tests;
+  late AnimationController _orbController;
+  late Animation<double> _orbAnimation;
 
   @override
   void initState() {
     super.initState();
     _tests = DatabaseHelper.instance.getAllTests();
+
+    _orbController = AnimationController(
+      duration: const Duration(seconds: 12),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _orbAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _orbController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _orbController.dispose();
+    super.dispose();
+  }
+
+  Widget _buildBackgroundOrbs() {
+    return AnimatedBuilder(
+      animation: _orbAnimation,
+      builder: (context, child) {
+        return Stack(
+          children: [
+            Positioned(
+              top: -50,
+              right: -30 + (20 * _orbAnimation.value),
+              child: _buildOrb(200, const Color(0xFF6366F1).withOpacity(0.2)),
+            ),
+            Positioned(
+              bottom: 100 + (40 * _orbAnimation.value),
+              left: -40,
+              child: _buildOrb(250, const Color(0xFFA855F7).withOpacity(0.15)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildOrb(double size, Color color) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(color: color, blurRadius: 80, spreadRadius: 20),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header Section - Küçültüldü
-              Container(
-                padding: EdgeInsets.all(20), // 24'ten 20'ye düşürüldü
-                child: Column(
-                  children: [
-                    // Back Button ve Title
-                    Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: Container(
-                            padding: EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.arrow_back,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 16),
-                        Expanded(
-                          child: Text(
-                            'Geçmiş Testlerim',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        // Refresh Button
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _tests = DatabaseHelper.instance.getAllTests();
-                            });
-                          },
-                          child: Container(
-                            padding: EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.refresh,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 16), // 24'ten 16'ya düşürüldü
-
-                    // Header Icon ve Açıklama - Küçültüldü
-                    Icon(
-                      Icons.history,
-                      size: 36, // 48'den 36'ya düşürüldü
-                      color: Colors.white.withOpacity(0.9),
-                    ),
-                    SizedBox(height: 8), // 12'den 8'e düşürüldü
-                    Text(
-                      'Test Geçmişiniz',
-                      style: TextStyle(
-                        fontSize: 20, // 24'ten 20'ye düşürüldü
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    SizedBox(height: 6), // 8'den 6'ya düşürüldü
-                    Text(
-                      'Önceki test sonuçlarınızı inceleyin',
-                      style: TextStyle(
-                        fontSize: 13, // 14'ten 13'e düşürüldü
-                        color: Colors.white.withOpacity(0.8),
-                      ),
-                    ),
-                  ],
-                ),
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          // Background
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
               ),
+            ),
+          ),
+          RepaintBoundary(child: _buildBackgroundOrbs()),
 
-              // Tests List Container - Yukarı çıkarıldı
-              Expanded(
-                child: Container(
-                  margin: EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 20,
-                        offset: Offset(0, -5),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(20),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.quiz,
-                              color: Color(0xFF667eea),
-                              size: 24,
-                            ),
-                            SizedBox(width: 12),
-                            Text(
-                              'Test Listesi',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF2D3748),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: FutureBuilder<List<TestResult>>(
-                          future: _tests,
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return _buildLoadingState();
-                            } else if (snapshot.hasError) {
-                              return _buildErrorState(
-                                snapshot.error.toString(),
-                              );
-                            } else if (!snapshot.hasData ||
-                                snapshot.data!.isEmpty) {
-                              return _buildEmptyState();
-                            }
+          SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(context),
+                Expanded(
+                  child: FutureBuilder<List<TestResult>>(
+                    future: _tests,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return _buildLoadingState();
+                      } else if (snapshot.hasError) {
+                        return _buildErrorState(snapshot.error.toString());
+                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return _buildEmptyState();
+                      }
 
-                            final tests = snapshot.data!;
-                            return ListView.builder(
-                              padding: EdgeInsets.symmetric(horizontal: 16),
-                              itemCount: tests.length,
-                              itemBuilder: (context, index) {
-                                final test = tests[index];
-                                return _buildTestCard(test, index);
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                    ],
+                      final tests = snapshot.data!;
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 10),
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: tests.length,
+                        itemBuilder: (context, index) {
+                          return _buildTestCard(tests[index]);
+                        },
+                      );
+                    },
                   ),
                 ),
-              ),
-
-              // Native Ad eklendi
-              Container(
-                margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: MyNativeAd(),
-              ),
-            ],
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+                  child: MyNativeAd(
+                    height: 100,
+                    factoryId: 'adFactoryExample',
+                    refreshInterval: 30,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildTestCard(TestResult test, int index) {
-    // Başarı oranını hesapla
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: GlassContainer(
+                  borderRadius: 12,
+                  opacity: 0.1,
+                  padding: const EdgeInsets.all(10),
+                  child: const Icon(Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white, size: 20),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  'past_tests.title'.tr(),
+                  style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -0.5),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => setState(
+                    () => _tests = DatabaseHelper.instance.getAllTests()),
+                child: GlassContainer(
+                  borderRadius: 12,
+                  opacity: 0.1,
+                  padding: const EdgeInsets.all(10),
+                  child: const Icon(Icons.refresh_rounded,
+                      color: Colors.white, size: 20),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTestCard(TestResult test) {
     int correct = 0;
     for (var question in test.questions) {
       if (question.userAnswer == question.correctAnswer) correct++;
     }
     double successRate = (correct / test.questions.length) * 100;
+    Color color = _getSuccessColor(successRate);
 
-    // Zorluk seviyesine göre renk
-    Color difficultyColor = _getDifficultyColor(test.difficulty);
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => TestDetailScreen(test: test)),
-        );
-      },
-      child: Container(
-        margin: EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: difficultyColor.withOpacity(0.3), width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(20),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: GlassContainer(
+        useBlur: false,
+        opacity: 0.08,
+        borderRadius: 28,
+        padding: const EdgeInsets.all(24),
+        child: InkWell(
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => TestDetailScreen(test: test))),
           child: Column(
             children: [
-              // Header Row
               Row(
                 children: [
-                  // Test Icon
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 54,
+                    height: 54,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+                        colors: [
+                          color.withOpacity(0.2),
+                          color.withOpacity(0.4)
+                        ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: color.withOpacity(0.3)),
                     ),
-                    child: Icon(
-                      _getCategoryIcon(test.category),
-                      color: Colors.white,
-                      size: 24,
-                    ),
+                    child: Icon(_getCategoryIcon(test.category),
+                        color: color, size: 28),
                   ),
-                  SizedBox(width: 16),
-
-                  // Test Info
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          test.category,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF2D3748),
-                          ),
+                          _translateCategory(test.category),
+                          style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Row(
                           children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: difficultyColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: difficultyColor.withOpacity(0.3),
-                                ),
-                              ),
+                            GlassContainer(
+                              useBlur: false,
+                              borderRadius: 8,
+                              opacity: 0.1,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
                               child: Text(
-                                test.difficulty,
+                                _translateDifficulty(test.difficulty),
                                 style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: difficultyColor,
-                                ),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color:
+                                        _getDifficultyColor(test.difficulty)),
                               ),
                             ),
-                            SizedBox(width: 8),
-                            Icon(
-                              Icons.calendar_today,
-                              size: 14,
-                              color: Color(0xFF718096),
-                            ),
-                            SizedBox(width: 4),
+                            const SizedBox(width: 10),
                             Text(
-                              DateFormat('dd MMM yyyy').format(test.date),
+                              DateFormat('dd.MM.yyyy').format(test.date),
                               style: TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF718096),
-                                fontWeight: FontWeight.w500,
-                              ),
+                                  fontSize: 12,
+                                  color: Colors.white.withOpacity(0.5),
+                                  fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
                       ],
                     ),
                   ),
-
-                  // Arrow Icon
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    color: Color(0xFF718096),
-                    size: 16,
-                  ),
+                  const Icon(Icons.chevron_right_rounded,
+                      color: Colors.white38),
                 ],
               ),
-
-              SizedBox(height: 16),
-
-              // Stats Row
+              const SizedBox(height: 20),
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  Expanded(
-                    child: _buildStatItem(
-                      icon: Icons.quiz,
-                      label: 'Soru Sayısı',
-                      value: '${test.questions.length}',
-                      color: Color(0xFF667eea),
-                    ),
-                  ),
-                  Container(width: 1, height: 40, color: Colors.grey.shade300),
-                  Expanded(
-                    child: _buildStatItem(
-                      icon: Icons.check_circle,
-                      label: 'Doğru',
-                      value: '$correct',
-                      color: Color(0xFF4CAF50),
-                    ),
-                  ),
-                  Container(width: 1, height: 40, color: Colors.grey.shade300),
-                  Expanded(
-                    child: _buildStatItem(
-                      icon: Icons.trending_up,
-                      label: 'Başarı',
-                      value: '${successRate.toInt()}%',
-                      color: successRate >= 70
-                          ? Color(0xFF4CAF50)
-                          : successRate >= 50
-                              ? Color(0xFF2196F3)
-                              : Color(0xFFFF5722),
-                    ),
-                  ),
+                  _buildMiniStat(Icons.quiz_rounded, '${test.questions.length}',
+                      'past_tests.question_count'.tr()),
+                  _buildMiniStat(Icons.check_circle_rounded, '$correct',
+                      'past_tests.correct_count'.tr(),
+                      color: Colors.greenAccent),
+                  _buildMiniStat(Icons.stars_rounded, '${successRate.toInt()}%',
+                      'past_tests.success_rate'.tr(),
+                      color: color),
                 ],
               ),
             ],
@@ -375,101 +294,28 @@ class _PastTestsScreenState extends State<PastTestsScreen> {
     );
   }
 
-  Widget _buildStatItem({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
+  Widget _buildMiniStat(IconData icon, String value, String label,
+      {Color color = Colors.white70}) {
     return Column(
       children: [
-        Icon(icon, color: color, size: 20),
-        SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        SizedBox(height: 2),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            color: Color(0xFF718096),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+        Icon(icon, color: color.withOpacity(0.6), size: 18),
+        const SizedBox(height: 6),
+        Text(value,
+            style: TextStyle(
+                fontSize: 16, fontWeight: FontWeight.w800, color: color)),
+        Text(label,
+            style: TextStyle(
+                fontSize: 10,
+                color: Colors.white.withOpacity(0.4),
+                fontWeight: FontWeight.w600)),
       ],
     );
   }
 
   Widget _buildLoadingState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Color(0xFF667eea).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(50),
-            ),
-            child: CircularProgressIndicator(
-              color: Color(0xFF667eea),
-              strokeWidth: 3,
-            ),
-          ),
-          SizedBox(height: 24),
-          Text(
-            'Testler yükleniyor...',
-            style: TextStyle(
-              fontSize: 16,
-              color: Color(0xFF4A5568),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorState(String error) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Color(0xFFFF5722).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(50),
-            ),
-            child: Icon(
-              Icons.error_outline,
-              size: 48,
-              color: Color(0xFFFF5722),
-            ),
-          ),
-          SizedBox(height: 24),
-          Text(
-            'Bir hata oluştu',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2D3748),
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            error,
-            style: TextStyle(fontSize: 14, color: Color(0xFF718096)),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+    return const Center(
+      child:
+          CircularProgressIndicator(color: Color(0xFF6366F1), strokeWidth: 3),
     );
   }
 
@@ -478,72 +324,78 @@ class _PastTestsScreenState extends State<PastTestsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Color(0xFF667eea).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(50),
-            ),
-            child: Icon(
-              Icons.quiz_outlined,
-              size: 48,
-              color: Color(0xFF667eea),
-            ),
-          ),
-          SizedBox(height: 24),
-          Text(
-            'Henüz test yok',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2D3748),
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'İlk testinizi çözdüğünüzde burada görünecek',
-            style: TextStyle(fontSize: 14, color: Color(0xFF718096)),
-            textAlign: TextAlign.center,
-          ),
+          Icon(Icons.history_rounded,
+              size: 64, color: Colors.white.withOpacity(0.1)),
+          const SizedBox(height: 20),
+          Text('past_tests.empty'.tr(),
+              style: const TextStyle(color: Colors.white60, fontSize: 16)),
         ],
       ),
     );
   }
 
+  Widget _buildErrorState(String error) {
+    return Center(
+        child: Text(error, style: const TextStyle(color: Colors.redAccent)));
+  }
+
+  Color _getSuccessColor(double rate) {
+    if (rate >= 80) return const Color(0xFF10B981);
+    if (rate >= 50) return const Color(0xFFF59E0B);
+    return const Color(0xFFEF4444);
+  }
+
   Color _getDifficultyColor(String difficulty) {
     switch (difficulty.toLowerCase()) {
       case 'kolay':
-        return Color(0xFF4CAF50);
+        return const Color(0xFF10B981);
       case 'orta':
-        return Color(0xFF2196F3);
+        return const Color(0xFF3B82F6);
       case 'zor':
-        return Color(0xFFFF5722);
+        return const Color(0xFFEF4444);
       default:
-        return Color(0xFF667eea);
+        return Colors.white70;
     }
   }
 
   IconData _getCategoryIcon(String category) {
-    // Kategori ismine göre ikon döndür
     switch (category.toLowerCase()) {
       case 'matematik':
-        return Icons.calculate;
+        return Icons.calculate_rounded;
       case 'fen':
-      case 'fizik':
-      case 'kimya':
-      case 'biyoloji':
-        return Icons.science;
+        return Icons.science_rounded;
       case 'tarih':
-        return Icons.history_edu;
-      case 'coğrafya':
-        return Icons.public;
+        return Icons.history_edu_rounded;
       case 'türkçe':
-      case 'Dini':
-        return Icons.menu_book;
-      case 'Genel Kültür':
-        return Icons.language;
+        return Icons.menu_book_rounded;
       default:
-        return Icons.quiz;
+        return Icons.quiz_rounded;
+    }
+  }
+
+  String _translateDifficulty(String difficulty) {
+    switch (difficulty) {
+      case 'Kolay':
+        return 'category_ui.difficulty.easy'.tr();
+      case 'Orta':
+        return 'category_ui.difficulty.medium'.tr();
+      case 'Zor':
+        return 'category_ui.difficulty.hard'.tr();
+      case 'Imkansız':
+        return 'category_ui.difficulty.impossible'.tr();
+      default:
+        return difficulty;
+    }
+  }
+
+  String _translateCategory(String categoryName) {
+    try {
+      final category = AppCategories.categories.firstWhere(
+        (c) => c.name == categoryName,
+      );
+      return category.key.tr();
+    } catch (_) {
+      return categoryName;
     }
   }
 }

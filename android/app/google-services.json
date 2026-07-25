@@ -12,7 +12,20 @@
           "package_name": "com.abdullahekici.emilekbul"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "561094034943-hurmjpkv1qi4r85jt6kcmval61otr05t.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.abdullahekici.emilekbul",
+            "certificate_hash": "7fb0079e5f263122c622c2a97ab5b7721926ea1c"
+          }
+        },
+        {
+          "client_id": "561094034943-1tub3cs7vnav8r7ts42cdbltj09fu45f.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBaH82UqOFeNkEOi2dFgstOAgeKwblSaf4"
@@ -20,9 +33,22 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "561094034943-1tub3cs7vnav8r7ts42cdbltj09fu45f.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "561094034943-uqdsaq7oskufn3ds9uc77om8b91khmpc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.emilekbul"
+              }
+            }
+          ]
         }
-      }
+      },
+      "admob_app_id": "ca-app-pub-2034009761866400~2519615493"
     }
   ],
   "configuration_version": "1"

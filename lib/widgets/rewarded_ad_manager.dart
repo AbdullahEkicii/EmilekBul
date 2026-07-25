@@ -10,8 +10,7 @@ class RewardedAdManager {
     _isLoading = true;
 
     RewardedAd.load(
-      adUnitId:
-          'ca-app-pub-3940256099942544/5224354917', // Gerçek ID ile değiştir
+      adUnitId: 'ca-app-pub-2034009761866400/8514657130',
       request: const AdRequest(),
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {

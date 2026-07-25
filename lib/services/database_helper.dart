@@ -1,6 +1,8 @@
 import 'package:emilekbul/models/test_result.dart';
+import 'package:emilekbul/models/question.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'dart:convert';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -18,7 +20,53 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    return await openDatabase(
+      path,
+      version: 4,
+      onCreate: _createDB,
+      onUpgrade: _onUpgrade,
+    );
+  }
+
+  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('''
+CREATE TABLE logins (
+  date TEXT PRIMARY KEY
+)
+''');
+    }
+    if (oldVersion < 3) {
+      await db.execute('''
+CREATE TABLE cached_quizzes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  category TEXT NOT NULL,
+  difficulty TEXT NOT NULL,
+  language_code TEXT NOT NULL,
+  questions_json TEXT NOT NULL,
+  created_at TEXT NOT NULL
+)
+''');
+    }
+    if (oldVersion < 4) {
+      await db.execute('''
+CREATE TABLE quests (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  target_progress INTEGER NOT NULL,
+  current_progress INTEGER NOT NULL,
+  reward_tokens INTEGER NOT NULL,
+  is_claimed INTEGER NOT NULL,
+  last_updated TEXT NOT NULL
+)
+''');
+      await db.execute('''
+CREATE TABLE achievements (
+  id TEXT PRIMARY KEY,
+  unlocked_at TEXT NOT NULL
+)
+''');
+    }
   }
 
   Future _createDB(Database db, int version) async {
@@ -45,6 +93,42 @@ CREATE TABLE test_questions (
   correct_answer $textType,
   options $textType,
   FOREIGN KEY (test_id) REFERENCES tests (id) ON DELETE CASCADE
+)
+''');
+
+    await db.execute('''
+CREATE TABLE logins (
+  date TEXT PRIMARY KEY
+)
+''');
+
+    await db.execute('''
+CREATE TABLE cached_quizzes (
+  id $idType,
+  category $textType,
+  difficulty $textType,
+  language_code $textType,
+  questions_json $textType,
+  created_at $textType
+)
+''');
+
+    await db.execute('''
+CREATE TABLE quests (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  target_progress INTEGER NOT NULL,
+  current_progress INTEGER NOT NULL,
+  reward_tokens INTEGER NOT NULL,
+  is_claimed INTEGER NOT NULL,
+  last_updated TEXT NOT NULL
+)
+''');
+
+    await db.execute('''
+CREATE TABLE achievements (
+  id TEXT PRIMARY KEY,
+  unlocked_at TEXT NOT NULL
 )
 ''');
   }
@@ -113,37 +197,28 @@ CREATE TABLE test_questions (
   Future<Map<String, Map<String, int>>> getCategoryStatsFromTests() async {
     final db = await database;
 
-    // Önce tüm testleri al
-    final List<Map<String, dynamic>> tests = await db.query('tests');
+    // Tek bir sorgu ile tüm verileri JOIN yaparak çekiyoruz (N+1 problemini çözer)
+    final List<Map<String, dynamic>> results = await db.rawQuery('''
+      SELECT t.category, q.user_answer, q.correct_answer 
+      FROM tests t
+      JOIN test_questions q ON t.id = q.test_id
+    ''');
 
     Map<String, Map<String, int>> stats = {};
 
-    for (var test in tests) {
-      final category = test['category'] as String;
-      final testId = test['id'] as int;
+    for (var row in results) {
+      final category = row['category'] as String;
+      final userAnswer = row['user_answer'] as String;
+      final correctAnswer = row['correct_answer'] as String;
 
-      // Her test için soruları al
-      final List<Map<String, dynamic>> questions = await db.query(
-        'test_questions',
-        where: 'test_id = ?',
-        whereArgs: [testId],
-      );
-
-      // Kategori için stats oluştur
       if (!stats.containsKey(category)) {
         stats[category] = {'correct': 0, 'wrong': 0};
       }
 
-      // Her soru için doğru/yanlış sayısını hesapla
-      for (var question in questions) {
-        final userAnswer = question['user_answer'] as String;
-        final correctAnswer = question['correct_answer'] as String;
-
-        if (userAnswer == correctAnswer) {
-          stats[category]!['correct'] = stats[category]!['correct']! + 1;
-        } else {
-          stats[category]!['wrong'] = stats[category]!['wrong']! + 1;
-        }
+      if (userAnswer == correctAnswer) {
+        stats[category]!['correct'] = stats[category]!['correct']! + 1;
+      } else {
+        stats[category]!['wrong'] = stats[category]!['wrong']! + 1;
       }
     }
 
@@ -154,6 +229,97 @@ CREATE TABLE test_questions (
     // Bu metod test_results tablosunu kullanıyor ama o tablo yok
     // Yukarıdaki getCategoryStatsFromTests metodunu kullanın
     return getCategoryStatsFromTests();
+  }
+
+  Future<bool> recordLoginAndCheckConsecutive() async {
+    final db = await instance.database;
+    final now = DateTime.now();
+    final today =
+        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+
+    // Bugünü kontrol et
+    final todayMaps = await db.query(
+      'logins',
+      where: 'date = ?',
+      whereArgs: [today],
+    );
+
+    if (todayMaps.isNotEmpty) {
+      // Zaten bugün kaydedilmiş
+      return false;
+    }
+
+    // Bugünü kaydet
+    await db.insert('logins', {'date': today});
+
+    // Dünü kontrol et
+    final yesterdayDate = now.subtract(const Duration(days: 1));
+    final yesterday =
+        "${yesterdayDate.year}-${yesterdayDate.month.toString().padLeft(2, '0')}-${yesterdayDate.day.toString().padLeft(2, '0')}";
+
+    final yesterdayMaps = await db.query(
+      'logins',
+      where: 'date = ?',
+      whereArgs: [yesterday],
+    );
+
+    // Dün de giriş yapılmışsa true döndür
+    return yesterdayMaps.isNotEmpty;
+  }
+
+  // Jeton/Soru Önbelleğe Alma Metotları
+
+  Future<void> saveCachedQuiz(
+      String category, String difficulty, String languageCode, String questionsJson) async {
+    final db = await instance.database;
+    await db.insert('cached_quizzes', {
+      'category': category,
+      'difficulty': difficulty,
+      'language_code': languageCode,
+      'questions_json': questionsJson,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<List<Question>?> getCachedQuiz(
+      String category, String difficulty, String languageCode) async {
+    final db = await instance.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'cached_quizzes',
+      where: 'category = ? AND difficulty = ? AND language_code = ?',
+      whereArgs: [category, difficulty, languageCode],
+      limit: 1,
+    );
+
+    if (maps.isEmpty) {
+      return null;
+    }
+
+    final cached = maps.first;
+    final int id = cached['id'] as int;
+    final String jsonString = cached['questions_json'] as String;
+
+    // Önbellekten okuduktan sonra bu kaydı silelim ki tekrar kullanılmasın
+    await db.delete('cached_quizzes', where: 'id = ?', whereArgs: [id]);
+
+    try {
+      final List<dynamic> list = jsonDecode(jsonString);
+      return list.map((e) => Question.fromJson(e)).toList();
+    } catch (e) {
+      print('Cached quiz parse error: $e');
+      return null;
+    }
+  }
+
+  Future<int> getCachedQuizCount(
+      String category, String difficulty, String languageCode) async {
+    final db = await instance.database;
+    final List<Map<String, dynamic>> result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM cached_quizzes WHERE category = ? AND difficulty = ? AND language_code = ?',
+      [category, difficulty, languageCode],
+    );
+    if (result.isEmpty) return 0;
+    return Sqflite.firstIntValue(result) ?? 0;
   }
 
   Future close() async {

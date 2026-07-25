@@ -1,508 +1,336 @@
 import 'package:emilekbul/models/test_result.dart';
 import 'package:flutter/material.dart';
 import '../widgets/my_native_ad.dart';
+import '../widgets/glass_container.dart';
+import 'package:easy_localization/easy_localization.dart';
+import '../constants/app_categories.dart';
 
-class TestDetailScreen extends StatelessWidget {
+class TestDetailScreen extends StatefulWidget {
   final TestResult test;
 
   const TestDetailScreen({super.key, required this.test});
 
   @override
-  Widget build(BuildContext context) {
-    // Sonuçları hesapla
-    int correct = 0;
-    for (var question in test.questions) {
-      if (question.userAnswer == question.correctAnswer) correct++;
-    }
-    int wrong = test.questions.length - correct;
-    double successRate = (correct / test.questions.length) * 100;
+  State<TestDetailScreen> createState() => _TestDetailScreenState();
+}
 
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header Section - Küçültüldü
-              Container(
-                padding: EdgeInsets.all(20), // 24'ten 20'ye düşürüldü
-                child: Column(
-                  children: [
-                    // Back Button ve Title
-                    Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: Container(
-                            padding: EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.arrow_back,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 16),
-                        Expanded(
-                          child: Text(
-                            '${test.category} Test Detayı',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 16), // 24'ten 16'ya düşürüldü
+class _TestDetailScreenState extends State<TestDetailScreen>
+    with TickerProviderStateMixin {
+  late AnimationController _orbController;
+  late Animation<double> _orbAnimation;
 
-                    // Test Icon ve Bilgi - Küçültüldü
-                    Icon(
-                      Icons.quiz,
-                      size: 36, // 48'den 36'ya düşürüldü
-                      color: Colors.white.withOpacity(0.9),
-                    ),
-                    SizedBox(height: 8), // 12'den 8'e düşürüldü
-                    Text(
-                      'Test Analizi',
-                      style: TextStyle(
-                        fontSize: 20, // 24'ten 20'ye düşürüldü
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    SizedBox(height: 6), // 8'den 6'ya düşürüldü
-                    Text(
-                      'Tüm sorularınızı detaylı olarak inceleyin',
-                      style: TextStyle(
-                        fontSize: 13, // 14'ten 13'e düşürüldü
-                        color: Colors.white.withOpacity(0.8),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+  @override
+  void initState() {
+    super.initState();
+    _orbController = AnimationController(
+      duration: const Duration(seconds: 15),
+      vsync: this,
+    )..repeat(reverse: true);
 
-              // Stats Cards
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _buildStatCard(
-                        title: 'Doğru',
-                        value: correct.toString(),
-                        icon: Icons.check_circle,
-                        color: Color(0xFF4CAF50),
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatCard(
-                        title: 'Yanlış',
-                        value: wrong.toString(),
-                        icon: Icons.cancel,
-                        color: Color(0xFFFF5722),
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatCard(
-                        title: 'Başarı',
-                        value: '${successRate.toInt()}%',
-                        icon: Icons.trending_up,
-                        color: Color(0xFF2196F3),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+    _orbAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _orbController, curve: Curves.easeInOut),
+    );
+  }
 
-              SizedBox(height: 16), // 24'ten 16'ya düşürüldü
+  @override
+  void dispose() {
+    _orbController.dispose();
+    super.dispose();
+  }
 
-              // Questions List
-              Expanded(
-                child: Container(
-                  margin: EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius:
-                        BorderRadius.circular(24), // Yuvarlak şekil eklendi
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 20,
-                        offset: Offset(0, -5),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(20),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.format_list_numbered,
-                              color: Color(0xFF667eea),
-                              size: 24,
-                            ),
-                            SizedBox(width: 12),
-                            Text(
-                              'Sorular ve Cevaplar',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF2D3748),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: ListView.builder(
-                          padding: EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: test.questions.length,
-                          itemBuilder: (context, index) {
-                            final question = test.questions[index];
-                            final isCorrect =
-                                question.userAnswer == question.correctAnswer;
+  Widget _buildBackgroundOrbs() {
+    return AnimatedBuilder(
+      animation: _orbAnimation,
+      builder: (context, child) {
+        return Stack(
+          children: [
+            Positioned(
+              top: -50,
+              right: -30 + (20 * _orbAnimation.value),
+              child: _buildOrb(200, const Color(0xFF6366F1).withOpacity(0.15)),
+            ),
+            Positioned(
+              bottom: 150 + (40 * _orbAnimation.value),
+              left: -40,
+              child: _buildOrb(250, const Color(0xFFA855F7).withOpacity(0.12)),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
-                            return Container(
-                              margin: EdgeInsets.only(bottom: 16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: isCorrect
-                                      ? Color(0xFF4CAF50).withOpacity(0.3)
-                                      : Color(0xFFFF5722).withOpacity(0.3),
-                                  width: 2,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
-                                    blurRadius: 8,
-                                    offset: Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Padding(
-                                padding: EdgeInsets.all(20),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Question Header
-                                    Row(
-                                      children: [
-                                        Container(
-                                          width: 36,
-                                          height: 36,
-                                          decoration: BoxDecoration(
-                                            color: isCorrect
-                                                ? Color(0xFF4CAF50)
-                                                : Color(0xFFFF5722),
-                                            borderRadius: BorderRadius.circular(
-                                              18,
-                                            ),
-                                          ),
-                                          child: Center(
-                                            child: Text(
-                                              '${index + 1}',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(width: 12),
-                                        Expanded(
-                                          child: Row(
-                                            children: [
-                                              Icon(
-                                                isCorrect
-                                                    ? Icons.check_circle
-                                                    : Icons.cancel,
-                                                color: isCorrect
-                                                    ? Color(0xFF4CAF50)
-                                                    : Color(0xFFFF5722),
-                                                size: 20,
-                                              ),
-                                              SizedBox(width: 8),
-                                              Text(
-                                                isCorrect ? 'Doğru' : 'Yanlış',
-                                                style: TextStyle(
-                                                  color: isCorrect
-                                                      ? Color(0xFF4CAF50)
-                                                      : Color(0xFFFF5722),
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 16),
-
-                                    // Question Text
-                                    Container(
-                                      padding: EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade50,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: Colors.grey.shade200,
-                                        ),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                Icons.help_outline,
-                                                color: Color(0xFF667eea),
-                                                size: 18,
-                                              ),
-                                              SizedBox(width: 8),
-                                              Text(
-                                                'Soru',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Color(0xFF4A5568),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          SizedBox(height: 8),
-                                          Text(
-                                            question.question,
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                              color: Color(0xFF2D3748),
-                                              height: 1.4,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    SizedBox(height: 16),
-
-                                    // Answers Section
-                                    Column(
-                                      children: [
-                                        // User Answer
-                                        Container(
-                                          width: double.infinity,
-                                          padding: EdgeInsets.all(12),
-                                          decoration: BoxDecoration(
-                                            color: isCorrect
-                                                ? Color(
-                                                    0xFF4CAF50,
-                                                  ).withOpacity(0.1)
-                                                : Color(
-                                                    0xFFFF5722,
-                                                  ).withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(
-                                              10,
-                                            ),
-                                            border: Border.all(
-                                              color: isCorrect
-                                                  ? Color(
-                                                      0xFF4CAF50,
-                                                    ).withOpacity(0.3)
-                                                  : Color(
-                                                      0xFFFF5722,
-                                                    ).withOpacity(0.3),
-                                            ),
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.person,
-                                                    color: isCorrect
-                                                        ? Color(0xFF4CAF50)
-                                                        : Color(0xFFFF5722),
-                                                    size: 16,
-                                                  ),
-                                                  SizedBox(width: 6),
-                                                  Flexible(
-                                                    child: Text(
-                                                      'Sizin Cevabınız',
-                                                      style: TextStyle(
-                                                        fontSize: 11,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        color: Color(
-                                                          0xFF4A5568,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              SizedBox(height: 6),
-                                              Text(
-                                                question.userAnswer,
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: isCorrect
-                                                      ? Color(0xFF4CAF50)
-                                                      : Color(0xFFFF5722),
-                                                ),
-                                                maxLines: null,
-                                                overflow: TextOverflow.visible,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-
-                                        // Correct Answer (sadece yanlış ise göster)
-                                        if (!isCorrect) ...[
-                                          SizedBox(height: 12),
-                                          Container(
-                                            width: double.infinity,
-                                            padding: EdgeInsets.all(12),
-                                            decoration: BoxDecoration(
-                                              color: Color(
-                                                0xFF4CAF50,
-                                              ).withOpacity(0.1),
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                              border: Border.all(
-                                                color: Color(
-                                                  0xFF4CAF50,
-                                                ).withOpacity(0.3),
-                                              ),
-                                            ),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    Icon(
-                                                      Icons.lightbulb,
-                                                      color: Color(0xFF4CAF50),
-                                                      size: 16,
-                                                    ),
-                                                    SizedBox(width: 6),
-                                                    Flexible(
-                                                      child: Text(
-                                                        'Doğru Cevap',
-                                                        style: TextStyle(
-                                                          fontSize: 11,
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                          color: Color(
-                                                            0xFF4A5568,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                SizedBox(height: 6),
-                                                Text(
-                                                  question.correctAnswer,
-                                                  style: TextStyle(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Color(0xFF4CAF50),
-                                                  ),
-                                                  maxLines: null,
-                                                  overflow:
-                                                      TextOverflow.visible,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Native Ad eklendi
-              Container(
-                margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: MyNativeAd(),
-              ),
-            ],
-          ),
-        ),
+  Widget _buildOrb(double size, Color color) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [BoxShadow(color: color, blurRadius: 100, spreadRadius: 10)],
       ),
     );
   }
 
-  Widget _buildStatCard({
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
-      ),
-      child: Column(
+  @override
+  Widget build(BuildContext context) {
+    int correct = 0;
+    for (var question in widget.test.questions) {
+      if (question.userAnswer == question.correctAnswer) correct++;
+    }
+    int wrong = widget.test.questions.length - correct;
+    double successRate = (correct / widget.test.questions.length) * 100;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
         children: [
-          Icon(icon, color: color, size: 24),
-          SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+          // Background
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+              ),
             ),
           ),
-          SizedBox(height: 2),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.white.withOpacity(0.8),
-              fontWeight: FontWeight.w500,
+          RepaintBoundary(child: _buildBackgroundOrbs()),
+
+          SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(context),
+                _buildStatsSummary(correct, wrong, successRate),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 10),
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: widget.test.questions.length,
+                    itemBuilder: (context, index) {
+                      return _buildQuestionDetailCard(
+                          widget.test.questions[index], index);
+                    },
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+                  child: MyNativeAd(
+                    height: 120,
+                    factoryId: 'adFactoryExample',
+                    refreshInterval: 30,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: GlassContainer(
+              borderRadius: 12,
+              opacity: 0.1,
+              padding: const EdgeInsets.all(10),
+              child: const Icon(Icons.arrow_back_ios_new_rounded,
+                  color: Colors.white, size: 20),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${_translateCategory(widget.test.category)} | ${_translateDifficulty(widget.test.difficulty)}',
+                  style: TextStyle(
+                      color: Colors.white.withOpacity(0.5),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1),
+                ),
+                Text(
+                  'past_tests.details_title'.tr(),
+                  style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -0.5),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsSummary(int c, int w, double rate) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Row(
+        children: [
+          _buildMiniStat(
+              'past_tests.correct_count'.tr(), '$c', Colors.greenAccent),
+          const SizedBox(width: 12),
+          _buildMiniStat('past_tests.wrong_count'.tr(), '$w', Colors.redAccent),
+          const SizedBox(width: 12),
+          _buildMiniStat('past_tests.success_rate'.tr(), '${rate.toInt()}%',
+              Colors.indigoAccent),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniStat(String label, String value, Color color) {
+    return Expanded(
+      child: GlassContainer(
+        opacity: 0.1,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Column(
+          children: [
+            Text(value,
+                style: TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.w900, color: color)),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white.withOpacity(0.4))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuestionDetailCard(TestQuestionDetail question, int index) {
+    final bool isCorrect = question.userAnswer == question.correctAnswer;
+    final color = isCorrect ? Colors.greenAccent : Colors.redAccent;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      child: GlassContainer(
+        useBlur: false,
+        opacity: 0.08,
+        borderRadius: 28,
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                      color: color.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(10)),
+                  child: Center(
+                      child: Text('${index + 1}',
+                          style: TextStyle(
+                              color: color, fontWeight: FontWeight.bold))),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  isCorrect
+                      ? 'past_tests.correct_answer_label'.tr()
+                      : 'past_tests.wrong_answer_label'.tr(),
+                  style: TextStyle(
+                      color: color,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1),
+                ),
+                const Spacer(),
+                Icon(
+                    isCorrect
+                        ? Icons.check_circle_rounded
+                        : Icons.cancel_rounded,
+                    color: color.withOpacity(0.5),
+                    size: 20),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              question.question,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  height: 1.4),
+            ),
+            const SizedBox(height: 20),
+            _buildAnswerBox('past_tests.your_answer'.tr(), question.userAnswer,
+                isCorrect ? Colors.greenAccent : Colors.redAccent),
+            if (!isCorrect) ...[
+              const SizedBox(height: 12),
+              _buildAnswerBox('past_tests.correct_answer'.tr(),
+                  question.correctAnswer, Colors.greenAccent),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnswerBox(String label, String answer, Color color) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: TextStyle(
+                  color: Colors.white.withOpacity(0.4),
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5)),
+          const SizedBox(height: 4),
+          Text(answer,
+              style: TextStyle(
+                  color: color, fontSize: 14, fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+
+  String _translateCategory(String categoryName) {
+    try {
+      final category = AppCategories.categories.firstWhere(
+        (c) => c.name == categoryName,
+      );
+      return category.key.tr();
+    } catch (_) {
+      return categoryName;
+    }
+  }
+
+  String _translateDifficulty(String difficulty) {
+    switch (difficulty) {
+      case 'Kolay':
+        return 'category_ui.difficulty.easy'.tr();
+      case 'Orta':
+        return 'category_ui.difficulty.medium'.tr();
+      case 'Zor':
+        return 'category_ui.difficulty.hard'.tr();
+      case 'Imkansız':
+        return 'category_ui.difficulty.impossible'.tr();
+      default:
+        return difficulty;
+    }
   }
 }

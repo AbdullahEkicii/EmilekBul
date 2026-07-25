@@ -1,13 +1,19 @@
 import 'package:emilekbul/screens/welcome_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/services.dart';
-import 'package:emilekbul/screens/past_tests_screen.dart';
 import 'package:emilekbul/services/database_helper.dart';
 import 'package:emilekbul/widgets/token_widget.dart';
 import 'package:emilekbul/services/token_service.dart';
+import 'package:emilekbul/widgets/glass_container.dart';
+import 'package:emilekbul/widgets/navigation_buttons.dart';
+
+import '../models/category_model.dart';
+import '../constants/app_categories.dart';
+import '../screens/token_screen.dart';
 
 class KategoriScreen extends StatefulWidget {
-  final Function(String category, String difficulty, int duration) onStartQuiz;
+  final Function(String category, String difficulty, int duration, {bool isDuel}) onStartQuiz;
   final VoidCallback onStart;
 
   const KategoriScreen({
@@ -39,80 +45,41 @@ class _KategoriScreenState extends State<KategoriScreen>
   final GlobalKey _difficultyKey = GlobalKey();
   final GlobalKey _startButtonKey = GlobalKey();
 
-  // Kategori bilgilerini genişlettim
-  final List<CategoryItem> _categories = [
-    CategoryItem(
-      'Genel Kültür',
-      Icons.quiz,
-      Color(0xFFFF6B6B),
-      'Tarih, bilim, edebiyat',
-      '5 soru',
-    ),
-    CategoryItem(
-      'Sanat',
-      Icons.palette,
-      Color(0xFF4ECDC4),
-      'Resim, müzik, heykel',
-      '5 soru',
-    ),
-    CategoryItem(
-      'Coğrafya',
-      Icons.public,
-      Color(0xFF45B7D1),
-      'Ülkeler, başkentler, kıtalar',
-      '5 soru',
-    ),
-    CategoryItem(
-      'Futbol',
-      Icons.sports_soccer,
-      Color(0xFF96CEB4),
-      'Takımlar, oyuncular',
-      '5 soru',
-    ),
-    CategoryItem(
-      'Dini',
-      Icons.mosque,
-      Color(0xFFFECA57),
-      'İslam tarihi ve kültürü',
-      '5 soru',
-    ),
-    CategoryItem(
-      'Teknoloji',
-      Icons.computer,
-      Color(0xFF7B68EE),
-      'Yazılım, donanım, internet',
-      '5 soru',
-    ),
-  ];
+  // Kategori bilgilerini merkezi yerden alıyor
+  static final List<CategoryItem> _categories = AppCategories.categories;
 
-  final List<DifficultyItem> _difficulties = [
+  static final List<DifficultyItem> _difficulties = [
     DifficultyItem(
-      'Kolay-Orta',
-      Color(0xFF96CEB4),
+      "Kolay",
+      const Color(0xFF96CEB4),
       Icons.sentiment_satisfied,
-      'Kolay-Orta',
-      '10 saniye',
+      "category_ui.difficulty_desc.easy",
+      15,
+      "category_ui.difficulty.easy",
     ),
     DifficultyItem(
-      'Orta',
-      Color(0xFFFECA57),
+      "Orta",
+      const Color(0xFFFECA57),
       Icons.sentiment_neutral,
-      'Orta',
-      '15 saniye',
+      "category_ui.difficulty_desc.medium",
+      25,
+      "category_ui.difficulty.medium",
     ),
     DifficultyItem(
-      'Orta-Zor',
-      Color(0xFFFF6B6B),
+      "Zor",
+      const Color(0xFFFF6B6B),
       Icons.sentiment_very_dissatisfied,
-      'Orta-Zor',
-      '20 saniye',
+      "category_ui.difficulty_desc.hard",
+      30,
+      "category_ui.difficulty.hard",
     ),
     DifficultyItem(
-      'İmkansız',
-      Color(0xFF22223B),
+      "Imkansız",
+      const Color(0xFF22223B),
       Icons.warning_amber_rounded,
-      'Aşırı zor',
-      '25 saniye',
+      "category_ui.difficulty_desc.impossible",
+      35,
+      "category_ui.difficulty.impossible",
     ),
   ];
 
@@ -121,15 +88,60 @@ class _KategoriScreenState extends State<KategoriScreen>
     super.initState();
     _initAnimations();
     _startAnimations();
-    _cleanOldTests(); // ilk açılışta temizlik
+
+    // Düşük bakiye kontrolü
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkLowBalance();
+      _cleanOldTests();
+    });
+  }
+
+  Future<void> _checkLowBalance() async {
+    if (!mounted) return;
+
+    final tokenAmount = await TokenService.getTokenAmount();
+    if (tokenAmount <= 10) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('category_ui.token_warning'.tr()),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
+
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => const TokenScreen(),
+        ),
+      );
+    }
   }
 
   void _cleanOldTests() async {
     try {
       await DatabaseHelper.instance.deleteOldTests(days: 14);
-      print('Eski testler temizlendi.');
+      print('Old tests cleaned.');
     } catch (e) {
       print('Temizleme hatası: $e');
+    }
+  }
+
+  String puan(String? difficult) {
+    if (difficult == "Kolay") {
+      return "2 ${'category_ui.points'.tr()}";
+    } else if (difficult == "Orta") {
+      return "3 ${'category_ui.points'.tr()}";
+    } else if (difficult == "Zor") {
+      return "4 ${'category_ui.points'.tr()}";
+    } else if (difficult == "Imkansız") {
+      return "6 ${'category_ui.points'.tr()}";
+    } else {
+      return "3 ${'category_ui.points'.tr()}";
     }
   }
 
@@ -188,13 +200,13 @@ class _KategoriScreenState extends State<KategoriScreen>
   }
 
   void _scrollToDifficulty() {
-    final RenderObject? renderObject =
-        _difficultyKey.currentContext?.findRenderObject();
-    if (renderObject != null) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent * 0.6,
+    final context = _difficultyKey.currentContext;
+    if (context != null) {
+      Scrollable.ensureVisible(
+        context,
         duration: const Duration(milliseconds: 800),
         curve: Curves.easeInOutCubic,
+        alignment: 0.1,
       );
     }
   }
@@ -241,43 +253,50 @@ class _KategoriScreenState extends State<KategoriScreen>
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  Color(0xFF667eea),
-                  Color(0xFF764ba2),
-                  Color(0xFFA67BFF),
-                ],
+                colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                stops: [0.0, 0.5, 1.0],
               ),
             ),
             child: SafeArea(
               child: FadeTransition(
                 opacity: _fadeAnimation,
-                child: Column(
-                  children: [
-                    SizedBox(height: 40), // Home ikonuna yer bırak
-                    _buildHeader(),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        controller: _scrollController,
-                        physics: const BouncingScrollPhysics(),
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  physics: const ClampingScrollPhysics(),
+                  slivers: [
+                    const SliverToBoxAdapter(child: SizedBox(height: 10)),
+                    SliverToBoxAdapter(child: _buildHeader()),
+                    const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                    SliverToBoxAdapter(
+                      child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                        child: Column(
-                          children: [
-                            const SizedBox(height: 20),
-                            _buildCategorySection(),
-                            const SizedBox(height: 32),
-                            _buildDifficultySection(),
-                            const SizedBox(height: 32),
-                            _buildQuizPreview(),
-                            const SizedBox(height: 32),
-                            _buildActionButtons(),
-                            const SizedBox(height: 20),
-                          ],
-                        ),
+                        child: RepaintBoundary(child: _buildCategorySection()),
                       ),
                     ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                        child:
+                            RepaintBoundary(child: _buildDifficultySection()),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                        child: _buildQuizPreview(),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                        child: _buildActionButtons(),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 20)),
                   ],
                 ),
               ),
@@ -286,40 +305,29 @@ class _KategoriScreenState extends State<KategoriScreen>
           Positioned(
             top: 16,
             left: 14,
-            child: GestureDetector(
+            child: AppHomeButton(
               onTap: () {
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(
-                    builder: (context) =>
-                        WelcomeScreen(onStart: widget.onStart),
+                    builder: (context) => WelcomeScreen(
+                      onStart: widget.onStart,
+                      skipLoading: true,
+                    ),
                   ),
                   (route) => false,
                 );
               },
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.25),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 8,
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.home_rounded,
-                  color: Colors.white,
-                  size: 28,
-                ),
-              ),
             ),
           ),
           Positioned(
-            top: 16,
+            top: 14,
             right: 14,
-            child: const TokenWidget(),
+            child: GlassContainer(
+              borderRadius: 50,
+              opacity: 0.15,
+              padding: const EdgeInsets.all(4),
+              child: const TokenWidget(),
+            ),
           ),
         ],
       ),
@@ -330,46 +338,40 @@ class _KategoriScreenState extends State<KategoriScreen>
     return SlideTransition(
       position: _slideAnimation,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
         child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(50),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.3),
-                  width: 1,
+            Hero(
+              tag: 'app_logo',
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withOpacity(0.2)),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
+                child: Image.asset('lib/assets/emilekbul2.png',
+                    width: 40, height: 40, cacheWidth: 120, cacheHeight: 120),
               ),
-              child: const Icon(Icons.quiz, size: 32, color: Colors.white),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Quiz Kategorisi',
+            Text(
+              'category_ui.title'.tr(),
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
                 color: Colors.white,
                 letterSpacing: -0.5,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Hangi konuda bilginizi test etmek istersiniz?',
+              'category_ui.subtitle'.tr(),
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 16,
-                color: Colors.white.withOpacity(0.85),
+                fontSize: 14,
+                color: Colors.white.withOpacity(0.6),
                 fontWeight: FontWeight.w400,
               ),
             ),
@@ -382,36 +384,25 @@ class _KategoriScreenState extends State<KategoriScreen>
   Widget _buildCategorySection() {
     return ScaleTransition(
       scale: _scaleAnimation,
-      child: Container(
+      child: GlassContainer(
         padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
+        opacity: 0.1,
         child: Column(
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  Icons.category,
+                  Icons.auto_awesome_mosaic_rounded,
                   color: Colors.white.withOpacity(0.9),
-                  size: 24,
+                  size: 22,
                 ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Kategori Seçin',
+                const SizedBox(width: 10),
+                Text(
+                  'category_ui.select_category'.tr(),
                   style: TextStyle(
                     fontSize: 20,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                     color: Colors.white,
                   ),
                 ),
@@ -425,14 +416,21 @@ class _KategoriScreenState extends State<KategoriScreen>
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: const Color(0xFF6366F1).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: const Color(0xFF6366F1).withOpacity(0.3)),
                 ),
                 child: Text(
-                  'Seçilen: $_selectedCategory',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
-                    fontWeight: FontWeight.w500,
+                  'category_ui.selected'.tr(args: [
+                    _categories
+                        .firstWhere((c) => c.name == _selectedCategory)
+                        .key
+                        .tr()
+                  ]),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
                     fontSize: 12,
                   ),
                 ),
@@ -454,85 +452,95 @@ class _KategoriScreenState extends State<KategoriScreen>
         crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 1.2,
+        childAspectRatio: 1.1,
       ),
       itemCount: _categories.length,
+      addAutomaticKeepAlives: false,
+      addRepaintBoundaries: false,
       itemBuilder: (context, index) {
         final category = _categories[index];
         final isSelected = _selectedCategory == category.name;
 
-        return GestureDetector(
-          onTap: () {
-            setState(() => _selectedCategory = category.name);
-            _triggerHapticFeedback();
+        return RepaintBoundary(
+          child: GestureDetector(
+            onTap: () {
+              setState(() => _selectedCategory = category.name);
+              _triggerHapticFeedback();
 
-            // Otomatik scroll
-            Future.delayed(const Duration(milliseconds: 300), () {
-              _scrollToDifficulty();
-            });
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            decoration: BoxDecoration(
-              color: isSelected ? Colors.white : Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
+              // Otomatik scroll
+              Future.delayed(const Duration(milliseconds: 300), () {
+                _scrollToDifficulty();
+              });
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              decoration: BoxDecoration(
                 color:
-                    isSelected ? category.color : Colors.white.withOpacity(0.3),
-                width: isSelected ? 2.5 : 1.0,
+                    isSelected ? Colors.white : Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isSelected
+                      ? category.color
+                      : Colors.white.withOpacity(0.3),
+                  width: isSelected ? 2.5 : 1.0,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: category.color.withOpacity(0.3),
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
+                        ),
+                      ]
+                    : [],
               ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: category.color.withOpacity(0.3),
-                        blurRadius: 15,
-                        offset: const Offset(0, 5),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? category.color.withOpacity(0.15)
+                          : Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(
+                      category.icon,
+                      size: 28,
+                      color: isSelected ? category.color : Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      category.key.tr(),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: isSelected ? category.color : Colors.white,
+                        fontWeight:
+                            isSelected ? FontWeight.w700 : FontWeight.w500,
+                        fontSize: 14,
                       ),
-                    ]
-                  : [],
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? category.color.withOpacity(0.15)
-                        : Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
-                  child: Icon(
-                    category.icon,
-                    size: 28,
-                    color: isSelected ? category.color : Colors.white,
+                  const SizedBox(height: 4),
+                  Text(
+                    category.descriptionKey.tr(),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: isSelected
+                          ? category.color.withOpacity(0.7)
+                          : Colors.white.withOpacity(0.6),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  category.name,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: isSelected ? category.color : Colors.white,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  category.description,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: isSelected
-                        ? category.color.withOpacity(0.7)
-                        : Colors.white.withOpacity(0.6),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w400,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -541,69 +549,50 @@ class _KategoriScreenState extends State<KategoriScreen>
   }
 
   Widget _buildDifficultySection() {
-    return Container(
-      key: _difficultyKey,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(
-          _selectedCategory != null ? 0.12 : 0.06,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: Colors.white.withOpacity(
-            _selectedCategory != null ? 0.3 : 0.15,
-          ),
-          width: 1,
-        ),
-        boxShadow: _selectedCategory != null
-            ? [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+    final isEnabled = _selectedCategory != null;
+    return Opacity(
+      opacity: isEnabled ? 1.0 : 0.6,
+      child: GlassContainer(
+        key: _difficultyKey,
+        padding: const EdgeInsets.all(24),
+        opacity: isEnabled ? 0.1 : 0.05,
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.signal_cellular_alt_rounded,
+                  color: Colors.white.withOpacity(isEnabled ? 0.9 : 0.5),
+                  size: 22,
                 ),
-              ]
-            : [],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.trending_up,
-                color: Colors.white.withOpacity(
-                  _selectedCategory != null ? 0.9 : 0.5,
-                ),
-                size: 24,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Zorluk Seviyesi',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withOpacity(
-                    _selectedCategory != null ? 1.0 : 0.5,
+                const SizedBox(width: 10),
+                Text(
+                  'category_ui.difficulty_level'.tr(),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white.withOpacity(isEnabled ? 1.0 : 0.5),
                   ),
+                ),
+              ],
+            ),
+            if (!isEnabled) ...[
+              const SizedBox(height: 12),
+              Text(
+                'category_ui.select_category_first'.tr(),
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.4),
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
-          ),
-          if (_selectedCategory == null) ...[
-            const SizedBox(height: 12),
-            Text(
-              'Önce bir kategori seçin',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.6),
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
+            const SizedBox(height: 20),
+            _buildDifficultySelector(),
           ],
-          const SizedBox(height: 20),
-          _buildDifficultySelector(),
-        ],
+        ),
       ),
     );
   }
@@ -673,7 +662,7 @@ class _KategoriScreenState extends State<KategoriScreen>
                         FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            difficulty.name,
+                            difficulty.key.tr(),
                             style: TextStyle(
                               color: isSelected && isEnabled
                                   ? difficulty.color
@@ -692,7 +681,8 @@ class _KategoriScreenState extends State<KategoriScreen>
                         FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            difficulty.timeInfo,
+                            'category_ui.seconds'
+                                .tr(args: [difficulty.time.toString()]),
                             style: TextStyle(
                               color: isSelected && isEnabled
                                   ? difficulty.color.withOpacity(0.7)
@@ -742,8 +732,8 @@ class _KategoriScreenState extends State<KategoriScreen>
               children: [
                 Icon(Icons.preview, color: Colors.white, size: 20),
                 const SizedBox(width: 8),
-                const Text(
-                  'Quiz Önizleme',
+                Text(
+                  'category_ui.preview'.tr(),
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
@@ -758,22 +748,25 @@ class _KategoriScreenState extends State<KategoriScreen>
                 Expanded(
                   child: _buildPreviewItem(
                     Icons.category,
-                    'Kategori',
-                    _selectedCategory!,
+                    'category_ui.preview_category'.tr(),
+                    selectedCategoryItem.key.tr(),
                   ),
                 ),
                 Expanded(
                   child: _buildPreviewItem(
                     Icons.speed,
-                    'Zorluk',
-                    _selectedDifficulty!,
+                    'category_ui.preview_difficulty'.tr(),
+                    _difficulties
+                        .firstWhere((d) => d.name == _selectedDifficulty)
+                        .key
+                        .tr(),
                   ),
                 ),
                 Expanded(
                   child: _buildPreviewItem(
-                    Icons.quiz,
-                    'Soru Sayısı',
-                    selectedCategoryItem.questionCount,
+                    Icons.point_of_sale,
+                    'category_ui.preview_score'.tr(),
+                    puan(_selectedDifficulty),
                   ),
                 ),
               ],
@@ -784,22 +777,22 @@ class _KategoriScreenState extends State<KategoriScreen>
                 Expanded(
                   child: _buildPreviewItem(
                     Icons.token,
-                    'Maliyet',
-                    '10 Token',
+                    'category_ui.preview_cost'.tr(),
+                    'category_ui.token_cost'.tr(),
                   ),
                 ),
                 Expanded(
                   child: _buildPreviewItem(
                     Icons.card_giftcard,
-                    'Doğru Cevap',
+                    'category_ui.preview_reward'.tr(),
                     '${_getTokenRewardForDifficulty(_selectedDifficulty!)} Token',
                   ),
                 ),
                 Expanded(
                   child: _buildPreviewItem(
                     Icons.card_giftcard,
-                    'Joker',
-                    'Kullanım başına: 3-4-5 Token',
+                    'category_ui.preview_joker'.tr(),
+                    'category_ui.joker_cost'.tr(),
                   ),
                 ),
               ],
@@ -843,16 +836,16 @@ class _KategoriScreenState extends State<KategoriScreen>
 
     int getDurationForDifficulty(String? difficulty) {
       switch (difficulty) {
-        case 'Kolay-Orta':
-          return 10;
-        case 'Orta':
+        case 'Kolay':
           return 15;
-        case 'Orta-Zor':
-          return 20;
-        case 'İmkansız':
+        case 'Orta':
           return 25;
+        case 'Zor':
+          return 30;
+        case 'Imkansız':
+          return 35;
         default:
-          return 20;
+          return 25;
       }
     }
 
@@ -901,17 +894,20 @@ class _KategoriScreenState extends State<KategoriScreen>
                                 await TokenService.spendQuizTokens();
                             if (!hasEnoughTokens) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
+                                SnackBar(
                                   content: Text(
-                                      '❌ Yetersiz token! Quiz başlatmak için 10 token gereklidir.'),
+                                      'category_ui.insufficient_tokens'.tr()),
                                   backgroundColor: Colors.red,
-                                  duration: Duration(seconds: 3),
+                                  duration: Duration(seconds: 2),
                                 ),
                               );
                               return;
                             }
 
                             print('Quiz başlatılıyor');
+
+                            // Preload ad so it's ready for the first question
+
                             widget.onStartQuiz(
                               _selectedCategory!,
                               _selectedDifficulty!,
@@ -933,13 +929,40 @@ class _KategoriScreenState extends State<KategoriScreen>
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Quiz\'e Başla',
+                            'category_ui.start_quiz'.tr(),
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
                               color: isEnabled
                                   ? const Color(0xFF667eea)
                                   : Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: isEnabled ? Colors.orange.withOpacity(0.2) : Colors.white24,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '10',
+                                  style: TextStyle(
+                                    color: isEnabled ? Colors.orange : Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(
+                                  Icons.monetization_on_rounded,
+                                  size: 16,
+                                  color: isEnabled ? Colors.orange : Colors.white,
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -950,6 +973,117 @@ class _KategoriScreenState extends State<KategoriScreen>
               ),
             );
           },
+        ),
+        const SizedBox(height: 12),
+        AnimatedBuilder(
+          animation: _buttonPulseAnimation,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: isEnabled ? _buttonPulseAnimation.value : 1.0,
+              child: child,
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              gradient: LinearGradient(
+                colors: isEnabled
+                    ? [Colors.orangeAccent, Colors.redAccent]
+                    : [Colors.grey.shade800, Colors.grey.shade900],
+              ),
+              boxShadow: isEnabled
+                  ? [
+                      BoxShadow(
+                        color: Colors.redAccent.withOpacity(0.4),
+                        blurRadius: 15,
+                        offset: const Offset(0, 6),
+                      ),
+                    ]
+                  : [],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: null, // Disabled due to 'Yakında Gelecek'
+                borderRadius: BorderRadius.circular(28),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Opacity(
+                      opacity: 0.5,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.bolt_rounded,
+                              size: 28,
+                              color: isEnabled ? Colors.white : Colors.white54,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'category_ui.start_duel'.tr(),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: isEnabled ? Colors.white : Colors.white54,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: isEnabled ? Colors.orange.withOpacity(0.2) : Colors.white24,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    '20',
+                                    style: TextStyle(
+                                      color: isEnabled ? Colors.orange : Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.monetization_on_rounded,
+                                    size: 16,
+                                    color: isEnabled ? Colors.orange : Colors.white,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Text(
+                        'shop.coming_soon'.tr(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
         const SizedBox(height: 16),
       ],
@@ -962,63 +1096,49 @@ class _KategoriScreenState extends State<KategoriScreen>
 
   int _getTokenRewardForDifficulty(String difficulty) {
     switch (difficulty) {
-      case 'Kolay-Orta':
-      return 1;
+      case 'Kolay':
+        return 2;
       case 'Orta':
-        return 2;
-      case 'Orta-Zor':
         return 3;
-      case 'İmkansız':
+      case 'Zor':
         return 4;
+      case 'Imkansız':
+        return 6;
       default:
-        return 2;
+        return 3;
     }
   }
 
   int _getDurationForDifficulty(String difficulty) {
     switch (difficulty) {
-      case 'Kolay-Orta':
+      case 'Orta':
         return 10;
       case 'Orta':
         return 15;
-      case 'Orta-Zor':
+      case 'Zor':
         return 20;
-      case 'İmkansız':
+      case 'Imkansız':
         return 25;
       default:
-        return 20;
+        return 15;
     }
   }
-}
-
-class CategoryItem {
-  final String name;
-  final IconData icon;
-  final Color color;
-  final String description;
-  final String questionCount;
-
-  CategoryItem(
-    this.name,
-    this.icon,
-    this.color,
-    this.description,
-    this.questionCount,
-  );
 }
 
 class DifficultyItem {
   final String name;
   final Color color;
   final IconData icon;
-  final String description;
-  final String timeInfo;
+  final String descriptionKey;
+  final int time;
+  final String key;
 
   DifficultyItem(
     this.name,
     this.color,
     this.icon,
-    this.description,
-    this.timeInfo,
+    this.descriptionKey,
+    this.time,
+    this.key,
   );
 }
