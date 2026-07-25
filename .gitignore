@@ -13,3 +13,4 @@ android/app/key.properties
 *.swp
 *.bak
 *.DS_Store
+.env
