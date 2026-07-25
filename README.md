@@ -1,4 +1,4 @@
-🚀 EmilekBul – AI-Powered Adaptive Quiz Application
+<img width="1080" height="1920" alt="girisekrani" src="https://github.com/user-attachments/assets/0a7872a5-6865-41d0-a66e-a16f273d8a20" />🚀 EmilekBul – AI-Powered Adaptive Quiz Application
 
 EmilekBul is a modern, high-performance mobile quiz application built with Flutter and Dart. Designed with a clean architecture and smooth UI/UX, it leverages Generative AI to deliver dynamic, tailored questions, providing an engaging and interactive learning experience for users.(+1000 download)
 ✨ Key Features & Highlights
@@ -38,13 +38,14 @@ EmilekBul is live on the Google Play Store! Try it out here:
 👉 https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul 
   
 ---EKRAN GÖRÜNTÜLERİ---
-<img width="1152" height="2645" alt="1" src="https://github.com/user-attachments/assets/c24d644d-a20a-4a17-9825-e3d13cc92230" />
+<img width="1080" height="1920" alt="welcomeing" src="https://github.com/user-attachments/assets/e5835b13-7997-4561-994d-4524d4beca82" />
+<img width="1080" height="1920" alt="kategoriekrani" src="https://github.com/user-attachments/assets/ce66dc16-0349-4998-b214-aee22765320e" />
+<img width="1080" height="1920" alt="soruekrani" src="https://github.com/user-attachments/assets/4360b4cb-a01f-4989-920b-ee52c94024c3" />
+<img width="1080" height="1920" alt="kategoriekrani" src="https://github.com/user-attachments/assets/d27b196b-8104-4ab1-96b5-964eda4f3a77" />
+<img width="1080" height="1920" alt="leaderboard" src="https://github.com/user-attachments/assets/069fb6e2-b3dd-46e9-be92-1d95ac087d2f" />
+<img width="1080" height="1920" alt="shop" src="https://github.com/user-attachments/assets/694861f6-35bb-42e8-ac4c-79272fe654c1" />
+<img width="1920" height="1080" alt="tanıtım" src="https://github.com/user-attachments/assets/549a3c9c-16aa-43ce-9d5f-69200990c896" />
 
-<img width="1152" height="2645" alt="2" src="https://github.com/user-attachments/assets/f2eaf041-0b2c-4063-8ac5-6718dfa69e16" />
-<img width="1152" height="2645" alt="3" src="https://github.com/user-attachments/assets/b76afb72-82c9-42e1-8129-fd2caa5a749f" />
-<img width="1152" height="2645" alt="4" src="https://github.com/user-attachments/assets/98f3d96b-e324-4f0c-b109-c75d19ff233f" />
-<img width="1152" height="2645" alt="4" src="https://github.com/user-attachments/assets/ec1256a4-5731-4e56-9bfc-72cdb0cfb818" />
-<img width="1152" height="2645" alt="5" src="https://github.com/user-attachments/assets/d781364a-565d-49d0-8850-4da09526b732" />
 
-<img width="1152" height="2645" alt="6" src="https://github.com/user-attachments/assets/9bb9458d-7a3e-43fc-8a4d-4f4b1eb22770" />
+
 
