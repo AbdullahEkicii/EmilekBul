@@ -621,5 +621,8 @@
     "wheel_done_today": "Bugünlük Bitti",
     "streak_claim_today": "Bugünün Ödülünü Al 🎉",
     "streak_ok": "Tamam"
+  },
+  "daily_streak": {
+    "day_num": "Gün {}"
   }
 }

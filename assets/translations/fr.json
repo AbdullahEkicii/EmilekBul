@@ -621,5 +621,8 @@
     "wheel_done_today": "Fini pour Aujourd'hui",
     "streak_claim_today": "Réclamer la Récompense du Jour 🎉",
     "streak_ok": "OK"
+  },
+  "daily_streak": {
+    "day_num": "Jour {}"
   }
 }

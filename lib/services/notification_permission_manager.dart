@@ -3,41 +3,72 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NotificationPermissionManager {
+  static bool _hasCheckedCount = false;
+  static bool _hasPromptedThisSession = false;
+
   /// Sadece bildirim izni kontrolü (Android 13+)
   static Future<bool> notificationPermissions(BuildContext context) async {
     if (!Platform.isAndroid) return true;
 
-    bool allPermissionsGranted = true;
     final androidInfo = await DeviceInfoPlugin().androidInfo;
+    if (androidInfo.version.sdkInt < 33) return true;
 
-    if (androidInfo.version.sdkInt >= 33) {
-      final notificationStatus = await Permission.notification.status;
+    final notificationStatus = await Permission.notification.status;
+    if (notificationStatus.isGranted) return true;
 
-      if (notificationStatus.isPermanentlyDenied) {
-        allPermissionsGranted = false;
-        await _showPermissionSettingsDialog(context);
-      } else if (!notificationStatus.isGranted) {
-        // isDenied veya diğer durumlar (isLimited, isRestricted vs.)
-        final shouldRequest = await _showPermissionDialog(
-          context,
-          'notifications.permission_title'.tr(),
-          'notifications.permission_desc'.tr(),
-          'notifications.grant_button'.tr(),
-        );
+    final prefs = await SharedPreferences.getInstance();
+    
+    // Uygulama başlatma sayısını artır (oturum başına bir kez)
+    if (!_hasCheckedCount) {
+      _hasCheckedCount = true;
+      int count = (prefs.getInt('app_notification_prompt_launch_count') ?? 0) + 1;
+      await prefs.setInt('app_notification_prompt_launch_count', count);
+    }
+    
+    // Bu oturumda zaten sorulduysa tekrar sorma
+    if (_hasPromptedThisSession) return false;
 
-        if (shouldRequest) {
-          final result = await Permission.notification.request();
-          if (result.isPermanentlyDenied) {
-            allPermissionsGranted = false;
-            await _showPermissionSettingsDialog(context);
-          } else if (!result.isGranted) {
-            allPermissionsGranted = false;
-          }
-        } else {
+    int currentLaunchCount = prefs.getInt('app_notification_prompt_launch_count') ?? 1;
+    final List<int> targetLaunches = [5, 15, 30, 45];
+
+    // Belirlenen giriş sayıları dışında izin isteme
+    if (!targetLaunches.contains(currentLaunchCount)) {
+      return false; 
+    }
+
+    // Bu oturumda soruldu olarak işaretle
+    _hasPromptedThisSession = true;
+
+    bool allPermissionsGranted = true;
+
+    if (notificationStatus.isPermanentlyDenied) {
+      allPermissionsGranted = false;
+      if (!context.mounted) return false;
+      await _showPermissionSettingsDialog(context);
+    } else if (!notificationStatus.isGranted) {
+      // isDenied veya diğer durumlar (isLimited, isRestricted vs.)
+      if (!context.mounted) return false;
+      final shouldRequest = await _showPermissionDialog(
+        context,
+        'notifications.permission_title'.tr(),
+        'notifications.permission_desc'.tr(),
+        'notifications.grant_button'.tr(),
+      );
+
+      if (shouldRequest) {
+        final result = await Permission.notification.request();
+        if (result.isPermanentlyDenied) {
+          allPermissionsGranted = false;
+          if (!context.mounted) return false;
+          await _showPermissionSettingsDialog(context);
+        } else if (!result.isGranted) {
           allPermissionsGranted = false;
         }
+      } else {
+        allPermissionsGranted = false;
       }
     }
 

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../models/question.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -31,12 +32,12 @@ class AiApiService {
     for (final modelName in _modelList) {
       final model = GenerativeModel(model: modelName, apiKey: _apiKey);
       try {
-        print('🧠 Deneniyor: $modelName');
+        debugPrint('🧠 Deneniyor: $modelName');
         final response = await model.generateContent([content]);
-        print('✅ Başarılı model: $modelName');
+        debugPrint('✅ Başarılı model: $modelName');
         return response;
       } catch (e) {
-        print('⚠️ $modelName modeli hata verdi: $e');
+        debugPrint('⚠️ $modelName modeli hata verdi: $e');
         if (!e.toString().contains('429') &&
             !e.toString().contains('quota') &&
             !e.toString().contains('RESOURCE_EXHAUSTED') &&
@@ -103,7 +104,7 @@ class AiApiService {
       final List<dynamic> list = jsonDecode(jsonString);
       return list.map((e) => Question.fromJson(e)).toList();
     } catch (e, s) {
-      print('AI API HATASI: $e\n$s');
+      debugPrint('AI API HATASI: $e\n$s');
       if (e.toString().contains('ai_service.errors')) {
         rethrow;
       }

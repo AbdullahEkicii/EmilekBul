@@ -1,12 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:games_services/games_services.dart';
 import 'user_service.dart'; // UserService'i import edin
-import 'package:google_sign_in/google_sign_in.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Auth {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   /// Misafir hesabını e-posta ile kalıcı hesaba dönüştür
   Future<UserCredential?> linkGuestWithEmail({
@@ -57,7 +57,7 @@ class Auth {
       }
       return null;
     } on FirebaseAuthException catch (e) {
-      print("Link error: ${e.code} - ${e.message}");
+      debugPrint("Link error: ${e.code} - ${e.message}");
       rethrow;
     }
   }
@@ -90,10 +90,10 @@ class Auth {
 
       return userCredential;
     } on FirebaseAuthException catch (e) {
-      print("Register error: ${e.code} - ${e.message}");
+      debugPrint("Register error: ${e.code} - ${e.message}");
       rethrow;
     } catch (e) {
-      print("Profile creation error: $e");
+      debugPrint("Profile creation error: $e");
       return null;
     }
   }
@@ -125,7 +125,7 @@ class Auth {
 
       return userCredential;
     } on FirebaseAuthException catch (e) {
-      print("Login error: ${e.code} - ${e.message}");
+      debugPrint("Login error: ${e.code} - ${e.message}");
       return null;
     }
   }
@@ -141,7 +141,7 @@ class Auth {
       await _firebaseAuth.sendPasswordResetEmail(email: email);
       return true;
     } on FirebaseAuthException catch (e) {
-      print("Password reset error: ${e.code} - ${e.message}");
+      debugPrint("Password reset error: ${e.code} - ${e.message}");
       return false;
     }
   }
@@ -162,7 +162,7 @@ class Auth {
       }
       return false;
     } catch (e) {
-      print("Email verification error: $e");
+      debugPrint("Email verification error: $e");
       return false;
     }
   }
@@ -183,7 +183,7 @@ class Auth {
       }
       return false;
     } catch (e) {
-      print("Delete account error: $e");
+      debugPrint("Delete account error: $e");
       return false;
     }
   }
@@ -198,7 +198,7 @@ class Auth {
       }
       return false;
     } on FirebaseAuthException catch (e) {
-      print("Update password error: ${e.code} - ${e.message}");
+      debugPrint("Update password error: ${e.code} - ${e.message}");
       return false;
     }
   }
@@ -217,7 +217,7 @@ class Auth {
       }
       return false;
     } on FirebaseAuthException catch (e) {
-      print("Update email error: ${e.code} - ${e.message}");
+      debugPrint("Update email error: ${e.code} - ${e.message}");
       return false;
     }
   }
@@ -240,7 +240,7 @@ class Auth {
         }
       }
     } catch (e) {
-      print("Error updating email in Firestore: $e");
+      debugPrint("Error updating email in Firestore: $e");
     }
   }
 
@@ -253,7 +253,7 @@ class Auth {
       final serverAuthCode = await GameAuth.getAuthCode(webClientId);
 
       if (serverAuthCode == null) {
-        print("Play Games: Server Auth Code alınamadı.");
+        debugPrint("Play Games: Server Auth Code alınamadı.");
         return null;
       }
 
@@ -276,7 +276,7 @@ class Auth {
         } on FirebaseAuthException catch (e) {
           if (e.code == 'credential-already-in-use') {
             // Hesap zaten başka birine bağlı, o hesaba geçiş yap
-            print("Play Games hesabı zaten var, geçiş yapılıyor...");
+            debugPrint("Play Games hesabı zaten var, geçiş yapılıyor...");
             return await _firebaseAuth.signInWithCredential(credential);
           }
           rethrow;
@@ -286,7 +286,7 @@ class Auth {
         return await _firebaseAuth.signInWithCredential(credential);
       }
     } catch (e) {
-      print("Play Games Auth error: $e");
+      debugPrint("Play Games Auth error: $e");
       return null;
     }
   }
@@ -305,7 +305,7 @@ class Auth {
       }
       return false;
     } on FirebaseAuthException catch (e) {
-      print("Reauthentication error: ${e.code} - ${e.message}");
+      debugPrint("Reauthentication error: ${e.code} - ${e.message}");
       return false;
     }
   }
@@ -377,7 +377,7 @@ class Auth {
           PlayGamesAuthProvider.credential(serverAuthCode: serverAuthCode);
       return await _firebaseAuth.signInWithCredential(credential);
     } catch (e) {
-      print("Play Games Sign-In Error: $e");
+      debugPrint("Play Games Sign-In Error: $e");
       return null;
     }
   }

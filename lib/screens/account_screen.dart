@@ -159,8 +159,9 @@ class _AccountScreenState extends State<AccountScreen>
               onPressed: () async {
                 Navigator.of(context).pop();
                 await FirebaseAuth.instance.signOut();
-                if (mounted)
+                if (context.mounted) {
                   Navigator.of(context).popUntil((route) => route.isFirst);
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.redAccent,
@@ -838,9 +839,9 @@ class _AccountScreenState extends State<AccountScreen>
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: badge.color.withOpacity(0.15),
+        color: badge.color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: badge.color.withOpacity(0.3), width: 1),
+        border: Border.all(color: badge.color.withValues(alpha: 0.3), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1102,12 +1103,12 @@ class _AccountScreenState extends State<AccountScreen>
                                     margin: const EdgeInsets.only(bottom: 12),
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.03),
+                                      color: Colors.white.withValues(alpha: 0.03),
                                       borderRadius: BorderRadius.circular(16),
                                       border: Border.all(
                                         color: isActive
-                                            ? achievement.color.withOpacity(0.5)
-                                            : Colors.white.withOpacity(0.05),
+                                            ? achievement.color.withValues(alpha: 0.5)
+                                            : Colors.white.withValues(alpha: 0.05),
                                         width: 1,
                                       ),
                                     ),
@@ -1121,7 +1122,7 @@ class _AccountScreenState extends State<AccountScreen>
                                               decoration: BoxDecoration(
                                                 color: isUnlocked
                                                     ? achievement.color
-                                                        .withOpacity(0.15)
+                                                        .withValues(alpha: 0.15)
                                                     : Colors.white10,
                                                 shape: BoxShape.circle,
                                               ),
@@ -1170,7 +1171,7 @@ class _AccountScreenState extends State<AccountScreen>
                                                 achievement.descKey.tr(),
                                                 style: TextStyle(
                                                   color: Colors.white
-                                                      .withOpacity(0.4),
+                                                      .withValues(alpha: 0.4),
                                                   fontSize: 11,
                                                 ),
                                               ),
@@ -1219,6 +1220,7 @@ class _AccountScreenState extends State<AccountScreen>
                                                       achievement.id;
                                                 });
                                                 setDialogState(() {});
+                                                if (!context.mounted) return;
                                                 ScaffoldMessenger.of(context)
                                                     .showSnackBar(
                                                   SnackBar(

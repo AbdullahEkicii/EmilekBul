@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:emilekbul/models/test_result.dart';
 import 'package:emilekbul/models/question.dart';
 import 'package:sqflite/sqflite.dart';
@@ -306,7 +307,7 @@ CREATE TABLE achievements (
       final List<dynamic> list = jsonDecode(jsonString);
       return list.map((e) => Question.fromJson(e)).toList();
     } catch (e) {
-      print('Cached quiz parse error: $e');
+      debugPrint('Cached quiz parse error: $e');
       return null;
     }
   }

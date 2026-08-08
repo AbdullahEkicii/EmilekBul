@@ -14,3 +14,4 @@ android/app/key.properties
 *.bak
 *.DS_Store
 .env
+.env

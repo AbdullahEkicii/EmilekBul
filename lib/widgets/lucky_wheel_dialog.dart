@@ -35,7 +35,7 @@ class LuckyWheelDialog extends StatefulWidget {
       context: context,
       barrierDismissible: true,
       barrierLabel: '',
-      barrierColor: Colors.black.withOpacity(0.8),
+      barrierColor: Colors.black.withValues(alpha: 0.8),
       transitionDuration: const Duration(milliseconds: 400),
       pageBuilder: (context, anim1, anim2) => const SizedBox(),
       transitionBuilder: (context, anim1, anim2, child) {
@@ -197,7 +197,7 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
                 : (_canSpin
                     ? 'new_features.wheel_spin_prompt'.tr()
                     : 'new_features.wheel_spun_today'.tr()),
-            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
@@ -212,9 +212,9 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
                 height: 296,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.amberAccent.withOpacity(0.8), width: 8),
+                  border: Border.all(color: Colors.amberAccent.withValues(alpha: 0.8), width: 8),
                   boxShadow: [
-                    BoxShadow(color: Colors.amber.withOpacity(0.3), blurRadius: 30, spreadRadius: 5),
+                    BoxShadow(color: Colors.amber.withValues(alpha: 0.3), blurRadius: 30, spreadRadius: 5),
                   ],
                 ),
               ),
@@ -254,7 +254,7 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.amberAccent, width: 4),
                   boxShadow: [
-                    BoxShadow(color: Colors.amber.withOpacity(0.5), blurRadius: 15, spreadRadius: 2)
+                    BoxShadow(color: Colors.amber.withValues(alpha: 0.5), blurRadius: 15, spreadRadius: 2)
                   ],
                 ),
                 child: const Center(
@@ -270,7 +270,7 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.greenAccent.withOpacity(0.2),
+                color: Colors.greenAccent.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.greenAccent),
               ),
@@ -287,7 +287,11 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
           ],
 
           ElevatedButton(
-            onPressed: (_canSpin && !_isSpinning && !_hasSpun) ? _spinWheel : null,
+            onPressed: _isSpinning
+                ? null
+                : (_hasSpun
+                    ? () => Navigator.of(context).pop()
+                    : (_canSpin ? _spinWheel : null)),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.amber,
               foregroundColor: Colors.black,
@@ -336,7 +340,7 @@ class _WheelPainter extends CustomPainter {
       final prize = prizes[i];
 
       // Draw sector arc
-      paint.color = (prize['color'] as Color).withOpacity(0.9);
+      paint.color = (prize['color'] as Color).withValues(alpha: 0.9);
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         startAngle,
@@ -348,7 +352,7 @@ class _WheelPainter extends CustomPainter {
       // Add a subtle gradient overlay to make it look 3D and shiny
       final highlightPaint = Paint()
         ..shader = RadialGradient(
-          colors: [Colors.white.withOpacity(0.4), Colors.transparent],
+          colors: [Colors.white.withValues(alpha: 0.4), Colors.transparent],
           stops: const [0.0, 1.0],
         ).createShader(Rect.fromCircle(center: center, radius: radius))
         ..style = PaintingStyle.fill;
@@ -362,7 +366,7 @@ class _WheelPainter extends CustomPainter {
 
       // Draw sector border lines
       final borderPaint = Paint()
-        ..color = Colors.white.withOpacity(0.3)
+        ..color = Colors.white.withValues(alpha: 0.3)
         ..strokeWidth = 2.5
         ..style = PaintingStyle.stroke;
       canvas.drawArc(

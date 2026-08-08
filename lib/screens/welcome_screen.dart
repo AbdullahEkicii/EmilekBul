@@ -15,8 +15,6 @@ import '../widgets/background_orbs.dart';
 import 'tier_list_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_utils.dart';
-import '../services/database_helper.dart';
-import '../services/token_service.dart';
 import '../services/notification_service.dart';
 import '../services/notification_permission_manager.dart';
 import 'shop_screen.dart';
@@ -98,7 +96,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         }
       }
     } catch (e) {
-      print('Streak check error: $e');
+      debugPrint('Streak check error: $e');
     }
   }
 
@@ -332,17 +330,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Colors.white.withOpacity(0.25),
-              Colors.white.withOpacity(0.1),
+              Colors.white.withValues(alpha: 0.25),
+              Colors.white.withValues(alpha: 0.1),
             ],
           ),
           border: Border.all(
-            color: Colors.white.withOpacity(0.3),
+            color: Colors.white.withValues(alpha: 0.3),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.blue.withOpacity(0.2),
+              color: Colors.blue.withValues(alpha: 0.2),
               blurRadius: 10,
               offset: const Offset(2, 2),
             ),
@@ -372,7 +370,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Stack(
@@ -434,7 +432,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         Text(
                           '${'level_system.level'.tr()} $_cachedLevel',
                           style: TextStyle(
-                            color: Colors.amber.withOpacity(0.9),
+                            color: Colors.amber.withValues(alpha: 0.9),
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
@@ -444,7 +442,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   const SizedBox(width: 4),
                   Icon(
                     Icons.arrow_forward_ios,
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                     size: 13,
                   ),
                 ],
@@ -472,9 +470,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.orange.withOpacity(0.2),
+          color: Colors.orange.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.orangeAccent.withOpacity(0.5)),
+          border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.5)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -512,9 +510,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.purple.withOpacity(0.25),
+              color: Colors.purple.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.purpleAccent.withOpacity(0.5)),
+              border: Border.all(color: Colors.purpleAccent.withValues(alpha: 0.5)),
             ),
             child: const Row(
               mainAxisSize: MainAxisSize.min,
@@ -548,14 +546,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
           colors: [
-            Colors.amber.shade900.withOpacity(0.4),
-            Colors.deepOrange.shade800.withOpacity(0.3),
+            Colors.amber.shade900.withValues(alpha: 0.4),
+            Colors.deepOrange.shade800.withValues(alpha: 0.3),
           ],
         ),
-        border: Border.all(color: Colors.amber.withOpacity(0.5)),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.amber.withOpacity(0.15),
+            color: Colors.amber.withValues(alpha: 0.15),
             blurRadius: 15,
             spreadRadius: 1,
           )
@@ -585,7 +583,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.amber.withOpacity(0.25),
+                    color: Colors.amber.withValues(alpha: 0.25),
                     shape: BoxShape.circle,
                   ),
                   child: const Text('🚀', style: TextStyle(fontSize: 22)),
@@ -597,12 +595,15 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     children: [
                       Row(
                         children: [
-                          Text(
-                            'new_features.special_quiz_of_day'.tr(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                          Flexible(
+                            child: Text(
+                              'new_features.special_quiz_of_day'.tr(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -628,7 +629,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       Text(
                         'new_features.hard_mode_extra_token'.tr(),
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                           fontSize: 12,
                         ),
                       ),
@@ -669,7 +670,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.blue.withOpacity(0.1),
+                        color: Colors.blue.withValues(alpha: 0.1),
                         blurRadius: 40,
                         spreadRadius: 5,
                       ),
@@ -716,7 +717,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   Text(
                     'welcome.loading'.tr(),
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha: 0.7),
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                       letterSpacing: 0.5,
@@ -746,10 +747,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
       // Bildirim planlama işini arka planda, sessizce yapalım (beklemiyoruz)
       NotificationService.rescheduleNotifications().catchError((e) {
-        print("Arkaplan planlama hatası: $e");
+        debugPrint("Arkaplan planlama hatası: $e");
       });
     } catch (e) {
-      print("Bildirim izni hatası: $e");
+      debugPrint("Bildirim izni hatası: $e");
     }
   }
 
@@ -789,8 +790,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFFFFB75E).withOpacity(0.25),
-                    const Color(0xFFFFB75E).withOpacity(0.0),
+                    const Color(0xFFFFB75E).withValues(alpha: 0.25),
+                    const Color(0xFFFFB75E).withValues(alpha: 0.0),
                   ],
                 ),
               ),
@@ -851,7 +852,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.white.withOpacity(0.1),
+                                        color: Colors.white.withValues(alpha: 0.1),
                                         blurRadius: 40,
                                         spreadRadius: 5,
                                       ),
@@ -924,7 +925,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                             Icons
                                                 .keyboard_double_arrow_down_rounded,
                                             color:
-                                                Colors.white.withOpacity(0.8),
+                                                Colors.white.withValues(alpha: 0.8),
                                             size: 32,
                                           ),
                                           const SizedBox(height: 8),
@@ -933,12 +934,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                                 horizontal: 16, vertical: 8),
                                             decoration: BoxDecoration(
                                               color: const Color(0xFFE6A141)
-                                                  .withOpacity(0.2),
+                                                  .withValues(alpha: 0.2),
                                               borderRadius:
                                                   BorderRadius.circular(20),
                                               border: Border.all(
                                                   color: Colors.white
-                                                      .withOpacity(0.2)),
+                                                      .withValues(alpha: 0.2)),
                                             ),
                                             child: Text(
                                               'welcome.onboarding_tip'.tr(),
@@ -978,7 +979,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                           final hasInternet = await AppUtils
                                               .hasInternetConnection();
                                           if (!hasInternet) {
-                                            if (mounted) {
+                                            if (context.mounted) {
                                               ScaffoldMessenger.of(context)
                                                   .showSnackBar(
                                                 SnackBar(
@@ -1136,7 +1137,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         }
       }
     } catch (e) {
-      print('Monthly winner check error: $e');
+      debugPrint('Monthly winner check error: $e');
     }
   }
 
@@ -1163,7 +1164,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               Text(
                 'welcome_screen.shop'.tr(),
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                 ),
@@ -1201,7 +1202,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               Text(
                 'welcome_screen.chamption_desc'.tr(),
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white.withOpacity(0.8)),
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
               ),
               const SizedBox(height: 24),
               Text(
@@ -1225,9 +1226,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.amber.withOpacity(0.2),
+                  color: Colors.amber.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.amber.withOpacity(0.5)),
+                  border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1292,7 +1293,7 @@ class TierListButton extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
+                color: Colors.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(Icons.emoji_events_rounded,
@@ -1340,7 +1341,7 @@ class StartButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFE6A141).withOpacity(0.3),
+            color: const Color(0xFFE6A141).withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -1371,7 +1372,7 @@ class StartButton extends StatelessWidget {
                 ),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                    color: Colors.white.withOpacity(0.2), width: 1.5),
+                    color: Colors.white.withValues(alpha: 0.2), width: 1.5),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1379,7 +1380,7 @@ class StartButton extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.play_arrow_rounded,
@@ -1433,7 +1434,7 @@ class BasariButton extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
+                color: Colors.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(Icons.history_rounded,
@@ -1491,7 +1492,7 @@ class _QuestsPanelState extends State<QuestsPanel> {
         });
       }
     } catch (e) {
-      print('Quests load error: $e');
+      debugPrint('Quests load error: $e');
     }
   }
 
@@ -1509,7 +1510,7 @@ class _QuestsPanelState extends State<QuestsPanel> {
         _loadQuests();
       }
     } catch (e) {
-      print('Claim reward error: $e');
+      debugPrint('Claim reward error: $e');
     }
   }
 
@@ -1606,12 +1607,12 @@ class _QuestsPanelState extends State<QuestsPanel> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: isActive
-              ? Colors.amberAccent.withOpacity(0.2)
+              ? Colors.amberAccent.withValues(alpha: 0.2)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color:
-                isActive ? Colors.amberAccent.withOpacity(0.5) : Colors.white24,
+                isActive ? Colors.amberAccent.withValues(alpha: 0.5) : Colors.white24,
             width: 1,
           ),
         ),
@@ -1635,12 +1636,12 @@ class _QuestsPanelState extends State<QuestsPanel> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
+        color: Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isCompleted && !quest.isClaimed
-              ? Colors.amberAccent.withOpacity(0.3)
-              : Colors.white.withOpacity(0.05),
+              ? Colors.amberAccent.withValues(alpha: 0.3)
+              : Colors.white.withValues(alpha: 0.05),
           width: 1,
         ),
       ),
@@ -1652,9 +1653,9 @@ class _QuestsPanelState extends State<QuestsPanel> {
             decoration: BoxDecoration(
               color: isCompleted
                   ? (quest.isClaimed
-                      ? Colors.green.withOpacity(0.1)
-                      : Colors.amber.withOpacity(0.1))
-                  : Colors.white.withOpacity(0.05),
+                      ? Colors.green.withValues(alpha: 0.1)
+                      : Colors.amber.withValues(alpha: 0.1))
+                  : Colors.white.withValues(alpha: 0.05),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -1702,7 +1703,7 @@ class _QuestsPanelState extends State<QuestsPanel> {
                 Text(
                   '${quest.currentProgress}/${quest.targetProgress}',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.5),
+                    color: Colors.white.withValues(alpha: 0.5),
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1739,7 +1740,7 @@ class _QuestsPanelState extends State<QuestsPanel> {
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 4,
-          shadowColor: Colors.amberAccent.withOpacity(0.4),
+          shadowColor: Colors.amberAccent.withValues(alpha: 0.4),
         ),
         onPressed: () => _claimReward(quest.id),
         child: Text(
@@ -1752,7 +1753,7 @@ class _QuestsPanelState extends State<QuestsPanel> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(

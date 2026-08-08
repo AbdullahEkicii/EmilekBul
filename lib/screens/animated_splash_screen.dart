@@ -91,7 +91,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
         // Auto Guest Login in the background during splash!
-        print("Splash: Starting background guest login...");
+        debugPrint("Splash: Starting background guest login...");
         final userCredential = await UserService.signInAsGuest().timeout(
           const Duration(seconds: 10),
           onTimeout: () => throw Exception("Guest Login Timeout"),
@@ -103,7 +103,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
         }
       }
     } catch (e) {
-      print("Splash init error: $e");
+      debugPrint("Splash init error: $e");
     }
   }
 
@@ -141,9 +141,9 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
                       height: 400,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: const Color(0xFF6366F1).withOpacity(0.15 + (0.1 * val)),
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.15 + (0.1 * val)),
                         boxShadow: [
-                          BoxShadow(color: const Color(0xFF6366F1).withOpacity(0.3), blurRadius: 150, spreadRadius: 50),
+                          BoxShadow(color: const Color(0xFF6366F1).withValues(alpha: 0.3), blurRadius: 150, spreadRadius: 50),
                         ],
                       ),
                     ),
@@ -156,9 +156,9 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
                       height: 450,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: const Color(0xFFEC4899).withOpacity(0.1 + (0.1 * val)),
+                        color: const Color(0xFFEC4899).withValues(alpha: 0.1 + (0.1 * val)),
                         boxShadow: [
-                          BoxShadow(color: const Color(0xFFEC4899).withOpacity(0.25), blurRadius: 150, spreadRadius: 50),
+                          BoxShadow(color: const Color(0xFFEC4899).withValues(alpha: 0.25), blurRadius: 150, spreadRadius: 50),
                         ],
                       ),
                     ),
@@ -195,18 +195,18 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
                         shape: BoxShape.circle,
                         gradient: RadialGradient(
                           colors: [
-                            Colors.white.withOpacity(0.15),
-                            Colors.white.withOpacity(0.0),
+                            Colors.white.withValues(alpha: 0.15),
+                            Colors.white.withValues(alpha: 0.0),
                           ],
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF6366F1).withOpacity(0.4),
+                            color: const Color(0xFF6366F1).withValues(alpha: 0.4),
                             blurRadius: 60,
                             spreadRadius: 10,
                           ),
                           BoxShadow(
-                            color: const Color(0xFFEC4899).withOpacity(0.2),
+                            color: const Color(0xFFEC4899).withValues(alpha: 0.2),
                             blurRadius: 40,
                             spreadRadius: -5,
                           ),

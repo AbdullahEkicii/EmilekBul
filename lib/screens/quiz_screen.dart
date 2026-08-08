@@ -89,17 +89,11 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   bool _botIsThinking = false; // bot currently computing an answer
   bool _botJustAnswered = false; // flash when bot answers
   DateTime? _playerFinishTime;
-  DateTime? _botFinishTime;
 
   // Overlay banner queue
   final List<Map<String, dynamic>> _duelBannerQueue = [];
   bool _duelBannerVisible = false;
-  String _duelBannerText = '';
-  Color _duelBannerColor = Colors.redAccent;
-  IconData _duelBannerIcon = Icons.bolt;
   late AnimationController _bannerController;
-  late Animation<Offset> _bannerSlide;
-  late Animation<double> _bannerFade;
 
   @override
   void initState() {
@@ -145,12 +139,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 350),
     );
-    _bannerSlide = Tween<Offset>(
-      begin: const Offset(0, -1.2),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _bannerController, curve: Curves.easeOutBack));
-    _bannerFade = Tween<double>(begin: 0.0, end: 1.0)
-        .animate(CurvedAnimation(parent: _bannerController, curve: Curves.easeIn));
 
     _loadUserTokens();
     _setupOptionAnimations();
@@ -171,7 +159,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
         });
       }
     } catch (e) {
-      print("Token load error: $e");
+      debugPrint("Token load error: $e");
     }
   }
 
@@ -305,8 +293,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
         });
         _scheduleNextBotAnswer();
       } else {
-        // Bot finished the test
-        _botFinishTime = DateTime.now();
         setState(() {
           _botCompleted = true;
           _botIsThinking = false;
@@ -342,9 +328,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     final next = _duelBannerQueue.removeAt(0);
     setState(() {
       _duelBannerVisible = true;
-      _duelBannerText = next['text'] as String;
-      _duelBannerColor = next['color'] as Color;
-      _duelBannerIcon = next['icon'] as IconData;
     });
 
     _bannerController.forward(from: 0).then((_) {
@@ -659,7 +642,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
             builder: (context, child) => Positioned(
               top: 50 + (30 * _orbAnimation.value),
               right: -50,
-              child: _buildOrb(250, const Color(0xFF6366F1).withOpacity(0.15)),
+              child: _buildOrb(250, const Color(0xFF6366F1).withValues(alpha: 0.15)),
             ),
           ),
           AnimatedBuilder(
@@ -667,7 +650,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
             builder: (context, child) => Positioned(
               bottom: 100 - (40 * _orbAnimation.value),
               left: -80,
-              child: _buildOrb(300, const Color(0xFFA855F7).withOpacity(0.1)),
+              child: _buildOrb(300, const Color(0xFFA855F7).withValues(alpha: 0.1)),
             ),
           ),
         ],
@@ -684,7 +667,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
         gradient: RadialGradient(
           colors: [
             color,
-            color.withOpacity(0.0),
+            color.withValues(alpha: 0.0),
           ],
           stops: const [0.0, 0.7],
         ),
@@ -761,7 +744,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                                     ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                                 child: Container(
                                   color:
-                                      const Color(0xFF0F172A).withOpacity(0.7),
+                                      const Color(0xFF0F172A).withValues(alpha: 0.7),
                                   child: Center(
                                     child: Column(
                                       mainAxisSize: MainAxisSize.min,
@@ -784,10 +767,10 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                                             decoration: BoxDecoration(
                                               shape: BoxShape.circle,
                                               color: Colors.white
-                                                  .withOpacity(0.05),
+                                                  .withValues(alpha: 0.05),
                                               border: Border.all(
                                                 color: Colors.white
-                                                    .withOpacity(0.1),
+                                                    .withValues(alpha: 0.1),
                                                 width: 2,
                                               ),
                                             ),
@@ -820,7 +803,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                                             key: ValueKey(_currentIndex),
                                             style: TextStyle(
                                               color:
-                                                  Colors.white.withOpacity(0.6),
+                                                  Colors.white.withValues(alpha: 0.6),
                                               fontSize: 15,
                                               fontStyle: FontStyle.italic,
                                               letterSpacing: 0.5,
@@ -861,12 +844,12 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 24, vertical: 16),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.85),
+                      color: Colors.black.withValues(alpha: 0.85),
                       borderRadius: BorderRadius.circular(30),
                       border: Border.all(color: Colors.amberAccent, width: 2),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.amber.withOpacity(0.5),
+                          color: Colors.amber.withValues(alpha: 0.5),
                           blurRadius: 30,
                           spreadRadius: 5,
                         ),
@@ -970,9 +953,9 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                     duration: const Duration(milliseconds: 300),
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.blueAccent.withOpacity(0.15),
+                      color: Colors.blueAccent.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.blueAccent.withOpacity(0.4)),
+                      border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.4)),
                     ),
                     child: Row(
                       children: [
@@ -997,7 +980,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                               Text(
                                 '${_currentIndex + 1}/${widget.questions.length}',
                                 style: TextStyle(
-                                    color: Colors.white.withOpacity(0.55),
+                                    color: Colors.white.withValues(alpha: 0.55),
                                     fontSize: 10),
                               ),
                             ],
@@ -1030,9 +1013,9 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                         decoration: BoxDecoration(
-                          color: diffColor.withOpacity(0.15),
+                          color: diffColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: diffColor.withOpacity(0.4), width: 0.5),
+                          border: Border.all(color: diffColor.withValues(alpha: 0.4), width: 0.5),
                         ),
                         child: Text(
                           diffText,
@@ -1053,13 +1036,13 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
                       color: _botJustAnswered
-                          ? Colors.orangeAccent.withOpacity(0.25)
-                          : Colors.redAccent.withOpacity(0.15),
+                          ? Colors.orangeAccent.withValues(alpha: 0.25)
+                          : Colors.redAccent.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: _botJustAnswered
-                            ? Colors.orangeAccent.withOpacity(0.6)
-                            : Colors.redAccent.withOpacity(0.4),
+                            ? Colors.orangeAccent.withValues(alpha: 0.6)
+                            : Colors.redAccent.withValues(alpha: 0.4),
                         width: _botJustAnswered ? 1.5 : 1.0,
                       ),
                     ),
@@ -1098,7 +1081,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                                           ? '🏁 Done'
                                           : '${(_botCurrentIndex).clamp(0, widget.questions.length)}/${widget.questions.length}',
                                       style: TextStyle(
-                                          color: Colors.white.withOpacity(0.55),
+                                          color: Colors.white.withValues(alpha: 0.55),
                                           fontSize: 10),
                                     ),
                             ],
@@ -1117,7 +1100,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                      color: Colors.orangeAccent.withOpacity(0.8),
+                                      color: Colors.orangeAccent.withValues(alpha: 0.8),
                                       width: 2,
                                     ),
                                   ),
@@ -1138,9 +1121,9 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.03),
+                color: Colors.white.withValues(alpha: 0.03),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
               ),
               child: Column(
                 children: [
@@ -1150,7 +1133,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                       Text(
                         'duel.race_track'.tr(),
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.35),
+                          color: Colors.white.withValues(alpha: 0.35),
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.5,
@@ -1162,9 +1145,9 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                           key: ValueKey(statusText),
                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
-                            color: statusColor.withOpacity(0.15),
+                            color: statusColor.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: statusColor.withOpacity(0.35), width: 0.5),
+                            border: Border.all(color: statusColor.withValues(alpha: 0.35), width: 0.5),
                           ),
                           child: Text(
                             statusText,
@@ -1197,7 +1180,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                               child: Container(
                                 height: 3,
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.05),
+                                  color: Colors.white.withValues(alpha: 0.05),
                                   borderRadius: BorderRadius.circular(2),
                                 ),
                               ),
@@ -1216,7 +1199,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                                   borderRadius: BorderRadius.circular(2),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFF6366F1).withOpacity(0.4),
+                                      color: const Color(0xFF6366F1).withValues(alpha: 0.4),
                                       blurRadius: 4,
                                     ),
                                   ],
@@ -1229,7 +1212,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                               child: Container(
                                 height: 3,
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.05),
+                                  color: Colors.white.withValues(alpha: 0.05),
                                   borderRadius: BorderRadius.circular(2),
                                 ),
                               ),
@@ -1250,7 +1233,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                                   borderRadius: BorderRadius.circular(2),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.redAccent.withOpacity(0.35),
+                                      color: Colors.redAccent.withValues(alpha: 0.35),
                                       blurRadius: 4,
                                     ),
                                   ],
@@ -1270,7 +1253,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                                   border: Border.all(color: Colors.blueAccent, width: 2),
                                   boxShadow: [
                                     BoxShadow(
-                                        color: Colors.blueAccent.withOpacity(0.4),
+                                        color: Colors.blueAccent.withValues(alpha: 0.4),
                                         blurRadius: 6),
                                   ],
                                 ),
@@ -1305,7 +1288,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.redAccent.withOpacity(0.4),
+                                      color: Colors.redAccent.withValues(alpha: 0.4),
                                       blurRadius: 6,
                                     ),
                                   ],
@@ -1355,7 +1338,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                           ? categoryItem.name
                           : categoryItem.key.tr(),
                       style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
+                          color: Colors.white.withValues(alpha: 0.5),
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 1),
@@ -1404,7 +1387,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
               Container(
                   height: 6,
                   decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(3))),
               AnimatedContainer(
                 duration: const Duration(milliseconds: 500),
@@ -1416,7 +1399,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                   borderRadius: BorderRadius.circular(3),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF6366F1).withOpacity(0.3),
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.3),
                       blurRadius: 10,
                     ),
                   ],
@@ -1544,18 +1527,18 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                   width: 56,
                   height: 56,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.06),
+                    color: color.withValues(alpha: 0.06),
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: isUsed
-                          ? Colors.grey.withOpacity(0.3)
-                          : color.withOpacity(0.5),
+                          ? Colors.grey.withValues(alpha: 0.3)
+                          : color.withValues(alpha: 0.5),
                       width: 1.5,
                     ),
                     boxShadow: canTap
                         ? [
                             BoxShadow(
-                              color: color.withOpacity(0.15),
+                              color: color.withValues(alpha: 0.15),
                               blurRadius: 10,
                               spreadRadius: 1,
                             )
@@ -1580,7 +1563,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                         borderRadius: BorderRadius.circular(8),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
+                            color: Colors.black.withValues(alpha: 0.3),
                             blurRadius: 3,
                           ),
                         ],
@@ -1610,7 +1593,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
               title,
               style: TextStyle(
                 color: isUsed
-                    ? Colors.greenAccent.withOpacity(0.8)
+                    ? Colors.greenAccent.withValues(alpha: 0.8)
                     : Colors.white70,
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
@@ -1651,26 +1634,26 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
         final isCorrectOption = index == q.correctIndex;
 
         Color borderColor = isSelected
-            ? const Color(0xFF6366F1).withOpacity(0.8)
-            : Colors.white.withOpacity(0.08);
+            ? const Color(0xFF6366F1).withValues(alpha: 0.8)
+            : Colors.white.withValues(alpha: 0.08);
         Color bgColor = isSelected
-            ? Colors.white.withOpacity(0.15)
-            : Colors.white.withOpacity(0.04);
+            ? Colors.white.withValues(alpha: 0.15)
+            : Colors.white.withValues(alpha: 0.04);
         Color iconColor = const Color(0xFF6366F1);
-        Color optionBoxColor = isSelected ? const Color(0xFF6366F1) : Colors.white.withOpacity(0.1);
+        Color optionBoxColor = isSelected ? const Color(0xFF6366F1) : Colors.white.withValues(alpha: 0.1);
         Color textColor = isSelected ? Colors.white : Colors.white70;
         IconData? displayIcon;
 
         if (_isShowingAnswer) {
           if (isCorrectOption) {
-            bgColor = Colors.greenAccent.withOpacity(0.25);
+            bgColor = Colors.greenAccent.withValues(alpha: 0.25);
             borderColor = Colors.greenAccent;
             iconColor = Colors.greenAccent;
             optionBoxColor = Colors.greenAccent;
             textColor = Colors.white;
             displayIcon = Icons.check_circle_rounded;
           } else if (isSelected && !isCorrectOption) {
-            bgColor = Colors.redAccent.withOpacity(0.25);
+            bgColor = Colors.redAccent.withValues(alpha: 0.25);
             borderColor = Colors.redAccent;
             iconColor = Colors.redAccent;
             optionBoxColor = Colors.redAccent;
@@ -1710,7 +1693,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                       boxShadow: isSelected || (_isShowingAnswer && isCorrectOption)
                           ? [
                               BoxShadow(
-                                  color: borderColor.withOpacity(0.25),
+                                  color: borderColor.withValues(alpha: 0.25),
                                   blurRadius: 20,
                                   spreadRadius: 2)
                             ]
@@ -1777,7 +1760,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
           boxShadow: [
             if (_selectedIndex != null)
               BoxShadow(
-                color: const Color(0xFF6366F1).withOpacity(0.4),
+                color: const Color(0xFF6366F1).withValues(alpha: 0.4),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
@@ -1802,7 +1785,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                     )
                   : null,
               color: _selectedIndex == null
-                  ? Colors.white.withOpacity(0.05)
+                  ? Colors.white.withValues(alpha: 0.05)
                   : null,
               borderRadius: BorderRadius.circular(20),
             ),

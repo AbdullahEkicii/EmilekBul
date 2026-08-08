@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -13,7 +14,7 @@ class FullScreenService {
       _isInitialized = true;
       applyCurrentMode();
     } catch (e) {
-      print('FullScreenService init error: $e');
+      debugPrint('FullScreenService init error: $e');
     }
   }
 
@@ -26,7 +27,7 @@ class FullScreenService {
       await prefs.setBool('full_screen', enabled);
       applyCurrentMode();
     } catch (e) {
-      print('Error saving full screen setting: $e');
+      debugPrint('Error saving full screen setting: $e');
     }
   }
 

@@ -245,7 +245,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.3),
+                        color: Colors.white.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -263,7 +263,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       'edit_profile.select_avatar_desc'.tr(),
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.white.withOpacity(0.6),
+                        color: Colors.white.withValues(alpha: 0.6),
                       ),
                     ),
                     const SizedBox(height: 32),
@@ -284,8 +284,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 ..sort((a, b) {
                                   int? iA = int.tryParse(a);
                                   int? iB = int.tryParse(b);
-                                  if (iA != null && iB != null)
+                                  if (iA != null && iB != null) {
                                     return iA.compareTo(iB);
+                                  }
                                   return a.compareTo(b);
                                 });
 
@@ -318,13 +319,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     border: Border.all(
                                       color: isSelected
                                           ? neonBlue
-                                          : Colors.white.withOpacity(0.1),
+                                          : Colors.white.withValues(alpha: 0.1),
                                       width: isSelected ? 3 : 1,
                                     ),
                                     boxShadow: isSelected
                                         ? [
                                             BoxShadow(
-                                              color: neonBlue.withOpacity(0.3),
+                                              color: neonBlue.withValues(alpha: 0.3),
                                               blurRadius: 15,
                                               spreadRadius: 2,
                                             )
@@ -333,7 +334,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   ),
                                   child: CircleAvatar(
                                     backgroundColor:
-                                        Colors.white.withOpacity(0.05),
+                                        Colors.white.withValues(alpha: 0.05),
                                     backgroundImage: ResizeImage(
                                       AssetImage(
                                         UserService.getAvatarPath(avatarId),
@@ -407,7 +408,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           padding: const EdgeInsets.all(8.0),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
@@ -428,7 +429,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             padding: const EdgeInsets.only(right: 8.0),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.amber.withOpacity(0.2),
+                color: Colors.amber.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: IconButton(
@@ -484,7 +485,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                       ),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: neonPurple.withOpacity(0.3),
+                                          color: neonPurple.withValues(alpha: 0.3),
                                           blurRadius: 20,
                                           spreadRadius: 2,
                                         ),
@@ -517,7 +518,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                               ),
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: UserService.getFrameColor(_selectedFrameId).withOpacity(0.5),
+                                                  color: UserService.getFrameColor(_selectedFrameId).withValues(alpha: 0.5),
                                                   blurRadius: 15,
                                                   spreadRadius: 2,
                                                 ),
@@ -623,7 +624,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: neonPurple.withOpacity(0.4),
+                                    color: neonPurple.withValues(alpha: 0.4),
                                     blurRadius: 15,
                                     offset: const Offset(0, 8),
                                   ),
@@ -682,7 +683,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         Text(
           'edit_profile.frames'.tr(),
           style: TextStyle(
-            color: Colors.white.withOpacity(0.6),
+            color: Colors.white.withValues(alpha: 0.6),
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
@@ -709,8 +710,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   height: 80,
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? neonBlue.withOpacity(0.1)
-                        : Colors.white.withOpacity(0.05),
+                        ? neonBlue.withValues(alpha: 0.1)
+                        : Colors.white.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isSelected ? neonBlue : Colors.transparent,
@@ -731,7 +732,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: UserService.getFrameColor(frameId).withOpacity(0.5),
+                                  color: UserService.getFrameColor(frameId).withValues(alpha: 0.5),
                                   blurRadius: 10,
                                 ),
                               ],
@@ -755,7 +756,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         Text(
           'edit_profile.titles'.tr(),
           style: TextStyle(
-            color: Colors.white.withOpacity(0.6),
+            color: Colors.white.withValues(alpha: 0.6),
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
@@ -785,12 +786,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       decoration: BoxDecoration(
                         color: isSelected
                             ? neonBlue
-                            : Colors.white.withOpacity(0.1),
+                            : Colors.white.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: isSelected
                               ? neonBlue
-                              : Colors.white.withOpacity(0.1),
+                              : Colors.white.withValues(alpha: 0.1),
                         ),
                       ),
                       child: Text(
@@ -824,7 +825,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.5),
+            color: Colors.white.withValues(alpha: 0.5),
             fontSize: 12,
             fontWeight: FontWeight.w600,
           ),
@@ -840,7 +841,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: neonBlue, size: 20),
             filled: true,
-            fillColor: Colors.white.withOpacity(0.05),
+            fillColor: Colors.white.withValues(alpha: 0.05),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             border: OutlineInputBorder(
@@ -849,7 +850,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.white.withOpacity(0.05)),
+              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),

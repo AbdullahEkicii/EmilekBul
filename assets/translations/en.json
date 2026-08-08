@@ -621,5 +621,8 @@
     "wheel_done_today": "Done for Today",
     "streak_claim_today": "Claim Today's Reward 🎉",
     "streak_ok": "OK"
+  },
+  "daily_streak": {
+    "day_num": "Day {}"
   }
 }

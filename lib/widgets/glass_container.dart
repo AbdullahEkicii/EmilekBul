@@ -34,9 +34,9 @@ class GlassContainer extends StatelessWidget {
     // near-transparent glass (which looks invisible without the blur effect).
     final Color baseColor = color ?? Colors.white;
     final Color bgColor = effectiveUseBlur
-        ? baseColor.withOpacity(opacity)
+        ? baseColor.withValues(alpha: opacity)
         : (color != null
-            ? color!.withOpacity((opacity + 0.6).clamp(0.0, 1.0))
+            ? color!.withValues(alpha: (opacity + 0.6).clamp(0.0, 1.0))
             : const Color(0xFF1E293B));
 
     Widget content = Container(
@@ -50,10 +50,10 @@ class GlassContainer extends StatelessWidget {
                 end: Alignment.bottomRight,
                 colors: [
                   color != null
-                      ? color!.withOpacity((opacity + 0.65).clamp(0.0, 1.0))
+                      ? color!.withValues(alpha: (opacity + 0.65).clamp(0.0, 1.0))
                       : const Color(0xFF1E293B),
                   color != null
-                      ? color!.withOpacity((opacity + 0.5).clamp(0.0, 1.0))
+                      ? color!.withValues(alpha: (opacity + 0.5).clamp(0.0, 1.0))
                       : const Color(0xFF0F172A),
                 ],
               ),
@@ -61,8 +61,8 @@ class GlassContainer extends StatelessWidget {
         border: border ??
             Border.all(
               color: effectiveUseBlur
-                  ? Colors.white.withOpacity(0.2)
-                  : Colors.white.withOpacity(0.12),
+                  ? Colors.white.withValues(alpha: 0.2)
+                  : Colors.white.withValues(alpha: 0.12),
               width: 1,
             ),
         boxShadow: boxShadow ??
@@ -70,7 +70,7 @@ class GlassContainer extends StatelessWidget {
                 ? null
                 : [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.4),
+                      color: Colors.black.withValues(alpha: 0.4),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -97,11 +97,11 @@ class GlassContainer extends StatelessWidget {
         filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
         child: Container(
           decoration: BoxDecoration(
-            color: baseColor.withOpacity(opacity),
+            color: baseColor.withValues(alpha: opacity),
             borderRadius: BorderRadius.circular(borderRadius),
             border: border ??
                 Border.all(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   width: 1,
                 ),
             boxShadow: boxShadow,

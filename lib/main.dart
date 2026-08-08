@@ -1,7 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'screens/animated_splash_screen.dart';
 import 'screens/welcome_screen.dart';
@@ -15,10 +14,8 @@ import 'services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'services/user_service.dart';
-import 'services/database_helper.dart';
 import 'services/sound_service.dart';
 import 'services/performance_service.dart';
-import 'constants/offline_questions.dart';
 import 'services/fullscreen_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -43,7 +40,7 @@ void main() async {
       androidProvider: AndroidProvider.playIntegrity, // Production provider
     );
   } catch (e) {
-    print("Kritik başlatma hatası: $e");
+    debugPrint("Kritik başlatma hatası: $e");
   }
 
   // Arka planda başlasınlar, açılışı geciktirmesinler
@@ -54,10 +51,10 @@ void main() async {
           testDeviceIds: ["5a60f6ab-9ccf-4ef5-802f-10bdf30314ff"]);
       MobileAds.instance.updateRequestConfiguration(configuration);
     }).catchError((e) {
-      print("Ads error: $e");
+      debugPrint("Ads error: $e");
     });
 
-    NotificationService.init().catchError((e) => print("Notif init error: $e"));
+    NotificationService.init().catchError((e) => debugPrint("Notif init error: $e"));
   });
 
   runApp(
@@ -116,7 +113,6 @@ class QuizFlow extends StatefulWidget {
 class _QuizFlowState extends State<QuizFlow> {
   final AiApiService _apiService = AiApiService();
   String? _screenState; // welcome, category, quiz, result
-  String? _error;
   bool _loading = false;
   bool _isDataReady = false;
 
@@ -180,13 +176,13 @@ class _QuizFlowState extends State<QuizFlow> {
     });
 
     try {
-      print("_autoLoginAndSetup: Starting Guest Login...");
+      debugPrint("_autoLoginAndSetup: Starting Guest Login...");
       // 1. Auto Guest Login
       final userCredential = await UserService.signInAsGuest().timeout(const Duration(seconds: 10), onTimeout: () {
-        print("_autoLoginAndSetup: Guest Login timeout after 10s");
+        debugPrint("_autoLoginAndSetup: Guest Login timeout after 10s");
         throw Exception("Guest Login Timeout");
       });
-      print("_autoLoginAndSetup: Guest Login completed, userCredential: ${userCredential?.user?.uid}");
+      debugPrint("_autoLoginAndSetup: Guest Login completed, userCredential: ${userCredential?.user?.uid}");
 
       if (userCredential != null) {
         // 2. Onboarding quiz başlat (setState dışında çağır — async race condition düzeltmesi)
@@ -197,7 +193,7 @@ class _QuizFlowState extends State<QuizFlow> {
             prefs.setBool('has_seen_onboarding_v2', true);
             prefs.setInt('user_tokens', 50); // Initialize guest tokens locally
           }).catchError((e) {
-            print("Onboarding pref set error: $e");
+            debugPrint("Onboarding pref set error: $e");
           });
           _startQuiz('Genel Kültür', 'Orta', 30, count: 5);
         }
@@ -205,17 +201,15 @@ class _QuizFlowState extends State<QuizFlow> {
         // Fallback if guest login fails (extremely rare)
         if (mounted) {
           setState(() {
-            _error = "Guest login failed. Please check your connection.";
             _loading = false;
             _screenState = 'welcome';
           });
         }
       }
     } catch (e) {
-      print("_autoLoginAndSetup: Error caught: $e");
+      debugPrint("_autoLoginAndSetup: Error caught: $e");
       if (mounted) {
         setState(() {
-          _error = "Auto login error: $e";
           _loading = false;
           _screenState = 'welcome';
         });
@@ -229,12 +223,6 @@ class _QuizFlowState extends State<QuizFlow> {
     });
   }
 
-  void _showQuizScreen() {
-    setState(() {
-      _screenState = 'quiz';
-    });
-  }
-
   Future<void> _startQuiz(
     String category,
     String difficulty,
@@ -242,7 +230,7 @@ class _QuizFlowState extends State<QuizFlow> {
     int count = 5,
     bool isDuel = false,
   }) async {
-    print('Quiz başlatılıyor: $category, $difficulty, $duration, isDuel: $isDuel');
+    debugPrint('Quiz başlatılıyor: $category, $difficulty, $duration, isDuel: $isDuel');
     final languageCode = context.locale.languageCode;
 
     setState(() {
@@ -257,11 +245,10 @@ class _QuizFlowState extends State<QuizFlow> {
       _questions = [];
       _userAnswers = [];
       _score = 0;
-      _error = null; // Önceki hataları temizle
     });
 
     try {
-      print('API çağrısı yapılıyor...');
+      debugPrint('API çağrısı yapılıyor...');
 
       final results = await Future.wait([
         _apiService.fetchQuestions(
@@ -273,20 +260,19 @@ class _QuizFlowState extends State<QuizFlow> {
       ]);
 
       final questions = results[0];
-      print('API çağrısı başarılı, ${questions.length} soru alındı');
+      debugPrint('API çağrısı başarılı, ${questions.length} soru alındı');
 
       if (!mounted) return;
       setState(() {
         _questions = questions;
         _isDataReady = true;
       });
-      print('Data hazır. Kullanıcı onayı bekleniyor.');
+      debugPrint('Data hazır. Kullanıcı onayı bekleniyor.');
     } catch (e) {
-      print('API çağrısı hatası: $e');
+      debugPrint('API çağrısı hatası: $e');
       
       if (!mounted) return;
       setState(() {
-        _error = 'İnternet bağlantısı yok veya bir hata oluştu. Lütfen tekrar deneyin.';
         _loading = false;
         if (_screenState != 'welcome' &&
             _screenState != 'category' &&

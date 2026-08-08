@@ -47,12 +47,12 @@ class _TestDetailScreenState extends State<TestDetailScreen>
             Positioned(
               top: -50,
               right: -30 + (20 * _orbAnimation.value),
-              child: _buildOrb(200, const Color(0xFF6366F1).withOpacity(0.15)),
+              child: _buildOrb(200, const Color(0xFF6366F1).withValues(alpha: 0.15)),
             ),
             Positioned(
               bottom: 150 + (40 * _orbAnimation.value),
               left: -40,
-              child: _buildOrb(250, const Color(0xFFA855F7).withOpacity(0.12)),
+              child: _buildOrb(250, const Color(0xFFA855F7).withValues(alpha: 0.12)),
             ),
           ],
         );
@@ -152,7 +152,7 @@ class _TestDetailScreenState extends State<TestDetailScreen>
                 Text(
                   '${_translateCategory(widget.test.category)} | ${_translateDifficulty(widget.test.difficulty)}',
                   style: TextStyle(
-                      color: Colors.white.withOpacity(0.5),
+                      color: Colors.white.withValues(alpha: 0.5),
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1),
@@ -204,7 +204,7 @@ class _TestDetailScreenState extends State<TestDetailScreen>
                 style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white.withOpacity(0.4))),
+                    color: Colors.white.withValues(alpha: 0.4))),
           ],
         ),
       ),
@@ -231,7 +231,7 @@ class _TestDetailScreenState extends State<TestDetailScreen>
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                      color: color.withOpacity(0.2),
+                      color: color.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(10)),
                   child: Center(
                       child: Text('${index + 1}',
@@ -254,7 +254,7 @@ class _TestDetailScreenState extends State<TestDetailScreen>
                     isCorrect
                         ? Icons.check_circle_rounded
                         : Icons.cancel_rounded,
-                    color: color.withOpacity(0.5),
+                    color: color.withValues(alpha: 0.5),
                     size: 20),
               ],
             ),
@@ -286,16 +286,16 @@ class _TestDetailScreenState extends State<TestDetailScreen>
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
+        color: Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
               style: TextStyle(
-                  color: Colors.white.withOpacity(0.4),
+                  color: Colors.white.withValues(alpha: 0.4),
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.5)),

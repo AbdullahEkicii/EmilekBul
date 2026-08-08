@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:games_services/games_services.dart';
 
 class GameService {
@@ -12,10 +13,10 @@ class GameService {
   Future<bool> signIn() async {
     try {
       await GamesServices.signIn();
-      print("Game Service: Signed in successfully");
+      debugPrint("Game Service: Signed in successfully");
       return true;
     } catch (e) {
-      print("Game Service: Error signing in: $e");
+      debugPrint("Game Service: Error signing in: $e");
       return false;
     }
   }
@@ -29,9 +30,9 @@ class GameService {
           value: score,
         ),
       );
-      print("Game Service: Score submitted: $score");
+      debugPrint("Game Service: Score submitted: $score");
     } catch (e) {
-      print("Game Service: Error submitting score: $e");
+      debugPrint("Game Service: Error submitting score: $e");
     }
   }
 
@@ -39,7 +40,7 @@ class GameService {
     try {
       return await GamesServices.getPlayerID();
     } catch (e) {
-      print("Game Service: Error getting player ID: $e");
+      debugPrint("Game Service: Error getting player ID: $e");
       return null;
     }
   }
@@ -48,7 +49,7 @@ class GameService {
     try {
       return await GamesServices.getPlayerName();
     } catch (e) {
-      print("Game Service: Error getting player name: $e");
+      debugPrint("Game Service: Error getting player name: $e");
       return null;
     }
   }

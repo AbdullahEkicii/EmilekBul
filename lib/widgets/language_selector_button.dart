@@ -45,12 +45,12 @@ class LanguageSelectorButton extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.white.withOpacity(0.15),
-            Colors.white.withOpacity(0.05),
+            Colors.white.withValues(alpha: 0.15),
+            Colors.white.withValues(alpha: 0.05),
           ],
         ),
         border: Border.all(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -83,7 +83,7 @@ class LanguageSelectorButton extends StatelessWidget {
                 const SizedBox(width: 4),
                 Icon(
                   Icons.keyboard_arrow_down_rounded,
-                  color: Colors.white.withOpacity(0.7),
+                  color: Colors.white.withValues(alpha: 0.7),
                   size: 18,
                 ),
               ],
@@ -188,7 +188,7 @@ class LanguageSelectorButton extends StatelessWidget {
       ),
       subtitle: Text(
         subtitle,
-        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+        style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
       ),
       trailing: isSelected
           ? const Icon(Icons.check_circle, color: Colors.blueAccent)

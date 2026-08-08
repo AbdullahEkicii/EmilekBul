@@ -5,8 +5,9 @@ class AppUtils {
   /// Localizes a guest username if it starts with "Misafir"
   /// Example: "Misafir11" -> "Guest 11" (if in English)
   static String localizeUsername(String? username) {
-    if (username == null || username.isEmpty)
+    if (username == null || username.isEmpty) {
       return 'account.default_user'.tr();
+    }
 
     final misafirPrefix = 'Misafir';
     if (username.startsWith(misafirPrefix)) {

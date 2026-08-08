@@ -42,7 +42,7 @@ class UserService {
       });
       return true;
     } catch (e) {
-      print('Error creating user profile: $e');
+      debugPrint('Error creating user profile: $e');
       return false;
     }
   }
@@ -65,7 +65,7 @@ class UserService {
   }) async {
     final now = DateTime.now();
     final yearMonth = "${now.year}_${now.month.toString().padLeft(2, '0')}";
-    print("SORGULANIYOR: Kategori: $category, Ay: $yearMonth");
+    debugPrint("SORGULANIYOR: Kategori: $category, Ay: $yearMonth");
 
     // Eğer kategori 'Genel' ise totalPoints'e göre çek
     Query<Map<String, dynamic>> query = _firestore
@@ -84,7 +84,7 @@ class UserService {
     }
 
     final querySnapshot = await query.limit(limit).get();
-    print("SONUÇ: ${querySnapshot.docs.length} kullanıcı bulundu.");
+    debugPrint("SONUÇ: ${querySnapshot.docs.length} kullanıcı bulundu.");
 
     return querySnapshot.docs.map((doc) {
       final data = doc.data();
@@ -116,40 +116,34 @@ class UserService {
     List<Map<String, dynamic>> top5 =
         await getTopUsersByCategory(category, limit: 5);
 
-    // Eğer kullanıcı ilk 5'te varsa, güncel profil verisiyle değiştir (Avatar/Title anlık yansıması için)
-    if (uid != null) {
-      final myProfile = await getUserProfile(uid);
-      if (myProfile != null) {
-        // Listede varsa güncelle
-        for (int i = 0; i < top5.length; i++) {
-          if (top5[i]['uid'] == uid) {
-            top5[i]['username'] = myProfile['username'];
-            top5[i]['avatarIndex'] = myProfile['avatarIndex'];
-            top5[i]['equippedFrame'] = myProfile['equippedFrame'];
-            top5[i]['equippedTitle'] = myProfile['equippedTitle'];
-            // Puanı monthly_scores'dan aldığı için dokunmuyoruz, sadece görsel öğeleri güncelliyoruz
-            break;
-          }
+    // Listedeki TÜM kullanıcıların güncel profil verilerini (Frame, Avatar, Title, Badge) users koleksiyonundan yükle
+    for (int i = 0; i < top5.length; i++) {
+      final userUid = top5[i]['uid'];
+      if (userUid != null) {
+        final profile = await getUserProfile(userUid);
+        if (profile != null) {
+          top5[i]['username'] = profile['username'] ?? top5[i]['username'];
+          top5[i]['avatarIndex'] = profile['avatarIndex'] ?? top5[i]['avatarIndex'];
+          top5[i]['equippedFrame'] = profile['equippedFrame'] ?? top5[i]['equippedFrame'];
+          top5[i]['equippedTitle'] = profile['equippedTitle'] ?? top5[i]['equippedTitle'];
+          top5[i]['activeBadge'] = profile['activeBadge'] ?? top5[i]['activeBadge'];
         }
+      }
+    }
 
-        // Listede yoksa ve 5'ten fazlaysa, sona ekle
-        bool isUserInTop5 = top5.any((user) => user['uid'] == uid);
-        if (!isUserInTop5) {
+    // Eğer oturum açmış kullanıcı ilk 5'te yoksa, sıralamasıyla beraber sona ekle
+    if (uid != null) {
+      bool isUserInTop5 = top5.any((user) => user['uid'] == uid);
+      if (!isUserInTop5) {
+        final myProfile = await getUserProfile(uid);
+        if (myProfile != null) {
           final rank = await getUserRank(uid, category); // Pass category
 
           int points = 0;
           if (category == 'Genel') {
-            points = myProfile['totalPoints'] ?? 0;
-            // Eğer totalPoints 0 ise ve monthly_scores'da kayıt varsa oradan okumayı dene (fallback)
-            // Aslında getUserProfile 'users' koleksiyonundan okuyor, orada totalPoints kümülatiftir.
-            // Monthly puana ihtiyacımız varsa getUserMonthlyPoints kullanmalıyız.
-            // getTopUsersByCategory monthly_scores'dan çekiyor.
-            // Bizim eklediğimiz user kartı da monthly puan göstermeli.
             final monthlyPoints = await getUserMonthlyPoints(uid);
             points = monthlyPoints;
           } else {
-            // Kategori puanları monthly_score dökümanında tutulur, users altında kümülatif olabilir.
-            // Doğrusu monthly_scores'dan çekmek.
             final now = DateTime.now();
             final yearMonth =
                 "${now.year}_${now.month.toString().padLeft(2, '0')}";
@@ -174,6 +168,7 @@ class UserService {
             'avatarIndex': myProfile['avatarIndex'] ?? '0',
             'equippedFrame': myProfile['equippedFrame'] ?? '0',
             'equippedTitle': myProfile['equippedTitle'] ?? 'yok',
+            'activeBadge': myProfile['activeBadge'],
             'rank': rank,
           });
         }
@@ -207,7 +202,7 @@ class UserService {
         final monthlySnapshot = await transaction.get(monthlyStatsRef);
 
         if (!userSnapshot.exists) {
-          print("HATA: Kullanıcı profili bulunamadı! UID: $uid");
+          debugPrint("HATA: Kullanıcı profili bulunamadı! UID: $uid");
           return;
         }
 
@@ -267,10 +262,10 @@ class UserService {
           });
         }
       });
-      print(
+      debugPrint(
           "BAŞARILI: Puan eklendi. UID: $uid, Kategori: $category, Puan: $pointsToAdd");
     } catch (e) {
-      print("HATA: Puan eklenirken hata oluştu: $e");
+      debugPrint("HATA: Puan eklenirken hata oluştu: $e");
       rethrow;
     }
   }
@@ -289,7 +284,7 @@ class UserService {
       }
       return null;
     } catch (e) {
-      print('Error fetching user profile: $e');
+      debugPrint('Error fetching user profile: $e');
       return null;
     }
   }
@@ -349,14 +344,14 @@ class UserService {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setInt('user_tokens', 50);
         } catch (prefError) {
-          print('Error setting guest tokens in SharedPreferences: $prefError');
+          debugPrint('Error setting guest tokens in SharedPreferences: $prefError');
         }
 
         return userCredential;
       }
       return null;
     } catch (e) {
-      print('Guest login error: $e');
+      debugPrint('Guest login error: $e');
       return null;
     }
   }
@@ -407,12 +402,12 @@ class UserService {
         });
       } catch (e) {
         // Aylık skor henüz yoksa veya hata olursa kritik değil, yoksay
-        print('Error updating monthly score profile data: $e');
+        debugPrint('Error updating monthly score profile data: $e');
       }
 
       return true;
     } catch (e) {
-      print('Error updating user profile: $e');
+      debugPrint('Error updating user profile: $e');
       return false;
     }
   }
@@ -436,7 +431,7 @@ class UserService {
       }
       return true; // Kullanıcı adı müsait
     } catch (e) {
-      print('Error checking username availability: $e');
+      debugPrint('Error checking username availability: $e');
       return false;
     }
   }
@@ -469,7 +464,7 @@ class UserService {
       }
       return null;
     } catch (e) {
-      print('Error getting user by username: $e');
+      debugPrint('Error getting user by username: $e');
       return null;
     }
   }
@@ -484,7 +479,7 @@ class UserService {
           await _firestore.collection(usersCollection).doc(userId).get();
       return doc.exists;
     } catch (e) {
-      print('Error checking if user profile exists: $e');
+      debugPrint('Error checking if user profile exists: $e');
       return false;
     }
   }
@@ -568,7 +563,7 @@ class UserService {
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print('Error updating user tokens in Firestore: $e');
+      debugPrint('Error updating user tokens in Firestore: $e');
     }
   }
 
@@ -579,16 +574,18 @@ class UserService {
     required int cost,
   }) async {
     final uid = _auth.currentUser?.uid;
-    if (uid == null)
+    if (uid == null) {
       return {'success': false, 'message': 'auth.not_logged_in'.tr()};
+    }
 
     final userRef = _firestore.collection(usersCollection).doc(uid);
 
     try {
       return await _firestore.runTransaction((transaction) async {
         final snapshot = await transaction.get(userRef);
-        if (!snapshot.exists)
+        if (!snapshot.exists) {
           return {'success': false, 'message': 'auth.profile_not_found'.tr()};
+        }
 
         final data = snapshot.data()!;
         final currentTokens = data['tokens'] ?? 0;
@@ -598,11 +595,13 @@ class UserService {
         }
 
         String listField = '';
-        if (category == 'avatars')
+        if (category == 'avatars') {
           listField = 'ownedAvatars';
-        else if (category == 'frames')
+        } else if (category == 'frames') {
           listField = 'ownedFrames';
-        else if (category == 'titles') listField = 'ownedTitles';
+        } else if (category == 'titles') {
+          listField = 'ownedTitles';
+        }
 
         List<String> owned = List<String>.from(data[listField] ?? []);
         if (owned.contains(itemId)) {
@@ -635,11 +634,13 @@ class UserService {
 
     try {
       String field = '';
-      if (category == 'avatars')
+      if (category == 'avatars') {
         field = 'avatarIndex';
-      else if (category == 'frames')
+      } else if (category == 'frames') {
         field = 'equippedFrame';
-      else if (category == 'titles') field = 'equippedTitle';
+      } else if (category == 'titles') {
+        field = 'equippedTitle';
+      }
 
       await _firestore.collection(usersCollection).doc(uid).update({
         field: itemId,
@@ -661,12 +662,12 @@ class UserService {
         });
       } catch (e) {
         // Aylık skor henüz yoksa veya hata olursa kritik değil
-        print('Error updating monthly score equipped item: $e');
+        debugPrint('Error updating monthly score equipped item: $e');
       }
 
       return true;
     } catch (e) {
-      print('Equip error: $e');
+      debugPrint('Equip error: $e');
       return false;
     }
   }
@@ -691,7 +692,7 @@ class UserService {
       }
       return 0;
     } catch (e) {
-      print('Error getting monthly points: $e');
+      debugPrint('Error getting monthly points: $e');
       return 0;
     }
   }
@@ -710,7 +711,7 @@ class UserService {
       }
       return null; // Belge yoksa null döndür
     } catch (e) {
-      print('Error getting username from current user: $e');
+      debugPrint('Error getting username from current user: $e');
       return null; // Hata durumunda null döndür
     }
   }
@@ -728,7 +729,7 @@ class UserService {
       }
       return null; // Belge yoksa null döndür
     } catch (e) {
-      print('Error getting avatarIndex from current user: $e');
+      debugPrint('Error getting avatarIndex from current user: $e');
       return null; // Hata durumunda null döndür
     }
   }
@@ -759,7 +760,7 @@ class UserService {
       await _firestore.collection(usersCollection).doc(userId).delete();
       return true;
     } catch (e) {
-      print('Error deleting user profile: $e');
+      debugPrint('Error deleting user profile: $e');
       return false;
     }
   }
@@ -781,7 +782,7 @@ class UserService {
       }
       return null;
     } catch (e) {
-      print('Error getting top user: $e');
+      debugPrint('Error getting top user: $e');
       return null;
     }
   }
@@ -801,7 +802,7 @@ class UserService {
         'createdAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print('Error recording monthly winner: $e');
+      debugPrint('Error recording monthly winner: $e');
     }
   }
 
@@ -812,7 +813,7 @@ class UserService {
         'tokens': FieldValue.increment(amount),
       });
     } catch (e) {
-      print('Error giving reward: $e');
+      debugPrint('Error giving reward: $e');
     }
   }
 
@@ -829,7 +830,7 @@ class UserService {
       }
       return null;
     } catch (e) {
-      print('Error getting monthly winner data: $e');
+      debugPrint('Error getting monthly winner data: $e');
       return null;
     }
   }
@@ -855,7 +856,7 @@ class UserService {
       }
       return null;
     } catch (e) {
-      print('Error getting last winner: $e');
+      debugPrint('Error getting last winner: $e');
       return null;
     }
   }
@@ -901,7 +902,7 @@ class UserService {
 
       return countQuery.count! + 1;
     } catch (e) {
-      print('Rank calculation error: $e');
+      debugPrint('Rank calculation error: $e');
       return 0;
     }
   }
@@ -965,7 +966,7 @@ class UserService {
         };
       });
     } catch (e) {
-      print('Error incrementing completed quizzes: $e');
+      debugPrint('Error incrementing completed quizzes: $e');
       return {'levelUp': false};
     }
   }

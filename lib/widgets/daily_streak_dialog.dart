@@ -27,7 +27,7 @@ class DailyStreakDialog extends StatefulWidget {
       context: context,
       barrierDismissible: true,
       barrierLabel: '',
-      barrierColor: Colors.black.withOpacity(0.75),
+      barrierColor: Colors.black.withValues(alpha: 0.75),
       transitionDuration: const Duration(milliseconds: 400),
       pageBuilder: (context, anim1, anim2) => const SizedBox(),
       transitionBuilder: (context, anim1, anim2, child) {
@@ -124,12 +124,12 @@ class _DailyStreakDialogState extends State<DailyStreakDialog> with SingleTicker
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.orange.withOpacity(0.6 - (_pulseController.value * 0.2)),
+                          color: Colors.orange.withValues(alpha: 0.6 - (_pulseController.value * 0.2)),
                           blurRadius: 40 * scale,
                           spreadRadius: 15 * scale,
                         ),
                         BoxShadow(
-                          color: Colors.deepOrange.withOpacity(0.3),
+                          color: Colors.deepOrange.withValues(alpha: 0.3),
                           blurRadius: 20 * scale,
                           spreadRadius: 5 * scale,
                         ),
@@ -164,7 +164,7 @@ class _DailyStreakDialogState extends State<DailyStreakDialog> with SingleTicker
                 ? 'new_features.streak_reward_added'.tr(namedArgs: {'tokens': _earnedTokens.toString()})
                 : 'new_features.streak_prompt'.tr(namedArgs: {'streak': effectiveStreak.toString()}),
             style: TextStyle(
-              color: Colors.white.withOpacity(0.85),
+              color: Colors.white.withValues(alpha: 0.85),
               fontSize: 14,
             ),
             textAlign: TextAlign.center,
@@ -187,10 +187,10 @@ class _DailyStreakDialogState extends State<DailyStreakDialog> with SingleTicker
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                   decoration: BoxDecoration(
                     color: isCurrentTarget
-                        ? Colors.orange.withOpacity(0.3)
+                        ? Colors.orange.withValues(alpha: 0.3)
                         : (isPassed
-                            ? Colors.green.withOpacity(0.25)
-                            : Colors.white.withOpacity(0.08)),
+                            ? Colors.green.withValues(alpha: 0.25)
+                            : Colors.white.withValues(alpha: 0.08)),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isCurrentTarget
@@ -199,13 +199,13 @@ class _DailyStreakDialogState extends State<DailyStreakDialog> with SingleTicker
                       width: isCurrentTarget ? 2 : 1,
                     ),
                     boxShadow: isCurrentTarget
-                        ? [BoxShadow(color: Colors.orangeAccent.withOpacity(0.4), blurRadius: 10, spreadRadius: 1)]
+                        ? [BoxShadow(color: Colors.orangeAccent.withValues(alpha: 0.4), blurRadius: 10, spreadRadius: 1)]
                         : null,
                   ),
                   child: Column(
                     children: [
                       Text(
-                        'Gün $dayNum',
+                        'daily_streak.day_num'.tr(args: [dayNum.toString()]),
                         style: TextStyle(
                           color: isCurrentTarget
                               ? Colors.orangeAccent

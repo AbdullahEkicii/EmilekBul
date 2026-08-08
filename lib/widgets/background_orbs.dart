@@ -44,8 +44,8 @@ class _BackgroundOrbsState extends State<BackgroundOrbs>
         shape: BoxShape.circle,
         gradient: RadialGradient(
           colors: [
-            color.withOpacity(0.6),
-            color.withOpacity(0.0),
+            color.withValues(alpha: 0.6),
+            color.withValues(alpha: 0.0),
           ],
           stops: const [0.0, 0.7],
         ),
@@ -65,18 +65,18 @@ class _BackgroundOrbsState extends State<BackgroundOrbs>
               Positioned(
                 top: -50 + (30 * _orbAnimation.value),
                 left: -50 + (20 * _orbAnimation.value),
-                child: _buildOrb(250, const Color(0xFF667eea).withOpacity(0.3)),
+                child: _buildOrb(250, const Color(0xFF667eea).withValues(alpha: 0.3)),
               ),
               Positioned(
                 bottom: 100 - (40 * _orbAnimation.value),
                 right: -80 + (30 * _orbAnimation.value),
-                child: _buildOrb(300, const Color(0xFF764ba2).withOpacity(0.2)),
+                child: _buildOrb(300, const Color(0xFF764ba2).withValues(alpha: 0.2)),
               ),
               Positioned(
                 top: 300 + (50 * (1 - _orbAnimation.value)),
                 right: 100,
                 child:
-                    _buildOrb(150, const Color(0xFFA67BFF).withOpacity(0.15)),
+                    _buildOrb(150, const Color(0xFFA67BFF).withValues(alpha: 0.15)),
               ),
             ],
           );

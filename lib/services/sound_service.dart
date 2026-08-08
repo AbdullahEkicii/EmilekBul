@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -23,9 +24,9 @@ class SoundService {
       _musicEnabled = prefs.getBool('music_enabled') ?? true;
       _isInitialized = true;
       
-      print('🔊 SoundService başarıyla başlatıldı. SFX: $_soundEnabled, Müzik: $_musicEnabled');
+      debugPrint('🔊 SoundService başarıyla başlatıldı. SFX: $_soundEnabled, Müzik: $_musicEnabled');
     } catch (e) {
-      print('⚠️ SoundService başlatılamadı: $e');
+      debugPrint('⚠️ SoundService başlatılamadı: $e');
     }
   }
 
@@ -43,7 +44,7 @@ class SoundService {
         await _tickPlayer.stop();
       }
     } catch (e) {
-      print('Error saving sound setting: $e');
+      debugPrint('Error saving sound setting: $e');
     }
   }
 
@@ -57,7 +58,7 @@ class SoundService {
         await _musicPlayer.stop();
       }
     } catch (e) {
-      print('Error saving music setting: $e');
+      debugPrint('Error saving music setting: $e');
     }
   }
 
@@ -68,7 +69,7 @@ class SoundService {
       _sfxPlayer.stop();
       _sfxPlayer.play(AssetSource('lib/assets/sound/correct_answer.mp3'));
     } catch (e) {
-      print('Error playing correct sound: $e');
+      debugPrint('Error playing correct sound: $e');
     }
   }
 
@@ -79,7 +80,7 @@ class SoundService {
       _sfxPlayer.stop();
       _sfxPlayer.play(AssetSource('lib/assets/sound/wrong_answer.mp3'));
     } catch (e) {
-      print('Error playing wrong sound: $e');
+      debugPrint('Error playing wrong sound: $e');
     }
   }
 
@@ -96,7 +97,7 @@ class SoundService {
         await _tickPlayer.stop();
       }
     } catch (e) {
-      print('Error playing clock tick sound: $e');
+      debugPrint('Error playing clock tick sound: $e');
     }
   }
 
@@ -106,7 +107,7 @@ class SoundService {
     try {
       await _tickPlayer.stop();
     } catch (e) {
-      print('Error stopping clock tick: $e');
+      debugPrint('Error stopping clock tick: $e');
     }
   }
 }

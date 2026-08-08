@@ -125,9 +125,9 @@ class _KategoriScreenState extends State<KategoriScreen>
   void _cleanOldTests() async {
     try {
       await DatabaseHelper.instance.deleteOldTests(days: 14);
-      print('Old tests cleaned.');
+      debugPrint('Old tests cleaned.');
     } catch (e) {
-      print('Temizleme hatası: $e');
+      debugPrint('Temizleme hatası: $e');
     }
   }
 
@@ -346,9 +346,9 @@ class _KategoriScreenState extends State<KategoriScreen>
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                 ),
                 child: Image.asset('lib/assets/emilekbul2.png',
                     width: 40, height: 40, cacheWidth: 120, cacheHeight: 120),
@@ -371,7 +371,7 @@ class _KategoriScreenState extends State<KategoriScreen>
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.white.withOpacity(0.6),
+                color: Colors.white.withValues(alpha: 0.6),
                 fontWeight: FontWeight.w400,
               ),
             ),
@@ -394,7 +394,7 @@ class _KategoriScreenState extends State<KategoriScreen>
               children: [
                 Icon(
                   Icons.auto_awesome_mosaic_rounded,
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   size: 22,
                 ),
                 const SizedBox(width: 10),
@@ -416,10 +416,10 @@ class _KategoriScreenState extends State<KategoriScreen>
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6366F1).withOpacity(0.2),
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                      color: const Color(0xFF6366F1).withOpacity(0.3)),
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.3)),
                 ),
                 child: Text(
                   'category_ui.selected'.tr(args: [
@@ -476,18 +476,18 @@ class _KategoriScreenState extends State<KategoriScreen>
               duration: const Duration(milliseconds: 300),
               decoration: BoxDecoration(
                 color:
-                    isSelected ? Colors.white : Colors.white.withOpacity(0.15),
+                    isSelected ? Colors.white : Colors.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: isSelected
                       ? category.color
-                      : Colors.white.withOpacity(0.3),
+                      : Colors.white.withValues(alpha: 0.3),
                   width: isSelected ? 2.5 : 1.0,
                 ),
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: category.color.withOpacity(0.3),
+                          color: category.color.withValues(alpha: 0.3),
                           blurRadius: 15,
                           offset: const Offset(0, 5),
                         ),
@@ -501,8 +501,8 @@ class _KategoriScreenState extends State<KategoriScreen>
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? category.color.withOpacity(0.15)
-                          : Colors.white.withOpacity(0.1),
+                          ? category.color.withValues(alpha: 0.15)
+                          : Colors.white.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(
@@ -531,8 +531,8 @@ class _KategoriScreenState extends State<KategoriScreen>
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: isSelected
-                          ? category.color.withOpacity(0.7)
-                          : Colors.white.withOpacity(0.6),
+                          ? category.color.withValues(alpha: 0.7)
+                          : Colors.white.withValues(alpha: 0.6),
                       fontSize: 10,
                       fontWeight: FontWeight.w400,
                     ),
@@ -563,7 +563,7 @@ class _KategoriScreenState extends State<KategoriScreen>
               children: [
                 Icon(
                   Icons.signal_cellular_alt_rounded,
-                  color: Colors.white.withOpacity(isEnabled ? 0.9 : 0.5),
+                  color: Colors.white.withValues(alpha: isEnabled ? 0.9 : 0.5),
                   size: 22,
                 ),
                 const SizedBox(width: 10),
@@ -572,7 +572,7 @@ class _KategoriScreenState extends State<KategoriScreen>
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white.withOpacity(isEnabled ? 1.0 : 0.5),
+                    color: Colors.white.withValues(alpha: isEnabled ? 1.0 : 0.5),
                   ),
                 ),
               ],
@@ -582,7 +582,7 @@ class _KategoriScreenState extends State<KategoriScreen>
               Text(
                 'category_ui.select_category_first'.tr(),
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.4),
+                  color: Colors.white.withValues(alpha: 0.4),
                   fontSize: 12,
                   fontStyle: FontStyle.italic,
                   fontWeight: FontWeight.w500,
@@ -637,13 +637,13 @@ class _KategoriScreenState extends State<KategoriScreen>
                     decoration: BoxDecoration(
                       color: isSelected && isEnabled
                           ? Colors.white
-                          : Colors.white.withOpacity(isEnabled ? 0.15 : 0.05),
+                          : Colors.white.withValues(alpha: isEnabled ? 0.15 : 0.05),
                       borderRadius:
                           BorderRadius.circular(16), // Radius'u azalttım
                       border: Border.all(
                         color: isSelected && isEnabled
                             ? difficulty.color
-                            : Colors.white.withOpacity(isEnabled ? 0.3 : 0.1),
+                            : Colors.white.withValues(alpha: isEnabled ? 0.3 : 0.1),
                         width: isSelected ? 2.0 : 1.0,
                       ),
                     ),
@@ -655,7 +655,7 @@ class _KategoriScreenState extends State<KategoriScreen>
                           size: iconSize,
                           color: isSelected && isEnabled
                               ? difficulty.color
-                              : Colors.white.withOpacity(isEnabled ? 0.8 : 0.3),
+                              : Colors.white.withValues(alpha: isEnabled ? 0.8 : 0.3),
                         ),
                         const SizedBox(height: 6),
                         // Metni daha kompakt hale getir
@@ -667,7 +667,7 @@ class _KategoriScreenState extends State<KategoriScreen>
                               color: isSelected && isEnabled
                                   ? difficulty.color
                                   : Colors.white
-                                      .withOpacity(isEnabled ? 0.8 : 0.3),
+                                      .withValues(alpha: isEnabled ? 0.8 : 0.3),
                               fontWeight: isSelected
                                   ? FontWeight.w700
                                   : FontWeight.w500,
@@ -685,9 +685,9 @@ class _KategoriScreenState extends State<KategoriScreen>
                                 .tr(args: [difficulty.time.toString()]),
                             style: TextStyle(
                               color: isSelected && isEnabled
-                                  ? difficulty.color.withOpacity(0.7)
+                                  ? difficulty.color.withValues(alpha: 0.7)
                                   : Colors.white
-                                      .withOpacity(isEnabled ? 0.5 : 0.2),
+                                      .withValues(alpha: isEnabled ? 0.5 : 0.2),
                               fontSize: timeFontSize,
                               fontWeight: FontWeight.w400,
                             ),
@@ -722,9 +722,9 @@ class _KategoriScreenState extends State<KategoriScreen>
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.15),
+          color: Colors.white.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withOpacity(0.3)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
         ),
         child: Column(
           children: [
@@ -806,12 +806,12 @@ class _KategoriScreenState extends State<KategoriScreen>
   Widget _buildPreviewItem(IconData icon, String title, String value) {
     return Column(
       children: [
-        Icon(icon, color: Colors.white.withOpacity(0.8), size: 16),
+        Icon(icon, color: Colors.white.withValues(alpha: 0.8), size: 16),
         const SizedBox(height: 4),
         Text(
           title,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.6),
+            color: Colors.white.withValues(alpha: 0.6),
             fontSize: 10,
             fontWeight: FontWeight.w500,
           ),
@@ -877,7 +877,7 @@ class _KategoriScreenState extends State<KategoriScreen>
                   boxShadow: isEnabled
                       ? [
                           BoxShadow(
-                            color: Colors.white.withOpacity(0.3),
+                            color: Colors.white.withValues(alpha: 0.3),
                             blurRadius: 20,
                             offset: const Offset(0, 8),
                           ),
@@ -893,6 +893,7 @@ class _KategoriScreenState extends State<KategoriScreen>
                             final hasEnoughTokens =
                                 await TokenService.spendQuizTokens();
                             if (!hasEnoughTokens) {
+                              if (!context.mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(
@@ -904,7 +905,7 @@ class _KategoriScreenState extends State<KategoriScreen>
                               return;
                             }
 
-                            print('Quiz başlatılıyor');
+                            debugPrint('Quiz başlatılıyor');
 
                             // Preload ad so it's ready for the first question
 
@@ -916,8 +917,7 @@ class _KategoriScreenState extends State<KategoriScreen>
                           }
                         : null,
                     borderRadius: BorderRadius.circular(28),
-                    child: Container(
-                      child: Row(
+                    child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
@@ -942,7 +942,7 @@ class _KategoriScreenState extends State<KategoriScreen>
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: isEnabled ? Colors.orange.withOpacity(0.2) : Colors.white24,
+                              color: isEnabled ? Colors.orange.withValues(alpha: 0.2) : Colors.white24,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(
@@ -967,7 +967,6 @@ class _KategoriScreenState extends State<KategoriScreen>
                           ),
                         ],
                       ),
-                    ),
                   ),
                 ),
               ),
@@ -995,7 +994,7 @@ class _KategoriScreenState extends State<KategoriScreen>
               boxShadow: isEnabled
                   ? [
                       BoxShadow(
-                        color: Colors.redAccent.withOpacity(0.4),
+                        color: Colors.redAccent.withValues(alpha: 0.4),
                         blurRadius: 15,
                         offset: const Offset(0, 6),
                       ),
@@ -1035,7 +1034,7 @@ class _KategoriScreenState extends State<KategoriScreen>
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: isEnabled ? Colors.orange.withOpacity(0.2) : Colors.white24,
+                                color: isEnabled ? Colors.orange.withValues(alpha: 0.2) : Colors.white24,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
@@ -1065,7 +1064,7 @@ class _KategoriScreenState extends State<KategoriScreen>
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
+                        color: Colors.black.withValues(alpha: 0.6),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: Colors.white24),
                       ),
@@ -1106,21 +1105,6 @@ class _KategoriScreenState extends State<KategoriScreen>
         return 6;
       default:
         return 3;
-    }
-  }
-
-  int _getDurationForDifficulty(String difficulty) {
-    switch (difficulty) {
-      case 'Orta':
-        return 10;
-      case 'Orta':
-        return 15;
-      case 'Zor':
-        return 20;
-      case 'Imkansız':
-        return 25;
-      default:
-        return 15;
     }
   }
 }

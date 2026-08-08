@@ -18,15 +18,16 @@ Future<void> checkUpdate(BuildContext context) async {
 
     final info = await PackageInfo.fromPlatform();
     final currentVersion = info.version;
-    print('Current version: $currentVersion');
-    print('Minimum version: $minVersion');
+    debugPrint('Current version: $currentVersion');
+    debugPrint('Minimum version: $minVersion');
 
     if (_compareVersions(currentVersion, minVersion) < 0) {
+      if (!context.mounted) return;
       await showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => WillPopScope(
-          onWillPop: () async => false,
+        builder: (_) => PopScope(
+          canPop: false,
           child: Dialog(
             backgroundColor: Colors.transparent,
             elevation: 0,
@@ -43,7 +44,7 @@ Future<void> checkUpdate(BuildContext context) async {
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Color(0xFF7F7CFF).withOpacity(0.3),
+                    color: Color(0xFF7F7CFF).withValues(alpha: 0.3),
                     blurRadius: 20,
                     offset: Offset(0, 10),
                   ),
@@ -58,11 +59,11 @@ Future<void> checkUpdate(BuildContext context) async {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.white.withOpacity(0.1),
+                          color: Colors.white.withValues(alpha: 0.1),
                           blurRadius: 20,
                           offset: Offset(0, 5),
                         ),
@@ -93,10 +94,10 @@ Future<void> checkUpdate(BuildContext context) async {
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         width: 1,
                       ),
                     ),
@@ -127,7 +128,7 @@ Future<void> checkUpdate(BuildContext context) async {
                     'update.description'.tr(),
                     style: TextStyle(
                       fontSize: 16,
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                       height: 1.5,
                     ),
                     textAlign: TextAlign.center,
@@ -157,7 +158,7 @@ Future<void> checkUpdate(BuildContext context) async {
                           gradient: LinearGradient(
                             colors: [
                               Colors.white,
-                              Colors.white.withOpacity(0.95),
+                              Colors.white.withValues(alpha: 0.95),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
@@ -165,7 +166,7 @@ Future<void> checkUpdate(BuildContext context) async {
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.white.withOpacity(0.3),
+                              color: Colors.white.withValues(alpha: 0.3),
                               blurRadius: 8,
                               offset: Offset(0, 4),
                             ),

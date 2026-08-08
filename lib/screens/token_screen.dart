@@ -91,6 +91,7 @@ class _TokenScreenState extends State<TokenScreen>
       });
 
       HapticFeedback.mediumImpact();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -119,6 +120,7 @@ class _TokenScreenState extends State<TokenScreen>
       });
 
       HapticFeedback.mediumImpact();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -154,17 +156,17 @@ class _TokenScreenState extends State<TokenScreen>
             Positioned(
               top: -50 + (30 * _orbAnimation.value),
               left: -50 + (20 * _orbAnimation.value),
-              child: _buildOrb(250, const Color(0xFF667eea).withOpacity(0.3)),
+              child: _buildOrb(250, const Color(0xFF667eea).withValues(alpha: 0.3)),
             ),
             Positioned(
               bottom: 100 - (40 * _orbAnimation.value),
               right: -80 + (30 * _orbAnimation.value),
-              child: _buildOrb(300, const Color(0xFF764ba2).withOpacity(0.2)),
+              child: _buildOrb(300, const Color(0xFF764ba2).withValues(alpha: 0.2)),
             ),
             Positioned(
               top: 300 + (50 * (1 - _orbAnimation.value)),
               right: 100,
-              child: _buildOrb(150, const Color(0xFFA67BFF).withOpacity(0.15)),
+              child: _buildOrb(150, const Color(0xFFA67BFF).withValues(alpha: 0.15)),
             ),
           ],
         );
@@ -334,7 +336,7 @@ class _TokenScreenState extends State<TokenScreen>
       padding: const EdgeInsets.all(20),
       opacity: _canClaimDaily ? 0.15 : 0.05,
       border: _canClaimDaily
-          ? Border.all(color: Colors.greenAccent.withOpacity(0.5))
+          ? Border.all(color: Colors.greenAccent.withValues(alpha: 0.5))
           : null,
       child: Row(
         children: [
@@ -342,8 +344,8 @@ class _TokenScreenState extends State<TokenScreen>
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: _canClaimDaily
-                  ? Colors.green.withOpacity(0.2)
-                  : Colors.white.withOpacity(0.1),
+                  ? Colors.green.withValues(alpha: 0.2)
+                  : Colors.white.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -405,7 +407,7 @@ class _TokenScreenState extends State<TokenScreen>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.indigo.withOpacity(0.2),
+              color: Colors.indigo.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             child: const Icon(

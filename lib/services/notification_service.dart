@@ -1,7 +1,7 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:timezone/timezone.dart' as tz;
-import 'package:timezone/data/latest_all.dart' as tzData;
+import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'dart:math';
@@ -14,14 +14,14 @@ class NotificationService {
   /// Hizmeti başlatır
   static Future<void> init() async {
     // Zaman dilimi ayarla
-    tzData.initializeTimeZones();
+    tz_data.initializeTimeZones();
     try {
       final String timeZoneName =
           (await FlutterTimezone.getLocalTimezone()).identifier;
       tz.setLocalLocation(tz.getLocation(timeZoneName));
-      print("Zaman Dilimi Ayarlandı: $timeZoneName");
+      debugPrint("Zaman Dilimi Ayarlandı: $timeZoneName");
     } catch (e) {
-      print("Zaman dilimi algılanamadı, varsayılan kullanılıyor: $e");
+      debugPrint("Zaman dilimi algılanamadı, varsayılan kullanılıyor: $e");
       tz.setLocalLocation(tz.getLocation('Europe/Istanbul'));
     }
 
@@ -33,7 +33,7 @@ class NotificationService {
       settings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
         // Bildirime tıklanınca yapılacak işlemler
-        print('Bildirim tıklandı: ${response.payload}');
+        debugPrint('Bildirim tıklandı: ${response.payload}');
       },
       onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
@@ -70,7 +70,7 @@ class NotificationService {
     try {
       final now = tz.TZDateTime.now(tz.local);
       final pendingRequests = await getPendingNotifications();
-      print("Mevcut bekleyen bildirim sayısı: ${pendingRequests.length}");
+      debugPrint("Mevcut bekleyen bildirim sayısı: ${pendingRequests.length}");
 
       // Eğer sistemde zaten yeterli bildirim varsa (örneğin 10'dan fazla)
       // ve son planlama üzerinden 48 saat geçmediyse ellemeyelim.
@@ -90,7 +90,7 @@ class NotificationService {
       }
 
       if (!needsSchedule) {
-        print(
+        debugPrint(
             "Bildirimler yeterli ve taze görünüyor, yeniden planlama atlandı.");
         _logPendingDetails(pendingRequests);
         return;
@@ -99,23 +99,23 @@ class NotificationService {
       await prefs.setString(
           'last_notification_schedule', now.toIso8601String());
 
-      // Her gün için 2 farklı bildirim planla (5 gün için)
-      for (int i = 0; i < 5; i++) {
+      // Her gün için 1 bildirim planla (14 gün için)
+      for (int i = 0; i < 14; i++) {
         await _scheduleDailyNotifications(daysFromNow: i);
       }
 
       await scheduleWeeklyReminder();
       await scheduleMonthlyAnnouncement();
 
-      print("Bildirimler güncellendi (7 Günlük + Haftalık + Aylık)");
+      debugPrint("Bildirimler güncellendi (14 Günlük + Haftalık + Aylık)");
     } catch (e) {
-      print("Schedule güncelleme hatası: $e");
+      debugPrint("Schedule güncelleme hatası: $e");
     }
   }
 
   /// Dil değişimi gibi durumlarda, eski bildirimleri silip yenilerini zorla planlar
   static Future<void> cancelAndReschedule() async {
-    print("Bildirimler zorla yenileniyor (Dil değişimi vb.)");
+    debugPrint("Bildirimler zorla yenileniyor (Dil değişimi vb.)");
 
     // 1. Tüm mevcut bildirimleri sil
     await cancelAllNotifications();
@@ -129,23 +129,23 @@ class NotificationService {
       await prefs.setString(
           'last_notification_schedule', now.toIso8601String());
 
-      // Her gün için 2 farklı bildirim planla (5 gün için)
-      for (int i = 0; i < 5; i++) {
+      // Her gün için 1 bildirim planla (14 gün için)
+      for (int i = 0; i < 14; i++) {
         await _scheduleDailyNotifications(daysFromNow: i);
       }
 
       await scheduleWeeklyReminder();
       await scheduleMonthlyAnnouncement();
 
-      print("Bildirimler güncellendi (5 Günlük + Haftalık + Aylık)");
+      debugPrint("Bildirimler güncellendi (14 Günlük + Haftalık + Aylık)");
     } catch (e) {
-      print("Zorla yenileme hatası: $e");
+      debugPrint("Zorla yenileme hatası: $e");
     }
   }
 
   static void _logPendingDetails(List<PendingNotificationRequest> requests) {
     for (var r in requests) {
-      print("Bekleyen ID: ${r.id}, Başlık: ${r.title}");
+      debugPrint("Bekleyen ID: ${r.id}, Başlık: ${r.title}");
     }
   }
 
@@ -154,41 +154,23 @@ class NotificationService {
     final now = tz.TZDateTime.now(tz.local);
     final targetDate = now.add(Duration(days: daysFromNow));
 
-    // 1. Bildirim: Sabah / Öğle (12:00 - 15:00 arası rastgele)
-    final morningHour = 12 + Random().nextInt(4); // 12,13,14,15
-    final morningMinute = Random().nextInt(60);
+    // Günde 1 bildirim (Öğlen 12 ile Akşam 20 arası rastgele)
+    final hour = 12 + Random().nextInt(8); // 12,13..19
+    final minute = Random().nextInt(60);
 
-    var morningTime = tz.TZDateTime(tz.local, targetDate.year, targetDate.month,
-        targetDate.day, morningHour, morningMinute);
+    var notifyTime = tz.TZDateTime(tz.local, targetDate.year, targetDate.month,
+        targetDate.day, hour, minute);
 
-    if (daysFromNow == 0 && morningTime.isBefore(now)) {
-      // Geçmiş
+    if (daysFromNow == 0 && notifyTime.isBefore(now)) {
+      // Geçmiş zaman
     } else {
-      final content = _getRandomContent(isMorning: true);
+      final isMorning = hour < 15; // İçeriği saate göre ayarla
+      final content = _getRandomContent(isMorning: isMorning);
       await _scheduleNotification(
-        id: daysFromNow * 2,
+        id: daysFromNow * 2, // Çakışmamak için
         title: content['title']!,
         body: content['body']!,
-        scheduledTime: morningTime,
-      );
-    }
-
-    // 2. Bildirim: Akşam (20:00 - 24:00 arası rastgele)
-    final eveningHour = 20 + Random().nextInt(4); // 20,21,22,23
-    final eveningMinute = Random().nextInt(60);
-
-    var eveningTime = tz.TZDateTime(tz.local, targetDate.year, targetDate.month,
-        targetDate.day, eveningHour, eveningMinute);
-
-    if (daysFromNow == 0 && eveningTime.isBefore(now)) {
-      // Geçmiş
-    } else {
-      final content = _getRandomContent(isMorning: false);
-      await _scheduleNotification(
-        id: (daysFromNow * 2) + 1,
-        title: content['title']!,
-        body: content['body']!,
-        scheduledTime: eveningTime,
+        scheduledTime: notifyTime,
       );
     }
   }
@@ -217,9 +199,9 @@ class NotificationService {
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       );
-      print("Bildirim planlandı: $title @ $scheduledTime");
+      debugPrint("Bildirim planlandı: $title @ $scheduledTime");
     } catch (e) {
-      print('Bildirim hatası: $e');
+      debugPrint('Bildirim hatası: $e');
     }
   }
 
@@ -242,7 +224,7 @@ class NotificationService {
         ),
       );
     } catch (e) {
-      print('Anlık bildirim hatası: $e');
+      debugPrint('Anlık bildirim hatası: $e');
     }
   }
 
@@ -269,7 +251,7 @@ class NotificationService {
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       );
     } catch (e) {
-      print('Haftalık bildirim hatası: $e');
+      debugPrint('Haftalık bildirim hatası: $e');
     }
   }
 
@@ -305,9 +287,9 @@ class NotificationService {
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
       );
-      print("Aylık bildirim planlandı: $scheduledTime");
+      debugPrint("Aylık bildirim planlandı: $scheduledTime");
     } catch (e) {
-      print('Aylık bildirim hatası: $e');
+      debugPrint('Aylık bildirim hatası: $e');
     }
   }
 
@@ -375,9 +357,9 @@ class NotificationService {
         scheduledTime: sevenDaysLater,
       );
 
-      print("Re-engagement bildirimleri planlandı (2h, 24h, 3d, 7d)");
+      debugPrint("Re-engagement bildirimleri planlandı (2h, 24h, 3d, 7d)");
     } catch (e) {
-      print("Re-engagement bildirim hatası: $e");
+      debugPrint("Re-engagement bildirim hatası: $e");
     }
   }
 
@@ -386,7 +368,7 @@ class NotificationService {
     for (int id = 500; id <= 503; id++) {
       await _notifications.cancel(id);
     }
-    print("Re-engagement bildirimleri iptal edildi");
+    debugPrint("Re-engagement bildirimleri iptal edildi");
   }
 
   static Future<void> cancelAllNotifications() async {

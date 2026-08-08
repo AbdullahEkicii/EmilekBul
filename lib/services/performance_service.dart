@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PerformanceService {
@@ -12,7 +13,7 @@ class PerformanceService {
       _performanceModeEnabled = prefs.getBool('performance_mode') ?? true;
       _isInitialized = true;
     } catch (e) {
-      print('PerformanceService init error: $e');
+      debugPrint('PerformanceService init error: $e');
     }
   }
 
@@ -25,7 +26,7 @@ class PerformanceService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('performance_mode', enabled);
     } catch (e) {
-      print('Error saving performance setting: $e');
+      debugPrint('Error saving performance setting: $e');
     }
   }
 }

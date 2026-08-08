@@ -157,7 +157,7 @@ class _LevelProgressionScreenState extends State<LevelProgressionScreen> {
                   Text(
                     'level_progression.current_progress'.tr(),
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.5),
+                      color: Colors.white.withValues(alpha: 0.5),
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -176,7 +176,7 @@ class _LevelProgressionScreenState extends State<LevelProgressionScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.indigoAccent.withOpacity(0.2),
+                  color: Colors.indigoAccent.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -209,7 +209,7 @@ class _LevelProgressionScreenState extends State<LevelProgressionScreen> {
             child: LinearProgressIndicator(
               value: displayProgress,
               minHeight: 12,
-              backgroundColor: Colors.white.withOpacity(0.05),
+              backgroundColor: Colors.white.withValues(alpha: 0.05),
               valueColor:
                   const AlwaysStoppedAnimation<Color>(Colors.indigoAccent),
             ),
@@ -218,9 +218,9 @@ class _LevelProgressionScreenState extends State<LevelProgressionScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.amber.withOpacity(0.1),
+              color: Colors.amber.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.amber.withOpacity(0.2)),
+              border: Border.all(color: Colors.amber.withValues(alpha: 0.2)),
             ),
             child: Row(
               children: [
@@ -233,7 +233,7 @@ class _LevelProgressionScreenState extends State<LevelProgressionScreen> {
                       Text(
                         'level_progression.next_level_reward'.tr(),
                         style: TextStyle(
-                          color: Colors.amber.withOpacity(0.7),
+                          color: Colors.amber.withValues(alpha: 0.7),
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
@@ -259,18 +259,18 @@ class _LevelProgressionScreenState extends State<LevelProgressionScreen> {
 
   Widget _buildLevelItem(int level, int quizzes, int reward, bool isUnlocked) {
     final color =
-        isUnlocked ? Colors.greenAccent : Colors.white.withOpacity(0.3);
+        isUnlocked ? Colors.greenAccent : Colors.white.withValues(alpha: 0.3);
 
     return Container(
       decoration: BoxDecoration(
         color: isUnlocked
-            ? Colors.white.withOpacity(0.08)
-            : Colors.white.withOpacity(0.03),
+            ? Colors.white.withValues(alpha: 0.08)
+            : Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isUnlocked
-              ? Colors.white.withOpacity(0.1)
-              : Colors.white.withOpacity(0.05),
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.05),
         ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -280,9 +280,9 @@ class _LevelProgressionScreenState extends State<LevelProgressionScreen> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
-              border: Border.all(color: color.withOpacity(0.2)),
+              border: Border.all(color: color.withValues(alpha: 0.2)),
             ),
             child: Center(
               child: Text(
@@ -305,7 +305,7 @@ class _LevelProgressionScreenState extends State<LevelProgressionScreen> {
                   style: TextStyle(
                     color: isUnlocked
                         ? Colors.white
-                        : Colors.white.withOpacity(0.4),
+                        : Colors.white.withValues(alpha: 0.4),
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -315,7 +315,7 @@ class _LevelProgressionScreenState extends State<LevelProgressionScreen> {
                   'level_progression.req_quizzes'
                       .tr(args: [quizzes.toString()]),
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.3),
+                    color: Colors.white.withValues(alpha: 0.3),
                     fontSize: 12,
                   ),
                 ),
@@ -331,7 +331,7 @@ class _LevelProgressionScreenState extends State<LevelProgressionScreen> {
                   style: TextStyle(
                     color: isUnlocked
                         ? Colors.amber
-                        : Colors.white.withOpacity(0.2),
+                        : Colors.white.withValues(alpha: 0.2),
                     fontSize: 14,
                     fontWeight: FontWeight.w900,
                   ),
@@ -341,7 +341,7 @@ class _LevelProgressionScreenState extends State<LevelProgressionScreen> {
                     ? 'level_progression.unlocked'.tr()
                     : 'level_progression.locked'.tr(),
                 style: TextStyle(
-                  color: color.withOpacity(0.8),
+                  color: color.withValues(alpha: 0.8),
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.5,

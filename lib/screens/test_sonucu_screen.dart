@@ -145,6 +145,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
       }
 
       // İmkansız modda tam puan başarımı kontrol et
+      if (!mounted) return;
       await AchievementService.checkAndUnlockImpossibleMaster(
         widget.difficulty,
         widget.score,
@@ -167,7 +168,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
         });
       }
     } catch (e) {
-      print('Gamification data load error: $e');
+      debugPrint('Gamification data load error: $e');
     }
   }
 
@@ -198,7 +199,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
         });
       }
     } catch (e) {
-      print('Quiz completion record error: $e');
+      debugPrint('Quiz completion record error: $e');
     }
   }
 
@@ -207,7 +208,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
       // We already have the NotificationPermissionManager imported at top
       await NotificationPermissionManager.notificationPermissions(context);
     } catch (e) {
-      print(e);
+      debugPrint(e.toString());
     }
   }
 
@@ -348,7 +349,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
         _showLevelUpDialog(result['newLevel'], result['reward']);
       }
     } catch (e) {
-      print('Level kontrol hatası: $e');
+      debugPrint('Level kontrol hatası: $e');
     }
   }
 
@@ -357,7 +358,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
       context: context,
       barrierDismissible: false,
       barrierLabel: '',
-      barrierColor: Colors.black.withOpacity(0.8),
+      barrierColor: Colors.black.withValues(alpha: 0.8),
       transitionDuration: const Duration(milliseconds: 400),
       pageBuilder: (context, anim1, anim2) => const SizedBox(),
       transitionBuilder: (context, anim1, anim2, child) {
@@ -388,7 +389,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.amber.withOpacity(0.3),
+                                  color: Colors.amber.withValues(alpha: 0.3),
                                   blurRadius: 40,
                                   spreadRadius: 10,
                                 ),
@@ -429,7 +430,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
                             .tr(args: [newLevel.toString()]),
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withValues(alpha: 0.7),
                           fontSize: 18,
                           fontWeight: FontWeight.w500,
                         ),
@@ -444,15 +445,15 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              Colors.amber.withOpacity(0.2),
-                              Colors.amber.withOpacity(0.05),
+                              Colors.amber.withValues(alpha: 0.2),
+                              Colors.amber.withValues(alpha: 0.05),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
-                            color: Colors.amber.withOpacity(0.3),
+                            color: Colors.amber.withValues(alpha: 0.3),
                             width: 1.5,
                           ),
                         ),
@@ -482,7 +483,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
                                       .split(':')
                                       .first,
                                   style: TextStyle(
-                                    color: Colors.amber.withOpacity(0.7),
+                                    color: Colors.amber.withValues(alpha: 0.7),
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                     letterSpacing: 1,
@@ -546,7 +547,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
           builder: (context, child) => Positioned(
             top: 100 + (20 * _orbAnimation.value),
             left: -30,
-            child: _buildOrb(200, const Color(0xFF6366F1).withOpacity(0.2)),
+            child: _buildOrb(200, const Color(0xFF6366F1).withValues(alpha: 0.2)),
           ),
         ),
         AnimatedBuilder(
@@ -554,7 +555,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
           builder: (context, child) => Positioned(
             bottom: 150 - (30 * _orbAnimation.value),
             right: -50,
-            child: _buildOrb(250, const Color(0xFFA855F7).withOpacity(0.15)),
+            child: _buildOrb(250, const Color(0xFFA855F7).withValues(alpha: 0.15)),
           ),
         ),
       ],
@@ -569,8 +570,8 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
         shape: BoxShape.circle,
         gradient: RadialGradient(
           colors: [
-            color.withOpacity(0.6),
-            color.withOpacity(0.0),
+            color.withValues(alpha: 0.6),
+            color.withValues(alpha: 0.0),
           ],
           stops: const [0.0, 0.7],
         ),
@@ -678,11 +679,11 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
           height: 160,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: color.withOpacity(0.05),
-            border: Border.all(color: color.withOpacity(0.3), width: 2),
+            color: color.withValues(alpha: 0.05),
+            border: Border.all(color: color.withValues(alpha: 0.3), width: 2),
             boxShadow: [
               BoxShadow(
-                  color: color.withOpacity(0.2),
+                  color: color.withValues(alpha: 0.2),
                   blurRadius: 40,
                   spreadRadius: 5)
             ],
@@ -700,7 +701,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
                 style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white.withOpacity(0.6)),
+                    color: Colors.white.withValues(alpha: 0.6)),
               ),
             ],
           ),
@@ -739,15 +740,15 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
             borderRadius: BorderRadius.circular(28),
             gradient: LinearGradient(
               colors: [
-                _getRatingColor(rate).withOpacity(0.5),
-                Colors.white.withOpacity(0.1),
+                _getRatingColor(rate).withValues(alpha: 0.5),
+                Colors.white.withValues(alpha: 0.1),
               ],
             ),
           ),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
             decoration: BoxDecoration(
-              color: const Color(0xFF1E293B).withOpacity(0.95),
+              color: const Color(0xFF1E293B).withValues(alpha: 0.95),
               borderRadius: BorderRadius.circular(26),
             ),
             child: Column(
@@ -784,7 +785,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
                   ],
                 ),
                 const SizedBox(height: 16),
-                Divider(color: Colors.white.withOpacity(0.1), height: 1),
+                Divider(color: Colors.white.withValues(alpha: 0.1), height: 1),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -829,7 +830,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
     return Container(
       height: 40,
       width: 1,
-      color: Colors.white.withOpacity(0.1),
+      color: Colors.white.withValues(alpha: 0.1),
     );
   }
 
@@ -838,7 +839,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: color.withOpacity(0.7), size: 20),
+        Icon(icon, color: color.withValues(alpha: 0.7), size: 20),
         const SizedBox(height: 8),
         Text(
           value,
@@ -855,7 +856,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
           style: TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w800,
-            color: Colors.white.withOpacity(0.4),
+            color: Colors.white.withValues(alpha: 0.4),
             letterSpacing: 1,
           ),
         ),
@@ -867,9 +868,9 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -902,7 +903,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
             return Column(
               children: [
                 if (index > 0)
-                  Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                  Divider(color: Colors.white.withValues(alpha: 0.05), height: 1),
                 Theme(
                   data: Theme.of(context)
                       .copyWith(dividerColor: Colors.transparent),
@@ -913,7 +914,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
                       width: 28,
                       height: 28,
                       decoration: BoxDecoration(
-                          color: color.withOpacity(0.15),
+                          color: color.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8)),
                       child: Center(
                           child: Text('${index + 1}',
@@ -935,16 +936,16 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
                         isCorrect
                             ? Icons.check_circle_rounded
                             : Icons.cancel_rounded,
-                        color: color.withOpacity(0.6),
+                        color: color.withValues(alpha: 0.6),
                         size: 20),
                     children: [
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.03),
+                          color: Colors.white.withValues(alpha: 0.03),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: color.withOpacity(0.1)),
+                          border: Border.all(color: color.withValues(alpha: 0.1)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -963,7 +964,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
                             Container(
                               height: 1,
                               width: double.infinity,
-                              color: Colors.white.withOpacity(0.05),
+                              color: Colors.white.withValues(alpha: 0.05),
                             ),
                             const SizedBox(height: 12),
 
@@ -994,7 +995,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
       children: [
         Text(label,
             style: TextStyle(
-                color: Colors.white.withOpacity(0.4),
+                color: Colors.white.withValues(alpha: 0.4),
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 0.5)),
@@ -1021,13 +1022,13 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
           borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
-              color: Colors.orange.withOpacity(0.4),
+              color: Colors.orange.withValues(alpha: 0.4),
               blurRadius: 30,
               spreadRadius: 5,
               offset: const Offset(0, 10),
             ),
           ],
-          border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
         ),
         child: Column(
           children: [
@@ -1042,7 +1043,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
                 letterSpacing: 1,
                 shadows: [
                   Shadow(
-                    color: Colors.black.withOpacity(0.3),
+                    color: Colors.black.withValues(alpha: 0.3),
                     offset: const Offset(0, 2),
                     blurRadius: 4,
                   ),
@@ -1054,7 +1055,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
@@ -1073,7 +1074,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: Colors.white.withOpacity(0.9),
+                color: Colors.white.withValues(alpha: 0.9),
                 height: 1.4,
               ),
               textAlign: TextAlign.center,
@@ -1269,7 +1270,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6366F1).withOpacity(0.2),
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
@@ -1295,7 +1296,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
                       'retention.quizzes_to_next'.tr(
                           args: [remaining > 0 ? remaining.toString() : '0']),
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
+                        color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 12,
                       ),
                     ),
@@ -1320,7 +1321,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
                 Container(
                   height: 8,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
+                    color: Colors.white.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                 ),
@@ -1402,7 +1403,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
             'retention.category_mastery'.tr(),
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.6),
+              color: Colors.white.withValues(alpha: 0.6),
               fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
@@ -1447,7 +1448,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
             'retention.your_rank'.tr(),
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.6),
+              color: Colors.white.withValues(alpha: 0.6),
               fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
@@ -1469,11 +1470,11 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
   Widget _buildStickyBottomArea() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A).withOpacity(0.95),
-        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
+        color: const Color(0xFF0F172A).withValues(alpha: 0.95),
+        border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withValues(alpha: 0.5),
             blurRadius: 20,
             offset: const Offset(0, -5),
           ),
@@ -1537,7 +1538,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
         boxShadow: gradient != null
             ? [
                 BoxShadow(
-                  color: const Color(0xFF6366F1).withOpacity(0.4),
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.4),
                   blurRadius: 15,
                   offset: const Offset(0, 6),
                 )
@@ -1553,14 +1554,14 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: isOutlined
-                ? BorderSide(color: Colors.white.withOpacity(0.3))
+                ? BorderSide(color: Colors.white.withValues(alpha: 0.3))
                 : BorderSide.none,
           ),
         ),
         child: Ink(
           decoration: BoxDecoration(
             gradient: gradient,
-            color: isOutlined ? Colors.white.withOpacity(0.05) : null,
+            color: isOutlined ? Colors.white.withValues(alpha: 0.05) : null,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Center(
@@ -1618,14 +1619,14 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
         gradient: LinearGradient(
           colors: [
             playerWon ? Colors.greenAccent : (isTie && !playerLostBySpeed ? Colors.grey : Colors.redAccent),
-            Colors.white.withOpacity(0.1),
+            Colors.white.withValues(alpha: 0.1),
           ],
         ),
       ),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E293B).withOpacity(0.95),
+          color: const Color(0xFF1E293B).withValues(alpha: 0.95),
           borderRadius: BorderRadius.circular(26),
         ),
         child: Column(
@@ -1647,7 +1648,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
                   children: [
                     CircleAvatar(
                       radius: 30,
-                      backgroundColor: Colors.blueAccent.withOpacity(0.2),
+                      backgroundColor: Colors.blueAccent.withValues(alpha: 0.2),
                       child: const Icon(Icons.person, color: Colors.blueAccent, size: 36),
                     ),
                     const SizedBox(height: 8),
@@ -1666,7 +1667,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
                     ),
                     Text(
                       'DOĞRU',
-                      style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 10, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -1700,7 +1701,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
                     ),
                     Text(
                       'DOĞRU',
-                      style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 10, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),

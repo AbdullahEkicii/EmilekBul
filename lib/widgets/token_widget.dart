@@ -87,7 +87,7 @@ class _TokenWidgetState extends State<TokenWidget>
                     borderRadius: BorderRadius.circular(30),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.amber.withOpacity(0.5),
+                        color: Colors.amber.withValues(alpha: 0.5),
                         blurRadius: 10,
                         offset: const Offset(0, 3),
                       ),

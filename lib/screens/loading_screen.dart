@@ -119,9 +119,9 @@ class _LoadingScreenState extends State<LoadingScreen>
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: color.withOpacity(0.4),
+        color: color.withValues(alpha: 0.4),
         boxShadow: [
-          BoxShadow(color: color.withOpacity(0.6), blurRadius: 150, spreadRadius: 40),
+          BoxShadow(color: color.withValues(alpha: 0.6), blurRadius: 150, spreadRadius: 40),
         ],
       ),
     );
@@ -180,12 +180,12 @@ class _LoadingScreenState extends State<LoadingScreen>
                                       shape: BoxShape.circle,
                                       boxShadow: [
                                         BoxShadow(
-                                          color: const Color(0xFF6366F1).withOpacity(_pulseAnimation.value),
+                                          color: const Color(0xFF6366F1).withValues(alpha: _pulseAnimation.value),
                                           blurRadius: 60,
                                           spreadRadius: 10,
                                         ),
                                         BoxShadow(
-                                          color: const Color(0xFFA855F7).withOpacity(_pulseAnimation.value * 0.7),
+                                          color: const Color(0xFFA855F7).withValues(alpha: _pulseAnimation.value * 0.7),
                                           blurRadius: 30,
                                           spreadRadius: 5,
                                         ),
@@ -201,7 +201,7 @@ class _LoadingScreenState extends State<LoadingScreen>
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
                                         border: Border.all(
-                                          color: Colors.white.withOpacity(0.15),
+                                          color: Colors.white.withValues(alpha: 0.15),
                                           width: 2,
                                         ),
                                       ),
@@ -216,7 +216,7 @@ class _LoadingScreenState extends State<LoadingScreen>
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
                                         border: Border.all(
-                                          color: const Color(0xFFEC4899).withOpacity(0.3),
+                                          color: const Color(0xFFEC4899).withValues(alpha: 0.3),
                                           width: 1,
                                         ),
                                       ),
@@ -347,7 +347,7 @@ class _LoadingScreenState extends State<LoadingScreen>
                     Container(
                       height: 8,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
+                        color: Colors.white.withValues(alpha: 0.05),
                       ),
                     ),
                     FractionallySizedBox(
@@ -363,7 +363,7 @@ class _LoadingScreenState extends State<LoadingScreen>
                           borderRadius: BorderRadius.circular(8),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF9333EA).withOpacity(0.5),
+                              color: const Color(0xFF9333EA).withValues(alpha: 0.5),
                               blurRadius: 10,
                               spreadRadius: 2,
                             ),
@@ -425,7 +425,7 @@ class _LoadingScreenState extends State<LoadingScreen>
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 22),
@@ -435,7 +435,7 @@ class _LoadingScreenState extends State<LoadingScreen>
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
               fontSize: 11,
               fontWeight: FontWeight.w700,
               height: 1.3,
@@ -515,11 +515,11 @@ class _FunFactCardState extends State<_FunFactCard>
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.amber.withOpacity(0.12),
+                color: Colors.amber.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(Icons.lightbulb_rounded,
-                  color: Colors.amber.withOpacity(0.8), size: 20),
+                  color: Colors.amber.withValues(alpha: 0.8), size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -529,7 +529,7 @@ class _FunFactCardState extends State<_FunFactCard>
                   Text(
                     'loading.did_you_know'.tr(),
                     style: TextStyle(
-                      color: Colors.amber.withOpacity(0.8),
+                      color: Colors.amber.withValues(alpha: 0.8),
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.5,
@@ -539,7 +539,7 @@ class _FunFactCardState extends State<_FunFactCard>
                   Text(
                     _funFactKeys[_currentIndex].tr(),
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.6),
+                      color: Colors.white.withValues(alpha: 0.6),
                       fontSize: 13,
                       fontStyle: FontStyle.italic,
                       height: 1.4,

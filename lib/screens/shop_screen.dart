@@ -143,6 +143,7 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
         _loadUserProfile();
         
         // Başarımları kontrol et
+        if (!mounted) return;
         await AchievementService.checkAndUnlockSmartShopper(context);
       }
     }
@@ -247,7 +248,7 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.blueAccent.withOpacity(0.1),
+                color: Colors.blueAccent.withValues(alpha: 0.1),
               ),
             ),
           ),
@@ -286,11 +287,11 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
   Widget _buildBottomArea() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A).withOpacity(0.95),
-        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
+        color: const Color(0xFF0F172A).withValues(alpha: 0.95),
+        border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withValues(alpha: 0.5),
             blurRadius: 20,
             offset: const Offset(0, -5),
           ),
@@ -345,7 +346,7 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: isSelected
             ? BoxDecoration(
-                color: Colors.blueAccent.withOpacity(0.1),
+                color: Colors.blueAccent.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               )
             : null,
@@ -409,9 +410,9 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
+                color: Colors.white.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -492,7 +493,7 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
             child: Text(
               item['name'].toString().tr(),
               style: TextStyle(
-                  color: Colors.white.withOpacity(isAvailable ? 1.0 : 0.5),
+                  color: Colors.white.withValues(alpha: isAvailable ? 1.0 : 0.5),
                   fontWeight: FontWeight.bold),
             ),
           ),
@@ -504,12 +505,12 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Colors.white.withOpacity(0.05),
-                    Colors.white.withOpacity(0.1),
+                    Colors.white.withValues(alpha: 0.05),
+                    Colors.white.withValues(alpha: 0.1),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.05)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -575,8 +576,8 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.blueAccent.withOpacity(0.2),
-                Colors.purpleAccent.withOpacity(0.2),
+                Colors.blueAccent.withValues(alpha: 0.2),
+                Colors.purpleAccent.withValues(alpha: 0.2),
               ],
             ),
             border: Border.all(color: Colors.white10, width: 2),
@@ -607,7 +608,7 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
         padding:
             EdgeInsets.symmetric(horizontal: size / 5, vertical: size / 15),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1),
+          color: Colors.white.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(size / 8),
         ),
         child: FittedBox(

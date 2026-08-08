@@ -90,12 +90,12 @@ class _BasariHesaplaScreenState extends State<BasariHesaplaScreen>
             Positioned(
               top: 100 + (20 * _orbAnimation.value),
               left: -30,
-              child: _buildOrb(200, const Color(0xFF667eea).withOpacity(0.2)),
+              child: _buildOrb(200, const Color(0xFF667eea).withValues(alpha: 0.2)),
             ),
             Positioned(
               bottom: 150 - (30 * _orbAnimation.value),
               right: -50,
-              child: _buildOrb(250, const Color(0xFF764ba2).withOpacity(0.15)),
+              child: _buildOrb(250, const Color(0xFF764ba2).withValues(alpha: 0.15)),
             ),
           ],
         );
@@ -178,7 +178,7 @@ class _BasariHesaplaScreenState extends State<BasariHesaplaScreen>
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
-                                color: Colors.white.withOpacity(0.5),
+                                color: Colors.white.withValues(alpha: 0.5),
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -252,7 +252,7 @@ class _BasariHesaplaScreenState extends State<BasariHesaplaScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.auto_awesome_rounded,
-                size: 64, color: Colors.white.withOpacity(0.2)),
+                size: 64, color: Colors.white.withValues(alpha: 0.2)),
             const SizedBox(height: 24),
             Text(
               'stats.empty_title'.tr(),
@@ -267,7 +267,7 @@ class _BasariHesaplaScreenState extends State<BasariHesaplaScreen>
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontSize: 15,
-                  color: Colors.white.withOpacity(0.5),
+                  color: Colors.white.withValues(alpha: 0.5),
                   height: 1.5),
             ),
           ],
@@ -314,7 +314,7 @@ class _BasariHesaplaScreenState extends State<BasariHesaplaScreen>
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
+                    color: color.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(Icons.auto_graph_rounded, color: color, size: 24),
@@ -336,7 +336,7 @@ class _BasariHesaplaScreenState extends State<BasariHesaplaScreen>
                         _getSuccessMessage(successRate),
                         style: TextStyle(
                             fontSize: 13,
-                            color: color.withOpacity(0.8),
+                            color: color.withValues(alpha: 0.8),
                             fontWeight: FontWeight.w600),
                       ),
                     ],
@@ -356,7 +356,7 @@ class _BasariHesaplaScreenState extends State<BasariHesaplaScreen>
                 Container(
                   height: 10,
                   decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(5)),
                 ),
                 AnimatedContainer(
@@ -367,7 +367,7 @@ class _BasariHesaplaScreenState extends State<BasariHesaplaScreen>
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        color.withOpacity(0.4),
+                        color.withValues(alpha: 0.4),
                         color,
                       ],
                     ),
@@ -420,7 +420,7 @@ class _BasariHesaplaScreenState extends State<BasariHesaplaScreen>
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-                color: const Color(0xFF6366F1).withOpacity(0.2),
+                color: const Color(0xFF6366F1).withValues(alpha: 0.2),
                 blurRadius: 15,
                 offset: const Offset(0, 5)),
           ],
@@ -438,7 +438,7 @@ class _BasariHesaplaScreenState extends State<BasariHesaplaScreen>
                   gradient: const LinearGradient(
                       colors: [Color(0xFF6366F1), Color(0xFFA855F7)]),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,

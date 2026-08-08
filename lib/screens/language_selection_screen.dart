@@ -107,7 +107,7 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
         await _setupNotifications();
 
         // 4. Navigate to Category Screen (or QuizFlow)
-        if (mounted) {
+        if (context.mounted) {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
               builder: (context) => const QuizFlow(initialCategory: null),
@@ -116,12 +116,14 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
           );
         }
       } else {
+        if (!context.mounted) return;
         await _handleOfflineFallback(context);
       }
     } catch (e) {
+      if (!context.mounted) return;
       await _handleOfflineFallback(context);
     } finally {
-      if (mounted) {
+      if (context.mounted) {
         setState(() {
           _isLoading = false;
         });
@@ -144,7 +146,7 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
       
       await _setupNotifications();
 
-      if (mounted) {
+      if (context.mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
             builder: (context) => const QuizFlow(
@@ -167,14 +169,14 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
       // Since this is the first screen, we might want to ask for permission here
       // OR let the NotificationPermissionManager handle it if it has UI logic.
       // Based on previous code, it seems to show a dialog.
-      if (mounted) {
+      if (context.mounted) {
         await NotificationPermissionManager.notificationPermissions(context);
       }
 
       // Reschedule/Plan notifications
       await NotificationService.rescheduleNotifications();
     } catch (e) {
-      print("Notification setup error: $e");
+      debugPrint("Notification setup error: $e");
     }
   }
 
@@ -246,10 +248,10 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.white.withValues(alpha: 0.05),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.blue.withOpacity(0.1),
+                      color: Colors.blue.withValues(alpha: 0.1),
                       blurRadius: 20,
                       spreadRadius: 2,
                     )

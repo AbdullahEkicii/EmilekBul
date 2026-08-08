@@ -2,7 +2,6 @@ import 'package:emilekbul/models/test_result.dart';
 import 'package:emilekbul/screens/test_detail_screen.dart';
 import 'package:emilekbul/services/database_helper.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../widgets/my_native_ad.dart';
 import '../widgets/glass_container.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -12,7 +11,7 @@ class PastTestsScreen extends StatefulWidget {
   const PastTestsScreen({super.key});
 
   @override
-  _PastTestsScreenState createState() => _PastTestsScreenState();
+  State<PastTestsScreen> createState() => _PastTestsScreenState();
 }
 
 class _PastTestsScreenState extends State<PastTestsScreen>
@@ -51,12 +50,12 @@ class _PastTestsScreenState extends State<PastTestsScreen>
             Positioned(
               top: -50,
               right: -30 + (20 * _orbAnimation.value),
-              child: _buildOrb(200, const Color(0xFF6366F1).withOpacity(0.2)),
+              child: _buildOrb(200, const Color(0xFF6366F1).withValues(alpha: 0.2)),
             ),
             Positioned(
               bottom: 100 + (40 * _orbAnimation.value),
               left: -40,
-              child: _buildOrb(250, const Color(0xFFA855F7).withOpacity(0.15)),
+              child: _buildOrb(250, const Color(0xFFA855F7).withValues(alpha: 0.15)),
             ),
           ],
         );
@@ -214,14 +213,14 @@ class _PastTestsScreenState extends State<PastTestsScreen>
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          color.withOpacity(0.2),
-                          color.withOpacity(0.4)
+                          color.withValues(alpha: 0.2),
+                          color.withValues(alpha: 0.4)
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: color.withOpacity(0.3)),
+                      border: Border.all(color: color.withValues(alpha: 0.3)),
                     ),
                     child: Icon(_getCategoryIcon(test.category),
                         color: color, size: 28),
@@ -261,7 +260,7 @@ class _PastTestsScreenState extends State<PastTestsScreen>
                               DateFormat('dd.MM.yyyy').format(test.date),
                               style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.white.withOpacity(0.5),
+                                  color: Colors.white.withValues(alpha: 0.5),
                                   fontWeight: FontWeight.w500),
                             ),
                           ],
@@ -298,7 +297,7 @@ class _PastTestsScreenState extends State<PastTestsScreen>
       {Color color = Colors.white70}) {
     return Column(
       children: [
-        Icon(icon, color: color.withOpacity(0.6), size: 18),
+        Icon(icon, color: color.withValues(alpha: 0.6), size: 18),
         const SizedBox(height: 6),
         Text(value,
             style: TextStyle(
@@ -306,7 +305,7 @@ class _PastTestsScreenState extends State<PastTestsScreen>
         Text(label,
             style: TextStyle(
                 fontSize: 10,
-                color: Colors.white.withOpacity(0.4),
+                color: Colors.white.withValues(alpha: 0.4),
                 fontWeight: FontWeight.w600)),
       ],
     );
@@ -325,7 +324,7 @@ class _PastTestsScreenState extends State<PastTestsScreen>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.history_rounded,
-              size: 64, color: Colors.white.withOpacity(0.1)),
+              size: 64, color: Colors.white.withValues(alpha: 0.1)),
           const SizedBox(height: 20),
           Text('past_tests.empty'.tr(),
               style: const TextStyle(color: Colors.white60, fontSize: 16)),

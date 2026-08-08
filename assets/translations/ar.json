@@ -621,5 +621,8 @@
     "wheel_done_today": "انتهى اليوم",
     "streak_claim_today": "احصل على مكافأة اليوم 🎉",
     "streak_ok": "حسناً"
+  },
+  "daily_streak": {
+    "day_num": "اليوم {}"
   }
 }

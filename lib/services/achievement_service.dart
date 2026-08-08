@@ -96,7 +96,7 @@ class AchievementService {
           'unlockedBadges': FieldValue.arrayUnion([id]),
         });
       } catch (e) {
-        print('Error updating Firestore achievements: $e');
+        debugPrint('Error updating Firestore achievements: $e');
       }
     }
 
@@ -147,12 +147,15 @@ class AchievementService {
   /// Çözülen test sayısına göre başarımları kontrol eder
   static Future<void> checkAndUnlockTestCountAchievements(int count, BuildContext context) async {
     if (count >= 10) {
+      if (!context.mounted) return;
       await unlockAchievement('bronze_scholar', context);
     }
     if (count >= 50) {
+      if (!context.mounted) return;
       await unlockAchievement('silver_scholar', context);
     }
     if (count >= 200) {
+      if (!context.mounted) return;
       await unlockAchievement('gold_scholar', context);
     }
   }
@@ -177,11 +180,12 @@ class AchievementService {
         final List<dynamic> purchasedTitles = data['purchasedTitles'] ?? [];
         final int totalPurchases = purchasedFrames.length + purchasedTitles.length;
         if (totalPurchases >= 3) {
+          if (!context.mounted) return;
           await unlockAchievement('smart_shopper', context);
         }
       }
     } catch (e) {
-      print('Error checking smart shopper achievement: $e');
+      debugPrint('Error checking smart shopper achievement: $e');
     }
   }
 
@@ -195,7 +199,7 @@ class AchievementService {
           'activeBadge': badgeId,
         });
       } catch (e) {
-        print('Error setting active badge in Firestore: $e');
+        debugPrint('Error setting active badge in Firestore: $e');
       }
     }
   }

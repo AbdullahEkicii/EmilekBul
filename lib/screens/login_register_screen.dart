@@ -419,7 +419,7 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen>
           }
         }
       } catch (e) {
-        print("DEBUG: Register Hatasi: $e");
+        debugPrint("DEBUG: Register Hatasi: $e");
         setState(() {
           isLoading = false;
           errorMessage = _getReadableErrorMessage(e);
@@ -512,14 +512,18 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen>
     if (errorStr.contains('email-already-in-use')) {
       return 'auth.error_email_in_use'.tr();
     }
-    if (errorStr.contains('invalid-email'))
+    if (errorStr.contains('invalid-email')) {
       return 'auth.error_invalid_email'.tr();
-    if (errorStr.contains('weak-password'))
+    }
+    if (errorStr.contains('weak-password')) {
       return 'auth.error_weak_password'.tr();
-    if (errorStr.contains('user-not-found'))
+    }
+    if (errorStr.contains('user-not-found')) {
       return 'auth.error_user_not_found'.tr();
-    if (errorStr.contains('wrong-password'))
+    }
+    if (errorStr.contains('wrong-password')) {
       return 'auth.error_wrong_password'.tr();
+    }
     return 'auth.error_general'.tr();
   }
 
@@ -548,7 +552,7 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen>
         await TokenService.updateTokenAmount(30);
       }
     } catch (e) {
-      print('Token sync error: $e');
+      debugPrint('Token sync error: $e');
     }
   }
 
@@ -637,9 +641,9 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen>
                                     fontWeight: FontWeight.w600)),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.white,
-                              backgroundColor: Colors.white.withOpacity(0.05),
+                              backgroundColor: Colors.white.withValues(alpha: 0.05),
                               side: BorderSide(
-                                  color: Colors.white.withOpacity(0.2)),
+                                  color: Colors.white.withValues(alpha: 0.2)),
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16)),
@@ -683,7 +687,7 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen>
                                         await UserService.linkPlayGamesProfile(
                                             pId, pName);
 
-                                        if (mounted) {
+                                        if (context.mounted) {
                                           Navigator.pushReplacement(
                                             context,
                                             MaterialPageRoute(
@@ -720,9 +724,9 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen>
                                     fontWeight: FontWeight.w600)),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.white,
-                              backgroundColor: Colors.white.withOpacity(0.05),
+                              backgroundColor: Colors.white.withValues(alpha: 0.05),
                               side: BorderSide(
-                                  color: Colors.white.withOpacity(0.2)),
+                                  color: Colors.white.withValues(alpha: 0.2)),
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16)),

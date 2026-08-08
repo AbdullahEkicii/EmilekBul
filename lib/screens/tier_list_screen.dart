@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../services/user_service.dart';
 import '../services/achievement_service.dart';
@@ -30,17 +29,35 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
   String? _selectedCategoryKey; // Stable DB key (e.g. 'Genel')
   String? _selectedCategoryName; // Localized display name
 
-  // Modern Dark/Neon tema renkleri
-  static const Color primaryDark = Color(0xFF0A0A0F);
-  static const Color secondaryDark = Color(0xFF1A1A24);
-  static const Color cardDark = Color(0xFF252538);
-  static const Color neonPurple = Color(0xFF8B5FFF);
-  static const Color neonBlue = Color(0xFF4ECDC4);
-  static const Color neonPink = Color(0xFFFF6B9D);
-  static const Color glowPurple = Color(0xFF6C5CE7);
-  static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFFB8B8CC);
-  static const Color surfaceGlow = Color(0xFF2D2D44);
+  // ---------------------------------------------------------------------
+  // Design tokens
+  // ---------------------------------------------------------------------
+  // A single, deliberate palette: deep ink background, one warm metallic
+  // accent (champagne gold) used sparingly for identity, and a cool
+  // slate accent reserved for secondary/interactive states. Rank colors
+  // (gold/silver/bronze) are the only place we allow additional hues,
+  // because they encode real information (placement).
+  static const Color bgBase = Color(0xFF08090D); // near-black ink
+  static const Color bgElevated = Color(0xFF12141C); // panel surface
+  static const Color bgCard = Color(0xFF171A24); // card surface
+  static const Color bgCardAlt = Color(0xFF1D2029); // card surface, top rows
+  static const Color hairline = Color(0xFFFFFFFF); // used only at low alpha
+
+  static const Color accentGold = Color(0xFFD4AF6A); // signature accent
+  static const Color accentGoldSoft = Color(0xFFE8CB94);
+  static const Color accentSlate = Color(0xFF7C8797); // secondary accent
+
+  static const Color textPrimary = Color(0xFFF3F1EC);
+  static const Color textSecondary = Color(0xFF9498A6);
+  static const Color textTertiary = Color(0xFF5C6070);
+
+  static const Color rankGold = Color(0xFFE3B94F);
+  static const Color rankSilver = Color(0xFFC7CCD6);
+  static const Color rankBronze = Color(0xFFC98454);
+
+  static const double radiusLg = 22;
+  static const double radiusMd = 16;
+  static const double radiusSm = 12;
 
   List<Map<String, dynamic>> _categories = [];
 
@@ -49,8 +66,8 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
       {
         'id': 'Genel',
         'name': 'categories.general'.tr(),
-        'icon': Icons.leaderboard,
-        'color': Colors.amber
+        'icon': Icons.leaderboard_rounded,
+        'color': accentGold,
       },
     ];
     for (var cat in AppCategories.categories) {
@@ -68,11 +85,11 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
     super.initState();
     _initializeCategories();
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 900),
       vsync: this,
     );
     _dropdownAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 280),
       vsync: this,
     );
 
@@ -80,8 +97,8 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.elasticOut),
+    _scaleAnimation = Tween<double>(begin: 0.96, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
     );
 
     // Başlangıçta Genel kategorisini seç ve yükle
@@ -126,7 +143,7 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
           child: CompositedTransformFollower(
             link: _dropdownLink,
             showWhenUnlinked: false,
-            offset: Offset(0, 8),
+            offset: const Offset(0, 10),
             child: Material(
               color: Colors.transparent,
               child: _buildDropdownMenu(),
@@ -179,294 +196,195 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.error_outline,
-                    color: Colors.white, size: 20),
+        content: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  message,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
+              child: const Icon(Icons.error_outline_rounded,
+                  color: Colors.white, size: 18),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w500,
+                  height: 1.3,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-        backgroundColor: const Color(0xFFFF3366),
+        backgroundColor: const Color(0xFF3A1F24),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        margin: const EdgeInsets.all(20),
-        elevation: 8,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusSm),
+          side: BorderSide(color: Colors.red.withValues(alpha: 0.25)),
+        ),
+        margin: const EdgeInsets.all(16),
+        elevation: 0,
       ),
     );
   }
 
+  // ---------------------------------------------------------------------
+  // Header
+  // ---------------------------------------------------------------------
   Widget _buildHeader() {
     return Container(
-      height: 240, // Increased height to prevent overflow
-      decoration: BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment.topCenter,
-          radius: 1.2,
-          colors: [
-            neonPurple.withOpacity(0.8),
-            primaryDark,
-            primaryDark,
-          ],
+      padding: const EdgeInsets.fromLTRB(24, 64, 24, 28),
+      decoration: const BoxDecoration(
+        color: bgBase,
+        border: Border(
+          bottom: BorderSide(color: Color(0x14FFFFFF), width: 1),
         ),
       ),
-      child: Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Animated background particles (reduced for performance)
-          RepaintBoundary(
-            child: Stack(
-              children:
-                  List.generate(6, (index) => _buildFloatingParticle(index)),
-            ),
-          ),
-
-          // Main content
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 70, 24, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: bgElevated,
+                  borderRadius: BorderRadius.circular(radiusSm),
+                  border: Border.all(
+                    color: accentGold.withValues(alpha: 0.35),
+                    width: 1,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.emoji_events_rounded,
+                  color: accentGold,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [neonPurple, neonBlue],
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: neonPurple.withOpacity(0.5),
-                            blurRadius: 20,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.emoji_events,
-                        color: Colors.white,
-                        size: 32,
+                    Text(
+                      'welcome_screen.tier_list_title'.tr(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: textPrimary,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.6,
+                        height: 1.1,
                       ),
                     ),
-                    const SizedBox(width: 20),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ShaderMask(
-                            shaderCallback: (bounds) => LinearGradient(
-                              colors: [Colors.white, neonBlue],
-                            ).createShader(bounds),
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(
-                                'welcome_screen.tier_list_title'.tr(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -1,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'welcome_screen.tier_list_subtitle'.tr(),
-                            style: TextStyle(
-                              color: textSecondary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
+                    const SizedBox(height: 6),
+                    Text(
+                      'welcome_screen.tier_list_subtitle'.tr(),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: textSecondary,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w500,
+                        height: 1.3,
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildFloatingParticle(int index) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: Duration(milliseconds: 10000 + (index * 500)),
-      builder: (context, value, child) {
-        return Positioned(
-          left: (index * 37.0) % 300,
-          top: 100 + (value * 100) + (index * 5.0),
-          child: Opacity(
-            opacity: (0.3 + (index % 3) * 0.2) * (1 - value),
-            child: Container(
-              width: 4 + (index % 3) * 2,
-              height: 4 + (index % 3) * 2,
-              decoration: BoxDecoration(
-                color: [neonPurple, neonBlue, neonPink][index % 3],
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: [neonPurple, neonBlue, neonPink][index % 3],
-                    blurRadius: 4,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
+  // ---------------------------------------------------------------------
+  // Category selector
+  // ---------------------------------------------------------------------
   Widget _buildModernCategorySelector() {
     return Container(
-      margin: const EdgeInsets.all(24),
+      margin: const EdgeInsets.fromLTRB(24, 22, 24, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'welcome_screen.tier_list_select_category'.tr(),
-            style: TextStyle(
-              fontSize: 20,
+            style: const TextStyle(
+              fontSize: 12.5,
               fontWeight: FontWeight.w700,
-              color: textPrimary,
-              letterSpacing: -0.5,
+              color: textTertiary,
+              letterSpacing: 0.8,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           CompositedTransformTarget(
             link: _dropdownLink,
             child: GestureDetector(
               key: _dropdownKey,
               onTap: _toggleDropdown,
-              child: Container(
-                padding: const EdgeInsets.all(20),
+              behavior: HitTestBehavior.opaque,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      surfaceGlow.withOpacity(0.8),
-                      cardDark.withOpacity(0.9),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
+                  color: bgElevated,
+                  borderRadius: BorderRadius.circular(radiusMd),
                   border: Border.all(
-                    color: _selectedCategoryKey != null
-                        ? neonPurple.withOpacity(0.5)
-                        : Colors.white.withOpacity(0.1),
-                    width: 1.5,
+                    color: _isDropdownOpen
+                        ? accentGold.withValues(alpha: 0.55)
+                        : Colors.white.withValues(alpha: 0.08),
+                    width: 1.2,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _selectedCategoryKey != null
-                          ? neonPurple.withOpacity(0.2)
-                          : Colors.black26,
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
                 ),
                 child: Row(
                   children: [
-                    if (_selectedCategoryKey != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [neonPurple, neonBlue],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: neonPurple.withOpacity(0.4),
-                              blurRadius: 8,
-                              spreadRadius: 1,
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          _categories.firstWhere((cat) =>
-                              cat['id'] == _selectedCategoryKey)['icon'],
-                          color: Colors.white,
-                          size: 20,
+                    Container(
+                      width: 36,
+                      height: 36,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: accentGold.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        _selectedCategoryKey != null
+                            ? _categories.firstWhere((cat) =>
+                                cat['id'] == _selectedCategoryKey)['icon']
+                            : Icons.category_outlined,
+                        color: accentGold,
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        _selectedCategoryName ??
+                            'tier_list.select_category_placeholder'.tr(),
+                        style: TextStyle(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w600,
+                          color: _selectedCategoryKey != null
+                              ? textPrimary
+                              : textSecondary,
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Text(
-                          _selectedCategoryName ?? "",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: textPrimary,
-                          ),
-                        ),
-                      ),
-                    ] else ...[
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          Icons.category_outlined,
-                          color: textSecondary,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Text(
-                          _selectedCategoryName ??
-                              'tier_list.select_category_placeholder'.tr(),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                            color: textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                     AnimatedRotation(
-                      duration: const Duration(milliseconds: 300),
+                      duration: const Duration(milliseconds: 220),
                       turns: _isDropdownOpen ? 0.5 : 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: neonPurple.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          Icons.keyboard_arrow_down,
-                          color: neonPurple,
-                          size: 24,
-                        ),
+                      child: Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: textSecondary,
+                        size: 22,
                       ),
                     ),
                   ],
@@ -480,37 +398,30 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
   }
 
   Widget _buildDropdownMenu() {
-    final double itemHeight = 68.0;
+    final double itemHeight = 56.0;
     final double calculatedHeight =
-        (_categories.length * itemHeight).clamp(0.0, 400);
+        (_categories.length * itemHeight).clamp(0.0, 360);
     return Material(
       color: Colors.transparent,
       child: Container(
         height: calculatedHeight,
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              cardDark.withOpacity(0.98),
-              secondaryDark.withOpacity(0.98),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(20),
+          color: bgCardAlt,
+          borderRadius: BorderRadius.circular(radiusMd),
           border: Border.all(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.08),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.4),
-              blurRadius: 35,
-              offset: const Offset(0, 20),
+              color: Colors.black.withValues(alpha: 0.45),
+              blurRadius: 28,
+              offset: const Offset(0, 14),
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(radiusMd),
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             child: Column(
@@ -541,32 +452,36 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
           _loadTopUsers();
         },
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          height: 56,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color:
-                isSelected ? neonPurple.withOpacity(0.1) : Colors.transparent,
-            border: Border(
-              bottom: BorderSide(
-                color: Colors.white.withOpacity(0.05),
-                width: 1,
-              ),
+            color: isSelected
+                ? accentGold.withValues(alpha: 0.08)
+                : Colors.transparent,
+            border: const Border(
+              bottom: BorderSide(color: Color(0x0DFFFFFF), width: 1),
             ),
           ),
           child: Row(
             children: [
-              Icon(category['icon'], color: category['color'], size: 20),
-              SizedBox(width: 12),
+              Icon(
+                category['icon'],
+                color: isSelected ? accentGold : textSecondary,
+                size: 18,
+              ),
+              const SizedBox(width: 14),
               Expanded(
                 child: Text(
                   category['name'],
                   style: TextStyle(
-                    color: isSelected ? neonPurple : textPrimary,
-                    fontWeight:
-                        isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected ? accentGoldSoft : textPrimary,
+                    fontSize: 14.5,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
               ),
-              if (isSelected) Icon(Icons.check, color: neonPurple, size: 16),
+              if (isSelected)
+                const Icon(Icons.check_rounded, color: accentGold, size: 18),
             ],
           ),
         ),
@@ -574,40 +489,35 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
     );
   }
 
-  Widget _buildUserCard(Map<String, dynamic> user, int index) {
-    Color rankColor;
-    IconData rankIcon;
-    List<Color> gradientColors;
-
+  // ---------------------------------------------------------------------
+  // User card
+  // ---------------------------------------------------------------------
+  _RankStyle _rankStyleFor(int index, Map<String, dynamic> user) {
+    final String displayRank = user['rank']?.toString() ?? '${index + 1}';
     switch (index) {
       case 0:
-        rankColor = const Color(0xFFFFD700);
-        rankIcon = Icons.emoji_events;
-        gradientColors = [const Color(0xFFFFD700), const Color(0xFFFFA000)];
-        break;
+        return _RankStyle(rankGold, Icons.emoji_events_rounded, '1');
       case 1:
-        rankColor = const Color(0xFFC0C0C0);
-        rankIcon = Icons.workspace_premium;
-        gradientColors = [const Color(0xFFE0E0E0), const Color(0xFF9E9E9E)];
-        break;
+        return _RankStyle(rankSilver, Icons.workspace_premium_rounded, '2');
       case 2:
-        rankColor = const Color(0xFFCD7F32);
-        rankIcon = Icons.military_tech;
-        gradientColors = [const Color(0xFFCD7F32), const Color(0xFFA0522D)];
-        break;
+        return _RankStyle(rankBronze, Icons.military_tech_rounded, '3');
       default:
-        rankColor = neonBlue.withOpacity(0.7);
-        rankIcon = Icons.person;
-        gradientColors = [neonPurple.withOpacity(0.5), neonBlue.withOpacity(0.5)];
+        return _RankStyle(accentSlate, Icons.person_rounded, displayRank);
     }
+  }
 
-    // Frame Color
-    Color frameColor = _getFrameColor(user['equippedFrame']);
-
-    // Glassmorphism effects
+  Widget _buildUserCard(Map<String, dynamic> user, int index) {
+    final style = _rankStyleFor(index, user);
     final bool isTop3 = index < 3;
-    final double cardOpacity = isTop3 ? 0.95 : 0.8;
-    final double borderOpacity = isTop3 ? 0.6 : 0.1;
+    final Color frameColor = UserService.getFrameColor(user['equippedFrame']?.toString());
+
+    // Top 3 özel arka plan gradyanı
+    final List<Color> cardGradientColors = isTop3
+        ? [
+            style.color.withValues(alpha: index == 0 ? 0.18 : 0.12),
+            bgCardAlt,
+          ]
+        : [bgCard, bgCard];
 
     return FadeTransition(
       opacity: _fadeAnimation,
@@ -615,157 +525,189 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
         scale: _scaleAnimation,
         child: SlideTransition(
           position: Tween<Offset>(
-            begin: const Offset(0, 0.5),
+            begin: const Offset(0, 0.25),
             end: Offset.zero,
           ).animate(CurvedAnimation(
             parent: _animationController,
             curve: Interval(
-              index * 0.1,
+              (index * 0.06).clamp(0.0, 0.6),
               1.0,
               curve: Curves.easeOutCubic,
             ),
           )),
           child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: index < 3
-                    ? [
-                        cardDark.withOpacity(cardOpacity),
-                        rankColor.withOpacity(0.15),
-                      ]
-                    : [
-                        cardDark.withOpacity(cardOpacity),
-                        secondaryDark.withOpacity(cardOpacity * 0.9),
-                      ],
+                colors: cardGradientColors,
               ),
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(radiusLg),
               border: Border.all(
-                color: index < 3
-                    ? rankColor.withOpacity(borderOpacity + 0.2)
-                    : Colors.white.withOpacity(borderOpacity),
-                width: index < 3 ? 2.0 : 1.5,
+                color: isTop3
+                    ? style.color.withValues(alpha: index == 0 ? 0.60 : 0.40)
+                    : Colors.white.withValues(alpha: 0.06),
+                width: isTop3 ? 1.6 : 1.0,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: frameColor != Colors.transparent
-                      ? frameColor.withOpacity(0.3)
-                      : (index < 3
-                          ? rankColor.withOpacity(0.4)
-                          : neonPurple.withOpacity(0.05)),
-                  blurRadius: index < 3 ? 30 : 15,
-                  spreadRadius: index < 3 ? 2 : 0,
-                  offset: const Offset(0, 10),
-                ),
-              ],
+              boxShadow: isTop3
+                  ? [
+                      BoxShadow(
+                        color: style.color.withValues(alpha: index == 0 ? 0.20 : 0.12),
+                        blurRadius: 16,
+                        spreadRadius: 1,
+                        offset: const Offset(0, 6),
+                      ),
+                    ]
+                  : null,
             ),
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(
                 children: [
+                  // Rank badge (İlk 3 için daha büyük ve özel simge)
+                  SizedBox(
+                    width: 28,
+                    child: Center(
+                      child: isTop3
+                          ? Icon(
+                              style.icon,
+                              color: style.color,
+                              size: index == 0 ? 24 : 20,
+                              shadows: [
+                                Shadow(
+                                  color: style.color.withValues(alpha: 0.6),
+                                  blurRadius: 8,
+                                )
+                              ],
+                            )
+                          : Text(
+                              style.label,
+                              style: const TextStyle(
+                                color: textTertiary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // Avatar & Frame
                   Stack(
+                    clipBehavior: Clip.none,
                     alignment: Alignment.center,
                     children: [
-                      if (user['equippedFrame'] != null &&
-                          user['equippedFrame'] != '0' &&
-                          user['equippedFrame'] != 'yok')
+                      if (frameColor != Colors.transparent)
                         Container(
-                          width: 76,
-                          height: 76,
+                          width: 62,
+                          height: 62,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(
-                              color: UserService.getFrameColor(user['equippedFrame']),
-                              width: 4,
-                            ),
+                            border: Border.all(color: frameColor, width: 2.8),
                             boxShadow: [
                               BoxShadow(
-                                color: UserService.getFrameColor(user['equippedFrame']).withOpacity(0.5),
-                                blurRadius: 10,
+                                color: frameColor.withValues(alpha: 0.4),
+                                blurRadius: 8,
+                                spreadRadius: 1,
                               ),
                             ],
                           ),
                         ),
                       Container(
-                        width: 60,
-                        height: 60,
+                        width: 52,
+                        height: 52,
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: gradientColors),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: rankColor.withOpacity(0.4),
-                              blurRadius: 15,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
+                          shape: BoxShape.circle,
+                          color: bgElevated,
+                          border: Border.all(
+                            color: isTop3
+                                ? style.color.withValues(alpha: 0.7)
+                                : Colors.white.withValues(alpha: 0.12),
+                            width: 1.5,
+                          ),
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
+                        child: ClipOval(
                           child: Image.asset(
                             UserService.getAvatarPath(
-                                user['avatarIndex'] ?? '0'),
+                                user['avatarIndex']?.toString() ?? '0'),
                             fit: BoxFit.cover,
-                            cacheWidth: 180,
-                            cacheHeight: 180,
+                            cacheWidth: 160,
+                            cacheHeight: 160,
                             errorBuilder: (context, error, stackTrace) => Icon(
-                              rankIcon,
-                              color: Colors.white,
-                              size: 30,
+                              style.icon,
+                              color: textSecondary,
+                              size: 22,
                             ),
                           ),
                         ),
                       ),
-                      // Crown for top 3
-                      if (index < 3)
+                      // 1, 2, 3 için avatar üstündeki taç (crown)
+                      if (isTop3)
                         Positioned(
-                          top: -12,
-                          right: -10,
+                          top: -10,
+                          right: -6,
                           child: Transform.rotate(
-                            angle: 0.3,
+                            angle: 0.25,
                             child: Icon(
-                              index == 0 ? Icons.workspace_premium : Icons.stars,
-                              color: rankColor,
-                              size: index == 0 ? 32 : 24,
-                              shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
+                              index == 0
+                                  ? Icons.workspace_premium_rounded
+                                  : Icons.stars_rounded,
+                              color: style.color,
+                              size: index == 0 ? 26 : 20,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black.withValues(alpha: 0.8),
+                                  blurRadius: 4,
+                                  offset: const Offset(1, 1),
+                                )
+                              ],
                             ),
                           ),
                         ),
                     ],
                   ),
-                  const SizedBox(width: 20),
+                  const SizedBox(width: 12),
+
+                  // Name / title / badge
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Row(
                           children: [
                             Flexible(
-                              child: Text(
-                                AppUtils.localizeUsername(user['username']),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 20,
-                                  color: textPrimary,
-                                  letterSpacing: -0.5,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  AppUtils.localizeUsername(user['username']),
+                                  style: TextStyle(
+                                    fontWeight: isTop3 ? FontWeight.w800 : FontWeight.w700,
+                                    fontSize: isTop3 ? 15.5 : 14.5,
+                                    color: isTop3 ? Colors.white : textPrimary,
+                                    letterSpacing: -0.2,
+                                  ),
                                 ),
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             if (user['activeBadge'] != null) ...[
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 5),
                               Builder(
                                 builder: (context) {
-                                  final badge = AchievementService.getBadgeDetails(user['activeBadge']);
-                                  if (badge == null) return const SizedBox.shrink();
+                                  final badge =
+                                      AchievementService.getBadgeDetails(
+                                          user['activeBadge']);
+                                  if (badge == null) {
+                                    return const SizedBox.shrink();
+                                  }
                                   return Tooltip(
                                     message: badge.titleKey.tr(),
                                     child: Icon(
                                       badge.icon,
                                       color: badge.color,
-                                      size: 18,
+                                      size: 14,
                                     ),
                                   );
                                 },
@@ -775,98 +717,65 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
                         ),
                         if (user['equippedTitle'] != null &&
                             user['equippedTitle'] != 'yok' &&
-                            user['equippedTitle'] != '0')
+                            user['equippedTitle'] != '0') ...[
+                          const SizedBox(height: 2),
                           Text(
                             (AppConstants.titleKeys[user['equippedTitle']]
                                         ?.tr() ??
                                     user['equippedTitle'].toString())
                                 .toUpperCase(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: Colors.amber.withOpacity(0.9),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.2,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black.withOpacity(0.5),
-                                  offset: const Offset(1, 1),
-                                  blurRadius: 2,
-                                ),
-                              ],
+                              color: isTop3 ? style.color : accentGoldSoft,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.8,
                             ),
                           ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 6),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: index < 3 
-                                ? [rankColor.withOpacity(0.25), rankColor.withOpacity(0.1)]
-                                : [Colors.white.withOpacity(0.1), Colors.transparent],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: index < 3 ? rankColor.withOpacity(0.5) : Colors.white24,
-                              width: 1,
-                            ),
-                          ),
-                          child: Text(
-                            user['rank'] != null
-                                ? 'tier_list.rank_format'
-                                    .tr(args: [user['rank'].toString()])
-                                : 'tier_list.rank_format'
-                                    .tr(args: [(index + 1).toString()]),
-                            style: TextStyle(
-                              color: rankColor,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
+
+                  const SizedBox(width: 8),
+
+                  // Points (Puan alanı)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 16),
+                        horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: gradientColors,
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
+                      color: isTop3
+                          ? style.color.withValues(alpha: 0.16)
+                          : Colors.white.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(radiusSm),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.2),
+                        color: isTop3
+                            ? style.color.withValues(alpha: 0.45)
+                            : Colors.white.withValues(alpha: 0.08),
                         width: 1,
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: rankColor.withOpacity(0.5),
-                          blurRadius: 15,
-                          spreadRadius: index < 3 ? 2 : 0,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
                     ),
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           '${user['points'] ?? 0}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            fontSize: 20,
-                            letterSpacing: -0.5,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: isTop3 ? style.color : textPrimary,
+                            fontSize: isTop3 ? 16 : 15,
+                            letterSpacing: -0.3,
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 1),
                         Text(
                           'tier_list.points'.tr(),
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
+                          style: TextStyle(
+                            color: isTop3
+                                ? style.color.withValues(alpha: 0.8)
+                                : textTertiary,
+                            fontSize: 9.5,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -882,52 +791,30 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
     );
   }
 
-  Color _getFrameColor(String? frameId) {
-    switch (frameId) {
-      case '1':
-        return Colors.amber;
-      case '2':
-        return Colors.cyanAccent;
-      case '3':
-        return Colors.redAccent;
-      default:
-        return Colors.transparent;
-    }
-  }
-
+  // ---------------------------------------------------------------------
+  // Loading / empty states
+  // ---------------------------------------------------------------------
   Widget _buildLoadingState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                colors: [
-                  neonPurple.withOpacity(0.3),
-                  Colors.transparent,
-                ],
-              ),
-              shape: BoxShape.circle,
-            ),
+          const SizedBox(
+            width: 30,
+            height: 30,
             child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(neonPurple),
-              strokeWidth: 4,
+              valueColor: AlwaysStoppedAnimation<Color>(accentGold),
+              strokeWidth: 2.6,
             ),
           ),
-          const SizedBox(height: 32),
-          ShaderMask(
-            shaderCallback: (bounds) => LinearGradient(
-              colors: [neonPurple, neonBlue],
-            ).createShader(bounds),
-            child: Text(
-              'welcome.loading'.tr(),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
+          const SizedBox(height: 22),
+          Text(
+            'welcome.loading'.tr(),
+            style: const TextStyle(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w600,
+              color: textSecondary,
+              letterSpacing: 0.2,
             ),
           ),
         ],
@@ -935,168 +822,93 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
     );
   }
 
+  Widget _buildStatePanel({
+    required IconData icon,
+    required String title,
+    required String description,
+  }) {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.all(28),
+        padding: const EdgeInsets.fromLTRB(32, 36, 32, 32),
+        decoration: BoxDecoration(
+          color: bgElevated,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.07),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 68,
+              height: 68,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: accentGold.withValues(alpha: 0.10),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: accentGold.withValues(alpha: 0.25),
+                  width: 1,
+                ),
+              ),
+              child: Icon(icon, size: 30, color: accentGold),
+            ),
+            const SizedBox(height: 22),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: textPrimary,
+                letterSpacing: -0.4,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              description,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: textSecondary,
+                fontWeight: FontWeight.w500,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildEmptyState() {
     if (_selectedCategoryKey == null) {
-      return Center(
-        child: Container(
-          margin: const EdgeInsets.all(32),
-          padding: const EdgeInsets.all(40),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                cardDark.withOpacity(0.8),
-                secondaryDark.withOpacity(0.6),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(32),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.1),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 30,
-                offset: const Offset(0, 15),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    colors: [
-                      neonPurple.withOpacity(0.3),
-                      Colors.transparent,
-                    ],
-                  ),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.category_outlined,
-                  size: 80,
-                  color: neonPurple,
-                ),
-              ),
-              const SizedBox(height: 24),
-              ShaderMask(
-                shaderCallback: (bounds) => LinearGradient(
-                  colors: [textPrimary, neonBlue],
-                ).createShader(bounds),
-                child: Text(
-                  'welcome_screen.tier_list_select_category'.tr(),
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                    letterSpacing: -1,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'welcome_screen.tier_list_select_desc'.tr(),
-                style: TextStyle(
-                  fontSize: 16,
-                  color: textSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
+      return _buildStatePanel(
+        icon: Icons.category_outlined,
+        title: 'welcome_screen.tier_list_select_category'.tr(),
+        description: 'welcome_screen.tier_list_select_desc'.tr(),
       );
     } else if (_topUsers.isEmpty && !_isLoading) {
-      return Center(
-        child: Container(
-          margin: const EdgeInsets.all(32),
-          padding: const EdgeInsets.all(40),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                cardDark.withOpacity(0.8),
-                secondaryDark.withOpacity(0.6),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(32),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.1),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 30,
-                offset: const Offset(0, 15),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    colors: [
-                      neonPink.withOpacity(0.3),
-                      Colors.transparent,
-                    ],
-                  ),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.emoji_events_outlined,
-                  size: 80,
-                  color: neonPink,
-                ),
-              ),
-              const SizedBox(height: 24),
-              ShaderMask(
-                shaderCallback: (bounds) => LinearGradient(
-                  colors: [textPrimary, neonPink],
-                ).createShader(bounds),
-                child: Text(
-                  'welcome_screen.tier_list_no_result'.tr(),
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                    letterSpacing: -1,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'welcome_screen.tier_list_no_users'
-                    .tr(args: [_selectedCategoryName ?? ""]),
-                style: TextStyle(
-                  fontSize: 16,
-                  color: textSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
+      return _buildStatePanel(
+        icon: Icons.emoji_events_outlined,
+        title: 'welcome_screen.tier_list_no_result'.tr(),
+        description: 'welcome_screen.tier_list_no_users'
+            .tr(args: [_selectedCategoryName ?? ""]),
       );
     }
     return const SizedBox.shrink();
   }
 
+  // ---------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: primaryDark,
+      backgroundColor: bgBase,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -1105,86 +917,57 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
           icon: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.white.withOpacity(0.2),
-                  Colors.white.withOpacity(0.1),
-                ],
-              ),
+              color: Colors.white.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: Colors.white.withOpacity(0.3),
+                color: Colors.white.withValues(alpha: 0.12),
                 width: 1,
               ),
             ),
             child: const Icon(
-              Icons.arrow_back_ios_new,
+              Icons.arrow_back_ios_new_rounded,
               color: Colors.white,
-              size: 20,
+              size: 18,
             ),
           ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Stack(
-        children: [
-          // Background Glow
-          Positioned(
-            top: -100,
-            right: -100,
-            child: Container(
-              width: 400,
-              height: 400,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    neonPurple.withOpacity(0.2),
-                    Colors.transparent,
-                  ],
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(child: _buildHeader()),
+          SliverToBoxAdapter(child: _buildModernCategorySelector()),
+          const SliverToBoxAdapter(child: SizedBox(height: 10)),
+          if (_isLoading)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: _buildLoadingState(),
+            )
+          else if (_topUsers.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: _buildEmptyState(),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.only(bottom: 100, top: 4),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    return _buildUserCard(_topUsers[index], index);
+                  },
+                  childCount: _topUsers.length,
                 ),
               ),
             ),
-          ),
-          CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              SliverToBoxAdapter(child: _buildHeader()),
-              SliverToBoxAdapter(child: _buildModernCategorySelector()),
-              if (_isLoading)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: _buildLoadingState(),
-                )
-              else if (_topUsers.isEmpty)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: _buildEmptyState(),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.only(bottom: 100),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        return _buildUserCard(_topUsers[index], index);
-                      },
-                      childCount: _topUsers.length,
-                    ),
-                  ),
-                ),
-            ],
-          ),
         ],
       ),
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: primaryDark,
+        decoration: const BoxDecoration(
+          color: bgBase,
           border: Border(
-            top: BorderSide(
-              color: Colors.white.withOpacity(0.05),
-              width: 1,
-            ),
+            top: BorderSide(color: Color(0x0DFFFFFF), width: 1),
           ),
         ),
         child: SafeArea(
@@ -1211,11 +994,22 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
           _animationController.reset();
           _loadTopUsers();
         },
-        backgroundColor: neonPurple,
-        elevation: 8,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: const Icon(Icons.refresh, color: Colors.white, size: 28),
+        backgroundColor: bgElevated,
+        foregroundColor: accentGold,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: accentGold.withValues(alpha: 0.35)),
+        ),
+        child: const Icon(Icons.refresh_rounded, size: 24),
       ),
     );
   }
+}
+
+class _RankStyle {
+  final Color color;
+  final IconData icon;
+  final String label;
+  const _RankStyle(this.color, this.icon, this.label);
 }
