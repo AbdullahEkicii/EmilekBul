@@ -1,17 +1,5 @@
 // android/build.gradle.kts
 
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-
-    dependencies {
-        classpath("com.android.tools.build:gradle:8.9.0")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0")
-        classpath("com.google.gms:google-services:4.4.2") // Google Services Plugin
-    }
-}
 
 allprojects {
     repositories {
@@ -37,6 +25,4 @@ subprojects {
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
-
-// Eski tarz `extra` kullanımı (Kotlin DSL'de pek gerekli değil ama uyumluluk için)
-extra["kotlin_version"] = "1.9.0"
+

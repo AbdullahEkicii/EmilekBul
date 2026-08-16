@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth.dart';
 import '../services/user_service.dart';
-
 import '../services/token_service.dart';
 import 'welcome_screen.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -13,6 +12,7 @@ import '../services/game_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/language_selector_button.dart';
+import '../services/analytics_service.dart';
 // import 'package:email_otp/email_otp/email_otp.dart'; // Removed for Firebase flow
 
 class LoginRegisterScreen extends StatefulWidget {
@@ -174,23 +174,18 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen>
         idToken: googleAuth.idToken,
       );
 
-      // Check for anonymous user to link
+      // Check for anonymous user to link/migrate
       final currentUser = FirebaseAuth.instance.currentUser;
+      final bool isAnonymous = currentUser != null && currentUser.isAnonymous;
+      final String? oldGuestUid = isAnonymous ? currentUser.uid : null;
       UserCredential userCredential;
 
-      if (currentUser != null && currentUser.isAnonymous) {
+      if (isAnonymous) {
         try {
           userCredential = await currentUser.linkWithCredential(credential);
-          // Set isGuest to false manually in Firestore
-          await _firestore.collection('users').doc(currentUser.uid).update({
-            'email': userCredential.user?.email ?? '',
-            'isGuest': false,
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
         } on FirebaseAuthException catch (e) {
           if (e.code == 'credential-already-in-use') {
-            // Google account already exists, must sign in normally (abandon guest data or todo: merge)
-            // For now, just sign in normally
+            // Google hesabı zaten mevcut, normal giriş yapıp misafir verilerini bu hesaba aktaracağız
             userCredential =
                 await FirebaseAuth.instance.signInWithCredential(credential);
           } else {
@@ -205,28 +200,33 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen>
       final user = userCredential.user;
 
       if (user != null) {
-        // Firestore Check/Create (Only if not linked/existing)
-        final userDoc =
-            await _firestore.collection('users').doc(user.uid).get();
-        if (!userDoc.exists) {
-          await _firestore.collection('users').doc(user.uid).set({
-            'firstName': user.displayName?.split(' ').first ?? '',
-            'lastName': user.displayName?.split(' ').skip(1).join(' ') ?? '',
-            'username': user.displayName ?? '',
-            'username_lower': (user.displayName ?? '').toLowerCase(),
-            'email': user.email ?? '',
-            'avatarIndex': '0',
-            'createdAt': FieldValue.serverTimestamp(),
-            'totalPoints': 0,
-            'totalQuizzes': 0,
-            'correctAnswers': 0,
-            'tokens': 30, // Default start token
-            'isEmailVerified': true, // Google ile girenler doğrulanmış sayılır
-            'isGuest': false,
-          });
+        // Eğer daha önce misafir olarak oynandıysa verileri yeni hesaba eksiksiz aktar
+        if (oldGuestUid != null) {
+          await UserService.migrateGuestDataToUser(
+            sourceGuestUid: oldGuestUid,
+            targetUid: user.uid,
+            newUsername: user.displayName,
+            newFirstName: user.displayName?.split(' ').first,
+            newLastName: user.displayName?.split(' ').skip(1).join(' '),
+            email: user.email,
+          );
+        } else {
+          // Normal Google girişi (profil yoksa oluştur)
+          final profileExists = await UserService.userProfileExists(user.uid);
+          if (!profileExists) {
+            await UserService.createUserProfile(
+              uid: user.uid,
+              email: user.email ?? '',
+              username: user.displayName ?? '',
+              firstName: user.displayName?.split(' ').first ?? '',
+              lastName: user.displayName?.split(' ').skip(1).join(' ') ?? '',
+            );
+          }
         }
 
         await _syncTokens(user.uid);
+        AnalyticsService.setUserId(user.uid);
+        AnalyticsService.logLogin(loginMethod: 'google');
 
         if (mounted) {
           _showSuccessSnackBar('auth.google_success'.tr());
@@ -308,6 +308,8 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen>
           // Token Sync
           if (user != null) {
             await _syncTokens(user.uid);
+            AnalyticsService.setUserId(user.uid);
+            AnalyticsService.logLogin(loginMethod: 'email');
           }
 
           if (mounted) {
@@ -406,6 +408,8 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen>
         if (result != null && result.user != null) {
           final user = result.user!;
           await _syncTokens(user.uid);
+          AnalyticsService.setUserId(user.uid);
+          AnalyticsService.logSignUp(signUpMethod: 'email');
 
           if (mounted) {
             setState(() => isLoading = false);
@@ -664,13 +668,14 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen>
                                         // 2. Firebase Auth ile Link/Giriş Yap (Direkt)
                                         final playGamesCredential =
                                             await Auth().signInWithPlayGames();
+                                        final isAuthValid = playGamesCredential != null ||
+                                            FirebaseAuth.instance.currentUser != null;
 
-                                        if (playGamesCredential == null) {
+                                        if (!isAuthValid) {
                                           if (mounted) {
                                             setState(() {
                                               isLoading = false;
-                                              errorMessage =
-                                                  'Play Games ile Firebase\'e bağlanılamadı. Lütfen ayarlarınızı kontrol edin.';
+                                              errorMessage = 'auth.error_general'.tr();
                                             });
                                           }
                                           return;
@@ -678,14 +683,6 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen>
 
                                         _showSuccessSnackBar(
                                             'auth.google_success'.tr());
-
-                                        // Link/Update Profile with Play Games Info
-                                        final pId =
-                                            await GameService().getPlayerID();
-                                        final pName =
-                                            await GameService().getPlayerName();
-                                        await UserService.linkPlayGamesProfile(
-                                            pId, pName);
 
                                         if (context.mounted) {
                                           Navigator.pushReplacement(

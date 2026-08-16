@@ -1,42 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/services.dart';
-import 'glass_container.dart';
 import '../services/notification_service.dart';
+import '../constants/app_languages.dart';
 
 class LanguageSelectorButton extends StatelessWidget {
   const LanguageSelectorButton({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // context.locale safely accessed
     final currentLocale = context.locale;
-
-    String flag = "🇺🇸";
-    String name = "English";
-
-    switch (currentLocale.languageCode) {
-      case 'tr':
-        flag = "🇹🇷";
-        name = "Türkçe";
-        break;
-      case 'es':
-        flag = "🇪🇸";
-        name = "Español";
-        break;
-      case 'fr':
-        flag = "🇫🇷";
-        name = "Français";
-        break;
-      case 'ar':
-        flag = "🇸🇦";
-        name = "العربية";
-        break;
-      case 'ru':
-        flag = "🇷🇺";
-        name = "Русский";
-        break;
-    }
+    final currentLang = AppLanguages.getLanguage(currentLocale.languageCode);
 
     return Container(
       decoration: BoxDecoration(
@@ -68,12 +42,12 @@ class LanguageSelectorButton extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  flag,
+                  currentLang.flag,
                   style: const TextStyle(fontSize: 18),
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  name,
+                  currentLang.name,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
@@ -95,114 +69,124 @@ class LanguageSelectorButton extends StatelessWidget {
   }
 
   void _showLanguageDialog(BuildContext context) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: GlassContainer(
-          borderRadius: 24,
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Select Language / Dil Seçin',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        final currentCode = context.locale.languageCode;
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              decoration: const BoxDecoration(
+                color: Color(0xFF1E293B),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border(top: BorderSide(color: Color(0x2EFFFFFF), width: 1)),
               ),
-              const SizedBox(height: 20),
-              _buildLanguageOption(
-                context,
-                'Turkish',
-                'Türkçe',
-                '🇹🇷',
-                'tr',
-              ),
-              const Divider(color: Colors.white10),
-              _buildLanguageOption(
-                context,
-                'English',
-                'İngilizce',
-                '🇺🇸',
-                'en',
-              ),
-              const Divider(color: Colors.white10),
-              _buildLanguageOption(
-                context,
-                'Spanish',
-                'Español',
-                '🇪🇸',
-                'es',
-              ),
-              const Divider(color: Colors.white10),
-              _buildLanguageOption(
-                context,
-                'French',
-                'Français',
-                '🇫🇷',
-                'fr',
-              ),
-              const Divider(color: Colors.white10),
-              _buildLanguageOption(
-                context,
-                'Arabic',
-                'العربية',
-                '🇸🇦',
-                'ar',
-              ),
-              const Divider(color: Colors.white10),
-              _buildLanguageOption(
-                context,
-                'Russian',
-                'Русский',
-                '🇷🇺',
-                'ru',
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: Column(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.language_rounded, color: Colors.blueAccent, size: 24),
+                      const SizedBox(width: 8),
+                      Text(
+                        'settings.language'.tr(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 19,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView.separated(
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: AppLanguages.languages.length,
+                      separatorBuilder: (context, i) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final lang = AppLanguages.languages[index];
+                        final isSelected = lang.code == currentCode;
 
-  Widget _buildLanguageOption(
-    BuildContext context,
-    String title,
-    String subtitle,
-    String flag,
-    String code,
-  ) {
-    final isSelected = context.locale.languageCode == code;
-
-    return ListTile(
-      leading: Text(flag, style: const TextStyle(fontSize: 24)),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: isSelected ? Colors.blueAccent : Colors.white,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        ),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
-      ),
-      trailing: isSelected
-          ? const Icon(Icons.check_circle, color: Colors.blueAccent)
-          : null,
-      onTap: () async {
-        if (context.locale.languageCode != code) {
-          await context.setLocale(Locale(code));
-          // Bildirimleri hemen güncelle - await kullanmıyoruz, arkaplanda yapsın
-          NotificationService.cancelAndReschedule();
-        }
-        if (context.mounted) {
-          Navigator.pop(context);
-          HapticFeedback.lightImpact();
-        }
+                        return GestureDetector(
+                          onTap: () async {
+                            if (currentCode != lang.code) {
+                              await context.setLocale(Locale(lang.code));
+                              NotificationService.cancelAndReschedule();
+                            }
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              HapticFeedback.lightImpact();
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Colors.blueAccent.withValues(alpha: 0.25)
+                                  : Colors.white.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isSelected
+                                    ? Colors.blueAccent
+                                    : Colors.white.withValues(alpha: 0.08),
+                                width: isSelected ? 1.5 : 1.0,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Text(lang.flag, style: const TextStyle(fontSize: 22)),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        lang.name,
+                                        style: TextStyle(
+                                          color: isSelected ? Colors.blueAccent : Colors.white,
+                                          fontSize: 15,
+                                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                        ),
+                                      ),
+                                      if (lang.name != lang.englishName)
+                                        Text(
+                                          lang.englishName,
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(alpha: 0.45),
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                if (isSelected)
+                                  const Icon(Icons.check_circle_rounded, color: Colors.blueAccent, size: 20),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
       },
     );
   }

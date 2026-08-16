@@ -388,13 +388,7 @@ class _PastTestsScreenState extends State<PastTestsScreen>
   }
 
   String _translateCategory(String categoryName) {
-    try {
-      final category = AppCategories.categories.firstWhere(
-        (c) => c.name == categoryName,
-      );
-      return category.key.tr();
-    } catch (_) {
-      return categoryName;
-    }
+    final key = AppCategories.getCategoryKey(categoryName);
+    return key.isNotEmpty ? key.tr() : categoryName;
   }
 }

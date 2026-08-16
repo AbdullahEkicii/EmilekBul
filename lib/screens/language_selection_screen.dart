@@ -9,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_utils.dart';
 import '../main.dart'; // For QuizFlow
 
+import '../constants/app_languages.dart';
+
 class LanguageSelectionScreen extends StatefulWidget {
   const LanguageSelectionScreen({super.key});
 
@@ -65,22 +67,9 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
             ],
           ),
         );
-      } else {
-        // If they have internet now, just let them pick a language and it will auto login,
-        // or we could auto login them right here if locale is already set.
-        // For simplicity, we just close the dialog if it was open, or do nothing.
       }
     }
   }
-
-  final List<Map<String, dynamic>> _languages = [
-    {'code': 'tr', 'name': 'Türkçe', 'flag': '🇹🇷'},
-    {'code': 'en', 'name': 'English', 'flag': '🇬🇧'},
-    {'code': 'ru', 'name': 'Русский', 'flag': '🇷🇺'},
-    {'code': 'ar', 'name': 'العربية', 'flag': '🇸🇦'},
-    {'code': 'es', 'name': 'Español', 'flag': '🇪🇸'},
-    {'code': 'fr', 'name': 'Français', 'flag': '🇫🇷'},
-  ];
 
   Future<void> _handleLanguageSelection(
       BuildContext context, String languageCode) async {
@@ -293,13 +282,13 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
               ),
-              itemCount: _languages.length,
+              itemCount: AppLanguages.languages.length,
               itemBuilder: (context, index) {
-                final lang = _languages[index];
+                final lang = AppLanguages.languages[index];
                 return _buildLanguageCard(
-                  lang['name'],
-                  lang['flag'],
-                  lang['code'],
+                  lang.name,
+                  lang.flag,
+                  lang.code,
                 );
               },
             ),

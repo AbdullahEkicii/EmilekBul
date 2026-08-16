@@ -93,18 +93,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _selectedFrameId = data['equippedFrame'] ?? '0';
           _selectedTitleId = data['equippedTitle'] ?? '0';
 
-          _ownedAvatars = List<String>.from(data['ownedAvatars'] ?? ['0']);
-          _ownedFrames = List<String>.from(data['ownedFrames'] ?? ['0']);
-          _ownedTitles = List<String>.from(data['ownedTitles'] ?? ['0']);
-
-          _emailController.text = user.email ?? '';
-
-          // Legacy Support: If current avatar is premium (>9) but not in owned list, add it locally
-          // It will be saved to Firestore when they save profile
-          int currentIdx = int.tryParse(_selectedAvatarIndex) ?? 0;
-          if (currentIdx > 9 && !_ownedAvatars.contains(_selectedAvatarIndex)) {
+          _ownedAvatars = List<String>.from(data['ownedAvatars'] ?? [])
+              .where((a) => a != '0' && a != 'yok' && a.isNotEmpty)
+              .toList();
+          if (UserService.hasAvatar(_selectedAvatarIndex) &&
+              !_ownedAvatars.contains(_selectedAvatarIndex)) {
             _ownedAvatars.add(_selectedAvatarIndex);
           }
+          _ownedFrames = List<String>.from(data['ownedFrames'] ?? ['0']);
+          _ownedTitles = List<String>.from(data['ownedTitles'] ?? ['0']);
+          _emailController.text = user.email ?? '';
         }
       }
     } catch (e) {
@@ -270,18 +268,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     Expanded(
                       child: Builder(
                         builder: (context) {
-                          // 1. Free avatars (0-9)
-                          final Set<String> availableAvatars = {};
-                          for (int i = 0; i < 10; i++) {
-                            availableAvatars.add(i.toString());
+                          // Only owned avatars + '0' (Avatarsız) + currently selected avatar
+                          final Set<String> availableAvatars = Set<String>.from(
+                            _ownedAvatars.where((a) => a != '0' && a != 'yok' && a.isNotEmpty),
+                          );
+                          availableAvatars.add('0');
+                          if (_selectedAvatarIndex.isNotEmpty) {
+                            availableAvatars.add(_selectedAvatarIndex);
                           }
-                          // 2. Owned avatars
-                          availableAvatars.addAll(_ownedAvatars);
 
-                          // Sort numerically
+                          // Sort numerically with '0' (Avatarsız) first
                           final List<String> displayList =
                               availableAvatars.toList()
                                 ..sort((a, b) {
+                                  if (a == '0') return -1;
+                                  if (b == '0') return 1;
                                   int? iA = int.tryParse(a);
                                   int? iB = int.tryParse(b);
                                   if (iA != null && iB != null) {
@@ -303,6 +304,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               final avatarId = displayList[index];
                               final isSelected =
                                   _selectedAvatarIndex == avatarId;
+                              final hasAvatar =
+                                  UserService.hasAvatar(avatarId);
 
                               return GestureDetector(
                                 onTap: () {
@@ -335,13 +338,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   child: CircleAvatar(
                                     backgroundColor:
                                         Colors.white.withValues(alpha: 0.05),
-                                    backgroundImage: ResizeImage(
-                                      AssetImage(
-                                        UserService.getAvatarPath(avatarId),
-                                      ),
-                                      width: 120,
-                                      height: 120,
-                                    ),
+                                    backgroundImage: hasAvatar
+                                        ? ResizeImage(
+                                            AssetImage(
+                                              UserService.getAvatarPath(avatarId),
+                                            ),
+                                            width: 120,
+                                            height: 120,
+                                          )
+                                        : null,
+                                    child: hasAvatar
+                                        ? null
+                                        : const Icon(
+                                            Icons.person_rounded,
+                                            color: Colors.white70,
+                                            size: 28,
+                                          ),
                                   ),
                                 ),
                               );
@@ -494,17 +506,32 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     child: Stack(
                                       alignment: Alignment.center,
                                       children: [
-                                        CircleAvatar(
-                                          radius: 65,
-                                          backgroundColor: secondaryDark,
-                                          backgroundImage: ResizeImage(
-                                            AssetImage(
-                                              UserService.getAvatarPath(
-                                                  _selectedAvatarIndex),
-                                            ),
-                                            width: 260,
-                                            height: 260,
-                                          ),
+                                        Builder(
+                                          builder: (context) {
+                                            final bool hasSelectedAvatar =
+                                                UserService.hasAvatar(_selectedAvatarIndex);
+                                            return CircleAvatar(
+                                              radius: 65,
+                                              backgroundColor: secondaryDark,
+                                              backgroundImage: hasSelectedAvatar
+                                                  ? ResizeImage(
+                                                      AssetImage(
+                                                        UserService.getAvatarPath(
+                                                            _selectedAvatarIndex),
+                                                      ),
+                                                      width: 260,
+                                                      height: 260,
+                                                    )
+                                                  : null,
+                                              child: hasSelectedAvatar
+                                                  ? null
+                                                  : const Icon(
+                                                      Icons.person_rounded,
+                                                      color: Colors.white70,
+                                                      size: 60,
+                                                    ),
+                                            );
+                                          },
                                         ),
                                         if (_selectedFrameId != '0' && _selectedFrameId != 'yok')
                                           Container(

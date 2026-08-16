@@ -184,7 +184,48 @@ CREATE TABLE achievements (
     return maps.map((map) => TestQuestionDetail.fromMap(map)).toList();
   }
 
-  Future<void> deleteOldTests({int days = 7}) async {
+  /// Belirli bir kategoride son X günde çözülen en fazla N testin soru köklerini getirir (Token optimizasyonu)
+  Future<Set<String>> getRecentQuestionRootsForCategory(
+    String category, {
+    int testLimit = 15,
+    int days = 14,
+  }) async {
+    final db = await instance.database;
+    final thresholdDate =
+        DateTime.now().subtract(Duration(days: days)).toIso8601String();
+
+    final testMaps = await db.query(
+      'tests',
+      columns: ['id'],
+      where: 'category = ? AND date >= ?',
+      whereArgs: [category, thresholdDate],
+      orderBy: 'date DESC',
+      limit: testLimit,
+    );
+
+    if (testMaps.isEmpty) {
+      return <String>{};
+    }
+
+    final testIds = testMaps.map((m) => m['id'] as int).toList();
+    final placeholders = List.filled(testIds.length, '?').join(',');
+
+    final questionMaps = await db.rawQuery(
+      'SELECT question FROM test_questions WHERE test_id IN ($placeholders)',
+      testIds,
+    );
+
+    final Set<String> questionRoots = {};
+    for (final row in questionMaps) {
+      final q = (row['question'] as String?)?.trim();
+      if (q != null && q.isNotEmpty) {
+        questionRoots.add(q);
+      }
+    }
+    return questionRoots;
+  }
+
+  Future<void> deleteOldTests({int days = 14}) async {
     final db = await instance.database;
 
     final now = DateTime.now();

@@ -244,18 +244,18 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     final random = math.Random();
 
     // Difficulty-based timing ranges (milliseconds for finer control)
-    int minMs = 9000;
-    int maxMs = 20000;
-    double accuracy = 0.50;
+    int minMs = 7000;
+    int maxMs = 15000;
+    double accuracy = 0.42; // Kolay: %42 başarı
 
     switch (widget.difficulty) {
       case 'Orta':
-        minMs = 6000; maxMs = 14000; accuracy = 0.68; break;
+        minMs = 5000; maxMs = 11000; accuracy = 0.56; break; // %56 başarı
       case 'Zor':
-        minMs = 3500; maxMs = 9000; accuracy = 0.82; break;
+        minMs = 3500; maxMs = 8000; accuracy = 0.70; break; // %70 başarı
       case 'İmkansız':
       case 'Imkansız':
-        minMs = 2000; maxMs = 6000; accuracy = 0.90; break;
+        minMs = 2500; maxMs = 6000; accuracy = 0.80; break; // %80 başarı
     }
 
     // Add ±30% jitter — sometimes surprisingly fast, sometimes slow
@@ -882,7 +882,9 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${(_comboTriggerValue >= 5) ? "2.5x" : (_comboTriggerValue == 4) ? "2.0x" : "1.5x"} PUAN ÇARPANI!',
+                          'quiz.multiplier_label'.tr(args: [
+                            (_comboTriggerValue >= 5) ? "2.5x" : (_comboTriggerValue == 4) ? "2.0x" : "1.5x"
+                          ]),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -1078,7 +1080,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                                     )
                                   : Text(
                                       _botCompleted
-                                          ? '🏁 Done'
+                                          ? '🏁 ${'duel.bot_completed_label'.tr()}'
                                           : '${(_botCurrentIndex).clamp(0, widget.questions.length)}/${widget.questions.length}',
                                       style: TextStyle(
                                           color: Colors.white.withValues(alpha: 0.55),
@@ -1092,7 +1094,11 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                           children: [
                             CircleAvatar(
                               radius: 14,
-                              backgroundImage: AssetImage(_botAvatar),
+                              backgroundImage: ResizeImage(
+                                AssetImage(_botAvatar),
+                                width: 60,
+                                height: 60,
+                              ),
                             ),
                             if (_botIsThinking)
                               Positioned.fill(
@@ -1294,7 +1300,11 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                                   ],
                                 ),
                                 child: CircleAvatar(
-                                  backgroundImage: AssetImage(_botAvatar),
+                                  backgroundImage: ResizeImage(
+                                    AssetImage(_botAvatar),
+                                    width: 80,
+                                    height: 80,
+                                  ),
                                 ),
                               ),
                             ),

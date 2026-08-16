@@ -26,6 +26,13 @@ import '../services/achievement_service.dart';
 import '../services/streak_service.dart';
 import '../widgets/daily_streak_dialog.dart';
 import '../widgets/lucky_wheel_dialog.dart';
+import '../widgets/friend_race_dialog.dart';
+import '../widgets/friends_dialog.dart';
+import '../models/friend_model.dart';
+import '../services/friend_service.dart';
+import '../services/presence_service.dart';
+import '../services/duel_invite_service.dart';
+import 'duel_room_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
   final VoidCallback onStart;
@@ -55,6 +62,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   User? currentUser;
   bool _isCheckingAuth = true;
   StreamSubscription<User?>? _authSubscription;
+  StreamSubscription<List<FriendRequest>>? _friendRequestsSub;
+  StreamSubscription<List<DuelInvite>>? _duelInvitesSub;
+  StreamSubscription<List<PokeMessage>>? _pokesSub;
+  final Set<String> _processedRequestIds = {};
+  final Set<String> _processedInviteIds = {};
+  final Set<String> _processedPokeIds = {};
+  bool _isFirstRequestsLoad = true;
+  bool _isFirstInvitesLoad = true;
   bool _hasUnseenAchievements = false;
 
   // Cached user data to avoid unnecessary Firestore refetches
@@ -172,43 +187,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       ]);
 
       // Check for first-time guest (depends on currentUser being set)
-      if (currentUser!.isAnonymous) {
-        try {
-          final results = await Future.wait([
-            FirebaseFirestore.instance
-                .collection('users')
-                .doc(currentUser!.uid)
-                .get(),
-            SharedPreferences.getInstance(),
-          ]);
-
-          final userDoc = results[0] as DocumentSnapshot;
-          final prefs = results[1] as SharedPreferences;
-          final totalQuizzes = (userDoc.data()
-                  as Map<String, dynamic>?)?['totalQuizzes'] as int? ??
-              0;
-          final hasSeenOnboarding =
-              prefs.getBool('has_seen_onboarding_v2') ?? false;
-
-          if (totalQuizzes == 0 && !hasSeenOnboarding && mounted) {
-            // Automatically start the first quiz for new users
-            await prefs.setBool('has_seen_onboarding_v2', true);
-            if (!mounted) return;
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const QuizFlow(
-                  initialCategory: 'Genel Kültür',
-                  initialDifficulty: 'Kolay',
-                  initialDuration: 30,
-                ),
-              ),
-            );
-          }
-        } catch (e) {
-          // Silently handle onboarding check failure
-        }
-      }
+      // Kullanıcı hazır, ana ekran akışına devam et
     }
 
     // Kullanıcı giriş yapmışsa, update kontrolü yap ve animasyonları başlat
@@ -268,7 +247,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       }
     });
 
-    // Start animations (sadece kullanıcı giriş yapmışsa)
+    // Start animations and social presence
     if (currentUser != null) {
       _headerAnimationController.forward();
       Future.delayed(const Duration(milliseconds: 300), () {
@@ -276,7 +255,278 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           _buttonAnimationController.forward();
         }
       });
+      _initSocialListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    _friendRequestsSub?.cancel();
+    _duelInvitesSub?.cancel();
+    _pokesSub?.cancel();
+    _headerAnimationController.dispose();
+    _buttonAnimationController.dispose();
+    _onboardingController.dispose();
+    PresenceService.stopPresence();
+    super.dispose();
+  }
+
+  void _initSocialListeners() {
+    final user = currentUser;
+    if (user == null) return;
+    final uid = user.uid;
+
+    // Çevrimiçi aktiflik durumunu başlat
+    PresenceService.startPresence();
+
+    // Eski askıda kalmış kullanıcı odalarını temizle
+    FirebaseFirestore.instance
+        .collection('duel_rooms')
+        .where('hostUid', isEqualTo: uid)
+        .where('status', isEqualTo: 'waiting')
+        .get()
+        .then((snapshot) {
+      final now = DateTime.now();
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        DateTime? lastActive;
+        final raw = data['lastActivity'] ?? data['createdAt'];
+        if (raw is Timestamp) {
+          lastActive = raw.toDate();
+        }
+        if (lastActive == null || now.difference(lastActive).inMinutes >= 2) {
+          doc.reference.update({
+            'status': 'closed',
+            'lastActivity': FieldValue.serverTimestamp(),
+            'closeReason': 'app_restart_cleanup',
+          }).catchError((_) {});
+        }
+      }
+    }).catchError((_) {});
+
+    // 1. Gelen Arkadaşlık İsteklerini Dinle
+    _friendRequestsSub?.cancel();
+    _friendRequestsSub = FriendService.streamIncomingRequests(uid).listen((requests) {
+      if (_isFirstRequestsLoad) {
+        _isFirstRequestsLoad = false;
+        for (final req in requests) {
+          _processedRequestIds.add(req.id);
+        }
+        return;
+      }
+
+      for (final req in requests) {
+        if (!_processedRequestIds.contains(req.id)) {
+          _processedRequestIds.add(req.id);
+          NotificationService.showInstantNotification(
+            id: 1000 + req.id.hashCode % 1000,
+            title: 'friends.friend_req_received_title'.tr(),
+            body: 'friends.friend_req_received_body'.tr(args: [req.fromUsername]),
+          );
+        }
+      }
+    });
+
+    // 2. Gelen 1v1 Düello Davetlerini Dinle
+    _duelInvitesSub?.cancel();
+    _duelInvitesSub = DuelInviteService.streamIncomingInvites(uid).listen((invites) {
+      if (_isFirstInvitesLoad) {
+        _isFirstInvitesLoad = false;
+        for (final inv in invites) {
+          _processedInviteIds.add(inv.id);
+        }
+        return;
+      }
+
+      for (final inv in invites) {
+        if (!_processedInviteIds.contains(inv.id) && inv.status == 'pending') {
+          _processedInviteIds.add(inv.id);
+          NotificationService.showInstantNotification(
+            id: 2000 + inv.id.hashCode % 1000,
+            title: 'duel.invite_received_title'.tr(),
+            body: 'duel.invite_received_body'.tr(args: [inv.fromUsername]),
+          );
+
+          if (mounted) {
+            _showDuelInviteModal(inv);
+          }
+        }
+      }
+    });
+
+    // 3. Gelen Dürtmeleri (Poke) Dinle
+    _pokesSub?.cancel();
+    _pokesSub = DuelInviteService.streamIncomingPokes(uid).listen((pokes) {
+      for (final poke in pokes) {
+        if (!_processedPokeIds.contains(poke.id)) {
+          _processedPokeIds.add(poke.id);
+          NotificationService.showInstantNotification(
+            id: 3000 + poke.id.hashCode % 1000,
+            title: 'friends.poke_received_title'.tr(),
+            body: 'friends.poke_received_body'.tr(args: [poke.fromUsername]),
+          );
+
+          // Dürtme bildirimi verildikten sonra temizle
+          DuelInviteService.deletePoke(uid, poke.id);
+        }
+      }
+    });
+  }
+
+  void _showDuelInviteModal(DuelInvite invite) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isDismissible: false,
+      builder: (sheetCtx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Color(0xFF1E293B),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 48,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: const Color(0xFF334155),
+                  backgroundImage: ResizeImage(
+                    AssetImage(UserService.getAvatarPath(invite.fromAvatar)),
+                    width: 96,
+                    height: 96,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'duel.invite_received_title'.tr(),
+                        style: const TextStyle(color: Color(0xFFFFD56B), fontWeight: FontWeight.w900, fontSize: 16),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        AppUtils.localizeUsername(invite.fromUsername),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Column(
+                    children: [
+                      Text('duel.category'.tr(), style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                      const SizedBox(height: 4),
+                      Text(invite.category, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      Text('duel.difficulty'.tr(), style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                      const SizedBox(height: 4),
+                      Text(invite.difficulty, style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      Text('duel.bet_amount'.tr(), style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Image.asset('lib/assets/coin.png', width: 14, height: 14),
+                          const SizedBox(width: 4),
+                          Text('${invite.betTokens}', style: const TextStyle(color: Color(0xFFFFD56B), fontWeight: FontWeight.bold, fontSize: 13)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      Navigator.pop(sheetCtx);
+                      await DuelInviteService.respondToInvite(
+                        myUid: currentUser!.uid,
+                        inviteId: invite.id,
+                        accept: false,
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white70,
+                      side: const BorderSide(color: Colors.white24),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: Text('duel.reject_invite'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      Navigator.pop(sheetCtx);
+                      await DuelInviteService.respondToInvite(
+                        myUid: currentUser!.uid,
+                        inviteId: invite.id,
+                        accept: true,
+                      );
+                      if (mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DuelRoomScreen(
+                              roomCode: invite.roomCode,
+                              isHost: false,
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6366F1),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: Text('duel.accept_invite'.tr(), style: const TextStyle(fontWeight: FontWeight.w900)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _loadUserData() async {
@@ -297,9 +547,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       final hasUnseen = await AchievementService.hasUnseenAchievements();
       if (mounted) {
         setState(() {
-          _cachedAvatarPath = (avatarIndex != null && avatarIndex.isNotEmpty)
+          _cachedAvatarPath = (avatarIndex != null && UserService.hasAvatar(avatarIndex))
               ? UserService.getAvatarPath(avatarIndex)
               : null;
+          if (_cachedAvatarPath != null && _cachedAvatarPath!.isEmpty) {
+            _cachedAvatarPath = null;
+          }
           _cachedLevel = data?['level'] ?? 1;
           _hasUnseenAchievements = hasUnseen;
           _userDataLoaded = true;
@@ -308,15 +561,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     } catch (e) {
       // Silently handle — fallback to default icon
     }
-  }
-
-  @override
-  void dispose() {
-    _authSubscription?.cancel();
-    _headerAnimationController.dispose();
-    _buttonAnimationController.dispose();
-    _onboardingController.dispose();
-    super.dispose();
   }
 
   Widget _buildAuthButton() {
@@ -535,6 +779,63 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFriendsChip() {
+    final uid = currentUser?.uid;
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        FriendsDialog.show(context);
+      },
+      child: StreamBuilder<int>(
+        stream: uid != null ? FriendService.streamIncomingRequestsCount(uid) : null,
+        builder: (context, snapshot) {
+          final pendingCount = snapshot.data ?? 0;
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.5)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('👥', style: TextStyle(fontSize: 16)),
+                  ],
+                ),
+              ),
+              if (pendingCount > 0)
+                Positioned(
+                  top: -4,
+                  right: -4,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    decoration: const BoxDecoration(
+                      color: Colors.redAccent,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                    child: Text(
+                      '$pendingCount',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -817,7 +1118,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         children: [
                           const LanguageSelectorButton(),
                           const SizedBox(height: 8),
-                          _buildStreakChip(),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildStreakChip(),
+                              const SizedBox(width: 8),
+                              _buildFriendsChip(),
+                            ],
+                          ),
                         ],
                       ),
                       Column(
@@ -1020,11 +1328,15 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                       text: 'welcome.start_button'.tr(),
                                     ),
                                   ),
+                                  const SizedBox(height: 14),
+                                  FriendRaceButton(
+                                    onTap: () => FriendRaceEntryDialog.show(context),
+                                  ),
                                 ],
                               ),
                             ),
                           ),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 24),
 
                           // Secondary Actions
                           // Secondary Actions
@@ -1352,15 +1664,22 @@ class StartButton extends StatelessWidget {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () {
+            onTap: () async {
               HapticFeedback.mediumImpact();
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => KategoriScreen(
-                      onStartQuiz: onPressedd, onStart: onPressed),
-                ),
-              );
+              final hasInternet = await AppUtils.hasInternetConnection();
+              if (!hasInternet && context.mounted) {
+                _showOfflineDialog(context, onStart: onPressed);
+                return;
+              }
+              if (context.mounted) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => KategoriScreen(
+                        onStartQuiz: onPressedd, onStart: onPressed),
+                  ),
+                );
+              }
             },
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 20),
@@ -1394,6 +1713,152 @@ class StartButton extends StatelessWidget {
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+void _showOfflineDialog(BuildContext context, {required VoidCallback onStart}) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: const Color(0xFF1E293B),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      title: Row(
+        children: [
+          const Icon(Icons.wifi_off_rounded, color: Colors.orangeAccent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'errors.no_internet_title'.tr(),
+              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+      content: Text(
+        'errors.offline_only_past_tests'.tr(),
+        style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('common.cancel'.tr(), style: const TextStyle(color: Colors.grey)),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(context);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => BasariHesaplaScreen(onStart: onStart),
+              ),
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF6366F1),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          child: Text('past_tests.view_past_tests'.tr(), style: const TextStyle(color: Colors.white)),
+        ),
+      ],
+    ),
+  );
+}
+
+class FriendRaceButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const FriendRaceButton({required this.onTap, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6366F1).withValues(alpha: 0.35),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () async {
+              HapticFeedback.mediumImpact();
+              final hasInternet = await AppUtils.hasInternetConnection();
+              if (!hasInternet && context.mounted) {
+                _showOfflineDialog(context, onStart: () {});
+                return;
+              }
+              onTap();
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF818CF8), Color(0xFF4F46E5)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.25),
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.bolt_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'duel.friend_race'.tr(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFD56B),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Text(
+                      '1v1 ⚡',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 11,
+                      ),
                     ),
                   ),
                 ],

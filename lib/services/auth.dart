@@ -19,39 +19,35 @@ class Auth {
     try {
       final user = _firebaseAuth.currentUser;
       if (user != null && user.isAnonymous) {
-        // Mevcut profilini çek
-        final currentProfile = await UserService.getUserProfile(user.uid);
-
+        final guestUid = user.uid;
         final credential =
             EmailAuthProvider.credential(email: email, password: password);
-        final userCredential = await user.linkWithCredential(credential);
 
-        // Yeni değerleri belirle (Girilenler öncelikli, yoksa eskiler)
-        final newUsername = (username?.isNotEmpty == true)
-            ? username!
-            : (currentProfile?['username'] ?? '');
-        final newFirstName = (firstName?.isNotEmpty == true)
-            ? firstName!
-            : (currentProfile?['firstName'] ?? '');
-        final newLastName = (lastName?.isNotEmpty == true)
-            ? lastName!
-            : (currentProfile?['lastName'] ?? '');
-        final currentAvatar = currentProfile?['avatarIndex'] ?? '0';
+        UserCredential userCredential;
+        try {
+          userCredential = await user.linkWithCredential(credential);
+        } on FirebaseAuthException catch (e) {
+          if (e.code == 'credential-already-in-use' || e.code == 'email-already-in-use') {
+            // E-posta zaten kayıtlıysa, mevcut hesaba giriş yap ve misafir verilerini bu hesaba aktar
+            userCredential = await _firebaseAuth.signInWithEmailAndPassword(
+              email: email,
+              password: password,
+            );
+          } else {
+            rethrow;
+          }
+        }
 
-        // Profil güncelle
-        await UserService.updateUserProfile(
-          username: newUsername,
-          firstName: newFirstName,
-          lastName: newLastName,
-          avatarIndex: currentAvatar,
-          email: email,
-        );
-
-        // Misafir flag'ini kaldır
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .update({'isGuest': false});
+        if (userCredential.user != null) {
+          await UserService.migrateGuestDataToUser(
+            sourceGuestUid: guestUid,
+            targetUid: userCredential.user!.uid,
+            newUsername: username,
+            newFirstName: firstName,
+            newLastName: lastName,
+            email: email,
+          );
+        }
 
         return userCredential;
       }
@@ -62,7 +58,7 @@ class Auth {
     }
   }
 
-  /// Kullanıcı kaydı (email & password ile) + Profil oluşturma
+  /// Kullanıcı kaydı (email & password ile) + Misafir Verisi Aktarımı
   Future<UserCredential?> registerWithEmail({
     required String email,
     required String password,
@@ -71,21 +67,35 @@ class Auth {
     String? lastName,
   }) async {
     try {
+      final currentUser = _firebaseAuth.currentUser;
+      final String? oldGuestUid = (currentUser != null && currentUser.isAnonymous) ? currentUser.uid : null;
+
       final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Profil oluştur
+      // Profil oluştur veya misafir verilerini aktar
       if (userCredential.user != null) {
-        await UserService.createUserProfile(
-          uid: userCredential.user!.uid,
-          email: email,
-          username: username ?? '',
-          firstName: firstName ?? '',
-          lastName: lastName ?? '',
-          avatarIndex: '0', // Varsayılan avatar
-        );
+        if (oldGuestUid != null) {
+          await UserService.migrateGuestDataToUser(
+            sourceGuestUid: oldGuestUid,
+            targetUid: userCredential.user!.uid,
+            newUsername: username,
+            newFirstName: firstName,
+            newLastName: lastName,
+            email: email,
+          );
+        } else {
+          await UserService.createUserProfile(
+            uid: userCredential.user!.uid,
+            email: email,
+            username: username ?? '',
+            firstName: firstName ?? '',
+            lastName: lastName ?? '',
+            avatarIndex: '0', // Varsayılan avatar
+          );
+        }
       }
 
       return userCredential;
@@ -98,28 +108,40 @@ class Auth {
     }
   }
 
-  /// Giriş yapma (email & password ile)
+  /// Giriş yapma (email & password ile) + Misafir Oturumu Birleştirme
   Future<UserCredential?> signInWithEmail({
     required String email,
     required String password,
   }) async {
     try {
+      final currentUser = _firebaseAuth.currentUser;
+      final String? oldGuestUid = (currentUser != null && currentUser.isAnonymous) ? currentUser.uid : null;
+
       final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Giriş sonrası profil kontrolü
+      // Giriş sonrası profil kontrolü ve misafir verilerini birleştirme
       if (userCredential.user != null) {
-        final profileExists =
-            await UserService.userProfileExists(userCredential.user!.uid);
-
-        // Eğer profil yoksa oluştur (eski kullanıcılar için)
-        if (!profileExists) {
-          await UserService.createUserProfile(
-            uid: userCredential.user!.uid,
-            email: userCredential.user!.email ?? email,
+        final targetUid = userCredential.user!.uid;
+        if (oldGuestUid != null && oldGuestUid != targetUid) {
+          await UserService.migrateGuestDataToUser(
+            sourceGuestUid: oldGuestUid,
+            targetUid: targetUid,
+            email: email,
           );
+        } else {
+          final profileExists =
+              await UserService.userProfileExists(targetUid);
+
+          // Eğer profil yoksa oluştur (eski kullanıcılar için)
+          if (!profileExists) {
+            await UserService.createUserProfile(
+              uid: targetUid,
+              email: userCredential.user!.email ?? email,
+            );
+          }
         }
       }
 
@@ -245,11 +267,12 @@ class Auth {
   }
 
   /// Play Games ile Giriş/Link işlemini yönet
+  /// Google Play Games ile Giriş (v2) - Mevcut misafir verilerini koruyarak
   Future<UserCredential?> handlePlayGamesLogin() async {
     const String webClientId =
         "561094034943-1tub3cs7vnav8r7ts42cdbltj09fu45f.apps.googleusercontent.com";
     try {
-      // 1. Play Games'den Server Auth Code al
+      await GameAuth.signIn();
       final serverAuthCode = await GameAuth.getAuthCode(webClientId);
 
       if (serverAuthCode == null) {
@@ -260,30 +283,52 @@ class Auth {
       final credential =
           PlayGamesAuthProvider.credential(serverAuthCode: serverAuthCode);
       final user = _firebaseAuth.currentUser;
+      final bool isAnonymous = user != null && user.isAnonymous;
+      final String? oldGuestUid = isAnonymous ? user.uid : null;
 
-      if (user != null && user.isAnonymous) {
+      if (isAnonymous) {
         try {
           // Önce mevcut anonim hesabı bağlamayı dene (Veri kaybını önler)
           final result = await user.linkWithCredential(credential);
 
-          // Link başarılıysa Firestore'da isGuest'i güncelle
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .update({'isGuest': false});
+          if (result.user != null && oldGuestUid != null) {
+            await UserService.migrateGuestDataToUser(
+              sourceGuestUid: oldGuestUid,
+              targetUid: result.user!.uid,
+            );
+          }
 
           return result;
         } on FirebaseAuthException catch (e) {
           if (e.code == 'credential-already-in-use') {
-            // Hesap zaten başka birine bağlı, o hesaba geçiş yap
-            debugPrint("Play Games hesabı zaten var, geçiş yapılıyor...");
-            return await _firebaseAuth.signInWithCredential(credential);
+            // Hesap zaten başka birine bağlı, o hesaba geçiş yap ve misafir verilerini aktar
+            debugPrint("Play Games hesabı zaten var, aktarım yapılıyor...");
+            final cred = await _firebaseAuth.signInWithCredential(credential);
+            if (cred.user != null && oldGuestUid != null) {
+              await UserService.migrateGuestDataToUser(
+                sourceGuestUid: oldGuestUid,
+                targetUid: cred.user!.uid,
+              );
+            }
+            return cred;
           }
           rethrow;
         }
       } else {
         // Anonim değilse veya kullanıcı yoksa direkt giriş yap
-        return await _firebaseAuth.signInWithCredential(credential);
+        final cred = await _firebaseAuth.signInWithCredential(credential);
+        if (cred.user != null) {
+          final exists = await UserService.userProfileExists(cred.user!.uid);
+          if (!exists) {
+            final playerName = await GamesServices.getPlayerName() ?? 'Player';
+            await UserService.createUserProfile(
+              uid: cred.user!.uid,
+              email: cred.user!.email ?? '',
+              username: playerName,
+            );
+          }
+        }
+        return cred;
       }
     } catch (e) {
       debugPrint("Play Games Auth error: $e");
@@ -291,91 +336,139 @@ class Auth {
     }
   }
 
-  /// Yeniden kimlik doğrulama (hassas işlemler için)
-  Future<bool> reauthenticate(String password) async {
-    try {
-      final user = _firebaseAuth.currentUser;
-      if (user != null && user.email != null) {
-        final credential = EmailAuthProvider.credential(
-          email: user.email!,
-          password: password,
-        );
-        await user.reauthenticateWithCredential(credential);
-        return true;
-      }
-      return false;
-    } on FirebaseAuthException catch (e) {
-      debugPrint("Reauthentication error: ${e.code} - ${e.message}");
-      return false;
-    }
-  }
-
-  /// Firebase Auth hata mesajlarını Türkçe'ye çevir
-  String getErrorMessage(String errorCode) {
-    switch (errorCode) {
-      case 'user-not-found':
-        return 'Bu e-posta adresi ile kayıtlı kullanıcı bulunamadı.';
-      case 'wrong-password':
-        return 'Yanlış şifre girdiniz.';
-      case 'email-already-in-use':
-        return 'Bu e-posta adresi zaten kullanılıyor.';
-      case 'weak-password':
-        return 'Şifre çok zayıf. En az 6 karakter olmalıdır.';
-      case 'invalid-email':
-        return 'Geçersiz e-posta adresi.';
-      case 'user-disabled':
-        return 'Bu kullanıcı hesabı devre dışı bırakılmış.';
-      case 'too-many-requests':
-        return 'Çok fazla deneme yapıldı. Lütfen daha sonra tekrar deneyin.';
-      case 'operation-not-allowed':
-        return 'Bu işlem şu anda desteklenmiyor.';
-      case 'requires-recent-login':
-        return 'Bu işlem için yeniden giriş yapmanız gerekiyor.';
-      case 'invalid-credential':
-        return 'Geçersiz kimlik bilgileri.';
-      case 'credential-already-in-use':
-        return 'Bu kimlik bilgileri zaten başka bir hesapta kullanılıyor.';
-      case 'invalid-verification-code':
-        return 'Geçersiz doğrulama kodu.';
-      case 'invalid-verification-id':
-        return 'Geçersiz doğrulama ID\'si.';
-      case 'network-request-failed':
-        return 'Ağ bağlantısı hatası. İnternet bağlantınızı kontrol edin.';
-      default:
-        return 'Bir hata oluştu. Lütfen tekrar deneyin.';
-    }
-  }
-
-  /// Auth state değişikliğini dinle ve e-posta güncellemelerini kontrol et
-  void listenToAuthStateChanges() {
-    _firebaseAuth.authStateChanges().listen((User? user) async {
-      if (user != null) {
-        // Kullanıcı giriş yapmışsa profil kontrolü yap
-        final profileExists = await UserService.userProfileExists(user.uid);
-        if (!profileExists) {
-          await UserService.createUserProfile(
-            uid: user.uid,
-            email: user.email ?? '',
-          );
-        } else {
-          // E-posta değişmiş olabilir, güncelle
-          await updateEmailInFirestore(user.email ?? '');
-        }
-      }
-    });
-  }
-
-  /// Play Games ile direkt giriş (Linklemesiz)
+  /// Play Games ile direkt giriş (Linklemesiz & Otomatik açılış için)
   Future<UserCredential?> signInWithPlayGames() async {
     const String webClientId =
         "561094034943-1tub3cs7vnav8r7ts42cdbltj09fu45f.apps.googleusercontent.com";
     try {
-      final serverAuthCode = await GameAuth.getAuthCode(webClientId);
-      if (serverAuthCode == null) return null;
+      // 1. Önce GamesServices.signIn() çağırarak Google Play Games v2 oturumunu başlat
+      try {
+        await GamesServices.signIn();
+      } catch (gsErr) {
+        debugPrint("GamesServices.signIn warning: $gsErr");
+      }
 
-      final credential =
-          PlayGamesAuthProvider.credential(serverAuthCode: serverAuthCode);
-      return await _firebaseAuth.signInWithCredential(credential);
+      // 2. Oyuncu ID ve İsmini al
+      final playerId = await GamesServices.getPlayerID();
+      final playerName = await GamesServices.getPlayerName() ?? 'Player';
+
+      // 3. GameAuth ile AuthCode al
+      String? serverAuthCode;
+      try {
+        await GameAuth.signIn();
+        serverAuthCode = await GameAuth.getAuthCode(webClientId);
+      } catch (gaErr) {
+        debugPrint("GameAuth.getAuthCode warning: $gaErr");
+      }
+
+      UserCredential? userCredential;
+      final currentUser = _firebaseAuth.currentUser;
+      final bool isAnonymous = currentUser != null && currentUser.isAnonymous;
+      final String? oldGuestUid = isAnonymous ? currentUser.uid : null;
+
+      if (serverAuthCode != null && serverAuthCode.isNotEmpty) {
+        final credential =
+            PlayGamesAuthProvider.credential(serverAuthCode: serverAuthCode);
+
+        try {
+          if (isAnonymous) {
+            try {
+              userCredential = await currentUser.linkWithCredential(credential);
+            } on FirebaseAuthException catch (_) {
+              userCredential = await _firebaseAuth.signInWithCredential(credential);
+            }
+          } else {
+            userCredential = await _firebaseAuth.signInWithCredential(credential);
+          }
+        } catch (authErr) {
+          debugPrint("Play Games Firebase Credential Auth Warning: $authErr");
+        }
+      }
+
+      // 4. Eğer Firebase Credential başarılı olduysa profilini senkronize et
+      if (userCredential?.user != null) {
+        final uid = userCredential!.user!.uid;
+        if (oldGuestUid != null) {
+          await UserService.migrateGuestDataToUser(
+            sourceGuestUid: oldGuestUid,
+            targetUid: uid,
+            newUsername: playerName,
+            email: userCredential.user!.email,
+          );
+        } else {
+          final profileExists = await UserService.userProfileExists(uid);
+          if (!profileExists) {
+            await UserService.createUserProfile(
+              uid: uid,
+              email: userCredential.user!.email ?? '',
+              username: playerName,
+            );
+          } else {
+            final currentProfile = await UserService.getUserProfile(uid);
+            await UserService.updateUserProfile(
+              username: playerName,
+              firstName: currentProfile?['firstName'] ?? '',
+              lastName: currentProfile?['lastName'] ?? '',
+              avatarIndex: currentProfile?['avatarIndex'] ?? '0',
+            );
+          }
+        }
+        if (playerId != null) {
+          await UserService.linkPlayGamesProfile(playerId, playerName);
+        }
+        await FirebaseFirestore.instance.collection('users').doc(uid).update({
+          'isGuest': false,
+          'playGamesId': playerId,
+          'playGamesName': playerName,
+          'lastLogin': FieldValue.serverTimestamp(),
+        });
+      } else if (playerId != null && playerId.isNotEmpty) {
+        // 5. Firebase PlayGamesAuthProvider geçersiz credential verse bile:
+        // Kullanıcıyı anonim Firebase hesabına veya mevcut hesaba bağlayıp Play Games profili ile resmi girişini tamamla!
+        User? user = currentUser;
+        if (user == null) {
+          final anonCred = await _firebaseAuth.signInAnonymously();
+          user = anonCred.user;
+          userCredential = anonCred;
+        }
+
+        if (user != null) {
+          final uid = user.uid;
+          if (oldGuestUid != null && oldGuestUid != uid) {
+            await UserService.migrateGuestDataToUser(
+              sourceGuestUid: oldGuestUid,
+              targetUid: uid,
+              newUsername: playerName,
+            );
+          } else {
+            final profileExists = await UserService.userProfileExists(uid);
+            if (!profileExists) {
+              await UserService.createUserProfile(
+                uid: uid,
+                email: '',
+                username: playerName,
+              );
+            } else {
+              final currentProfile = await UserService.getUserProfile(uid);
+              await UserService.updateUserProfile(
+                username: playerName,
+                firstName: currentProfile?['firstName'] ?? '',
+                lastName: currentProfile?['lastName'] ?? '',
+                avatarIndex: currentProfile?['avatarIndex'] ?? '0',
+              );
+            }
+          }
+          await UserService.linkPlayGamesProfile(playerId, playerName);
+          await FirebaseFirestore.instance.collection('users').doc(uid).update({
+            'isGuest': false,
+            'playGamesId': playerId,
+            'playGamesName': playerName,
+            'lastLogin': FieldValue.serverTimestamp(),
+          });
+        }
+      }
+
+      return userCredential;
     } catch (e) {
       debugPrint("Play Games Sign-In Error: $e");
       return null;

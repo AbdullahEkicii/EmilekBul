@@ -3,7 +3,7 @@ description: "A new Flutter project."
 
 publish_to: 'none' 
 
-version: 1.5.16+44
+version: 1.5.18+46
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -39,6 +39,7 @@ dependencies:
   firebase_auth: ^6.0.0
   firebase_storage: ^13.0.0
   cloud_firestore: ^6.0.0
+  firebase_analytics: ^12.0.0
   google_fonts: ^6.2.1
   google_sign_in: ^6.3.0
   google_mobile_ads: ^6.0.0
@@ -48,8 +49,8 @@ dependencies:
 
   easy_localization: ^3.0.8
   firebase_app_check: ^0.4.5+2
+  in_app_review: ^2.0.9
  
-
   path: any
 dev_dependencies:
   flutter_launcher_icons: ^0.14.4 

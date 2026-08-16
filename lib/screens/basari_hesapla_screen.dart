@@ -475,17 +475,8 @@ class _BasariHesaplaScreenState extends State<BasariHesaplaScreen>
   }
 
   String _getLocalizedCategoryName(String dbCategoryName) {
-    // Özel durumlar veya DB'de farklı kaydedilmiş olabilecek isimler
     if (dbCategoryName == 'Genel') return 'categories.general'.tr();
-
-    try {
-      final category = AppCategories.categories.firstWhere(
-        (c) => c.name == dbCategoryName,
-      );
-      return category.key.tr();
-    } catch (_) {
-      // Eşleşme bulunamazsa orijinal ismi göster
-      return dbCategoryName;
-    }
+    final key = AppCategories.getCategoryKey(dbCategoryName);
+    return key.isNotEmpty ? key.tr() : dbCategoryName;
   }
 }

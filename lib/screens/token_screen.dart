@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/token_service.dart';
+import '../services/review_service.dart';
 import '../widgets/rewarded_ad_manager.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/navigation_buttons.dart';
@@ -18,6 +19,7 @@ class _TokenScreenState extends State<TokenScreen>
     with TickerProviderStateMixin {
   int _tokenAmount = 0;
   bool _canClaimDaily = false;
+  bool _hasClaimedReview = false;
   bool _isLoading = true;
   bool _isAdLoading = false;
   final RewardedAdManager _rewardedAdManager = RewardedAdManager();
@@ -68,19 +70,23 @@ class _TokenScreenState extends State<TokenScreen>
   Future<void> _loadTokenData() async {
     final tokenAmount = await TokenService.getTokenAmount();
     final canClaimDaily = await TokenService.canClaimDailyReward();
+    final hasClaimedReview = await ReviewService.hasClaimedReward();
 
-    setState(() {
-      _tokenAmount = tokenAmount;
-      _canClaimDaily = canClaimDaily;
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _tokenAmount = tokenAmount;
+        _canClaimDaily = canClaimDaily;
+        _hasClaimedReview = hasClaimedReview;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _claimDailyReward() async {
     final success = await TokenService.claimDailyReward();
     if (success) {
       setState(() {
-        _tokenAmount += 100;
+        _tokenAmount += 50;
         _canClaimDaily = false;
       });
 
@@ -241,6 +247,8 @@ class _TokenScreenState extends State<TokenScreen>
                         _buildDailyRewardCard(),
                         const SizedBox(height: 16),
                         _buildWatchAdCard(),
+                        const SizedBox(height: 16),
+                        _buildReviewRewardCard(),
                         const SizedBox(height: 32),
                         _buildSectionTitle('token.info'.tr()),
                         const SizedBox(height: 16),
@@ -465,6 +473,84 @@ class _TokenScreenState extends State<TokenScreen>
                     ),
                   )
                 : Text('token.watch'.tr()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReviewRewardCard() {
+    final isClaimed = _hasClaimedReview;
+
+    return GlassContainer(
+      borderRadius: 20,
+      padding: const EdgeInsets.all(20),
+      opacity: isClaimed ? 0.05 : 0.15,
+      border: !isClaimed
+          ? Border.all(color: Colors.amber.withValues(alpha: 0.4), width: 1.2)
+          : null,
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: !isClaimed
+                  ? Colors.amber.withValues(alpha: 0.2)
+                  : Colors.white.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.star_rounded,
+              color: !isClaimed ? Colors.amber : Colors.white38,
+              size: 26,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'review.card_title'.tr(),
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  'review.card_desc'.tr(),
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    color: !isClaimed ? Colors.amberAccent.shade100 : Colors.white54,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ElevatedButton(
+            onPressed: isClaimed
+                ? null
+                : () {
+                    ReviewService.startReviewFlow(
+                      context: context,
+                      onRewardClaimed: () {
+                        _loadTokenData();
+                      },
+                    );
+                  },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: !isClaimed ? Colors.amber.shade700 : Colors.white10,
+              foregroundColor: Colors.white,
+              elevation: !isClaimed ? 2 : 0,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            ),
+            child: Text(
+              isClaimed ? 'review.claimed'.tr() : 'review.rate_action'.tr(),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),

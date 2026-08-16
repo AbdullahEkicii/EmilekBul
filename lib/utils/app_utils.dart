@@ -9,13 +9,18 @@ class AppUtils {
       return 'account.default_user'.tr();
     }
 
-    final misafirPrefix = 'Misafir';
-    if (username.startsWith(misafirPrefix)) {
-      final guestText = 'common.guest'.tr();
-      final numericPart = username.substring(misafirPrefix.length);
-
-      if (numericPart.isEmpty) return guestText;
-      return '$guestText $numericPart';
+    final lower = username.toLowerCase();
+    final guestPrefixes = ['misafir', 'guest', 'gast', 'invitado', 'invité', 'ospite', 'гость'];
+    for (final prefix in guestPrefixes) {
+      if (lower.startsWith(prefix)) {
+        var remainder = username.substring(prefix.length).trim();
+        if (remainder.startsWith('_')) {
+          remainder = remainder.substring(1).trim();
+        }
+        final guestText = 'common.guest'.tr();
+        if (remainder.isEmpty) return guestText;
+        return '$guestText $remainder';
+      }
     }
 
     return username;

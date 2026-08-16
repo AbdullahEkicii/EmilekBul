@@ -7,13 +7,16 @@ import '../services/sound_service.dart';
 import '../services/performance_service.dart';
 import '../services/fullscreen_service.dart';
 import '../services/achievement_service.dart';
+import '../services/review_service.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/navigation_buttons.dart';
 import 'shop_screen.dart';
 import 'level_progression_screen.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../constants/app_constants.dart';
+import '../constants/app_languages.dart';
 import '../utils/app_utils.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'login_register_screen.dart';
 
 class AccountScreen extends StatefulWidget {
@@ -41,6 +44,9 @@ class _AccountScreenState extends State<AccountScreen>
   bool _isGuest = false;
   List<String> _unlockedAchievements = [];
   List<String> _unseenAchievements = [];
+  List<String> _claimedAchievements = [];
+  int _duelWins = 0;
+  String _selectedAchievementCategory = 'all';
 
   @override
   void initState() {
@@ -118,10 +124,16 @@ class _AccountScreenState extends State<AccountScreen>
           currentUser!.uid); // Aylık puanı çek
       final unlocked = await AchievementService.getUnlockedAchievements();
       final unseen = await AchievementService.getUnseenAchievements();
+      final claimed = await AchievementService.getClaimedAchievements();
+      final prefs = await SharedPreferences.getInstance();
+      final duelWins = prefs.getInt('duel_wins_count') ?? 0;
+
       if (mounted) {
         setState(() {
           _unlockedAchievements = unlocked;
           _unseenAchievements = unseen;
+          _claimedAchievements = claimed;
+          _duelWins = duelWins;
           _userProfile = data;
           if (_userProfile != null) {
             _userProfile!['rank'] = rank; // Profile ekle
@@ -402,9 +414,11 @@ class _AccountScreenState extends State<AccountScreen>
   }
 
   Widget _buildProfileCard() {
-    final String avatarPath = _userProfile != null
-        ? UserService.getAvatarPath(_userProfile!['avatarIndex'] ?? '0')
-        : 'avatars/avatar_1.jpg';
+    final bool hasAvatar = _userProfile != null &&
+        UserService.hasAvatar(_userProfile!['avatarIndex']?.toString());
+    final String avatarPath = hasAvatar
+        ? UserService.getAvatarPath(_userProfile!['avatarIndex']!.toString())
+        : '';
 
     if (_fadeAnimation == null || _scaleAnimation == null) {
       return const SizedBox.shrink();
@@ -465,11 +479,20 @@ class _AccountScreenState extends State<AccountScreen>
                         child: CircleAvatar(
                           radius: 50,
                           backgroundColor: Colors.transparent,
-                          backgroundImage: ResizeImage(
-                            AssetImage(avatarPath),
-                            width: 200,
-                            height: 200,
-                          ),
+                          backgroundImage: hasAvatar
+                              ? ResizeImage(
+                                  AssetImage(avatarPath),
+                                  width: 200,
+                                  height: 200,
+                                )
+                              : null,
+                          child: hasAvatar
+                              ? null
+                              : const Icon(
+                                  Icons.person_rounded,
+                                  size: 55,
+                                  color: Colors.white70,
+                                ),
                         ),
                       ),
                     ),
@@ -805,6 +828,27 @@ class _AccountScreenState extends State<AccountScreen>
               setState(() {});
             },
           ),
+          _buildMenuItem(
+            icon: Icons.language_rounded,
+            title: 'settings.language'.tr(),
+            subtitle: 'settings.language_desc'.tr(),
+            color: Colors.indigoAccent,
+            onTap: _showLanguageDialog,
+          ),
+          _buildMenuItem(
+            icon: Icons.star_rate_rounded,
+            title: 'review.card_title'.tr(),
+            subtitle: 'review.card_desc'.tr(),
+            color: Colors.amber,
+            onTap: () {
+              ReviewService.showReviewDialog(
+                context,
+                onRewardClaimed: () {
+                  _loadUserProfile();
+                },
+              );
+            },
+          ),
           if (!_isGuest) // Only show password change if not guest
             _buildMenuItem(
               icon: Icons.shield_moon_rounded,
@@ -829,6 +873,109 @@ class _AccountScreenState extends State<AccountScreen>
           ),
         ],
       ),
+    );
+  }
+
+  void _showLanguageDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        final currentCode = context.locale.languageCode;
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.75,
+          decoration: const BoxDecoration(
+            color: Color(0xFF1E293B),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            border: Border(top: BorderSide(color: Color(0x2EFFFFFF), width: 1)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            children: [
+              Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.language_rounded, color: Colors.indigoAccent, size: 24),
+                  const SizedBox(width: 8),
+                  Text(
+                    'settings.language'.tr(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView.separated(
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: AppLanguages.languages.length,
+                  separatorBuilder: (context, i) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final lang = AppLanguages.languages[index];
+                    final isSelected = lang.code == currentCode;
+
+                    return GestureDetector(
+                      onTap: () async {
+                        await context.setLocale(Locale(lang.code));
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          setState(() {});
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? Colors.indigoAccent.withValues(alpha: 0.25)
+                              : Colors.white.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isSelected
+                                ? Colors.indigoAccent
+                                : Colors.white.withValues(alpha: 0.08),
+                            width: isSelected ? 1.5 : 1.0,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(lang.flag, style: const TextStyle(fontSize: 22)),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Text(
+                                lang.name,
+                                style: TextStyle(
+                                  color: isSelected ? Colors.indigoAccent : Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            if (isSelected)
+                              const Icon(Icons.check_circle_rounded, color: Colors.indigoAccent, size: 20),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -862,7 +1009,49 @@ class _AccountScreenState extends State<AccountScreen>
     );
   }
 
+  int _getAchievementProgress(Achievement a, SharedPreferences? prefs) {
+    if (_unlockedAchievements.contains(a.id) ||
+        (_userProfile?['unlockedBadges'] as List<dynamic>?)?.contains(a.id) == true) {
+      return a.maxProgress;
+    }
+    switch (a.id) {
+      case 'first_step':
+      case 'bronze_scholar':
+      case 'silver_scholar':
+      case 'gold_scholar':
+        final quizzes = (_userProfile?['completedQuizzes'] as num?)?.toInt() ?? 0;
+        return quizzes.clamp(0, a.maxProgress);
+      case 'level_five':
+        final level = (_userProfile?['level'] as num?)?.toInt() ?? 1;
+        return level.clamp(0, a.maxProgress);
+      case 'smart_shopper':
+        final ownedFrames = (_userProfile?['ownedFrames'] as List?)
+                ?.where((f) => f != '0' && f != 'yok' && f.toString().isNotEmpty)
+                .length ??
+            0;
+        final ownedTitles = (_userProfile?['ownedTitles'] as List?)
+                ?.where((t) => t != '0' && t != 'yok' && t.toString().isNotEmpty)
+                .length ??
+            0;
+        final ownedAvatars = (_userProfile?['ownedAvatars'] as List?)
+                ?.where((a) => a != '0' && a != 'yok' && a.toString().isNotEmpty)
+                .length ??
+            0;
+        final count = ownedFrames + ownedTitles + ownedAvatars;
+        return count.clamp(0, a.maxProgress);
+      case 'duel_initiate':
+      case 'duel_warrior':
+        final wins = prefs?.getInt('duel_wins_count') ?? _duelWins;
+        return wins.clamp(0, a.maxProgress);
+      default:
+        return 0;
+    }
+  }
+
   Widget _buildAchievementsShowcase() {
+    final unlockedCount = _unlockedAchievements.length;
+    final totalCount = AchievementService.achievementsList.length;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -871,14 +1060,31 @@ class _AccountScreenState extends State<AccountScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'achievements.title'.tr(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 18,
-                  letterSpacing: -0.5,
-                ),
+              Row(
+                children: [
+                  Text(
+                    'achievements.title'.tr(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                    ),
+                    child: Text(
+                      '$unlockedCount/$totalCount',
+                      style: const TextStyle(color: Colors.amber, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
               ),
               InkWell(
                 onTap: _showAchievementsDialog,
@@ -886,13 +1092,20 @@ class _AccountScreenState extends State<AccountScreen>
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 8.0, vertical: 4.0),
-                  child: Text(
-                    'Daha Fazla',
-                    style: TextStyle(
-                      color: Colors.amberAccent.shade100,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'achievements.more'.tr(),
+                        style: TextStyle(
+                          color: Colors.amberAccent.shade100,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      Icon(Icons.chevron_right_rounded, color: Colors.amberAccent.shade100, size: 16),
+                    ],
                   ),
                 ),
               ),
@@ -900,7 +1113,7 @@ class _AccountScreenState extends State<AccountScreen>
           ),
         ),
         SizedBox(
-          height: 110,
+          height: 115,
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             scrollDirection: Axis.horizontal,
@@ -914,6 +1127,10 @@ class _AccountScreenState extends State<AccountScreen>
                               ?.contains(achievement.id) ==
                           true;
               final isUnseen = _unseenAchievements.contains(achievement.id);
+              final isClaimed = _claimedAchievements.contains(achievement.id) ||
+                  (_userProfile?['claimedBadges'] as List<dynamic>?)
+                          ?.contains(achievement.id) ==
+                      true;
 
               return GestureDetector(
                 onTap: () async {
@@ -928,7 +1145,7 @@ class _AccountScreenState extends State<AccountScreen>
                   _showAchievementsDialog();
                 },
                 child: Container(
-                  width: 80,
+                  width: 84,
                   margin: const EdgeInsets.only(right: 12),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -938,23 +1155,23 @@ class _AccountScreenState extends State<AccountScreen>
                         alignment: Alignment.topRight,
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(15),
                             decoration: BoxDecoration(
                               color: isUnlocked
                                   ? achievement.color.withValues(alpha: 0.15)
-                                  : Colors.white.withValues(alpha: 0.05),
+                                  : Colors.white.withValues(alpha: 0.04),
                               shape: BoxShape.circle,
                               border: Border.all(
                                 color: isUnlocked
-                                    ? achievement.color.withValues(alpha: 0.5)
-                                    : Colors.transparent,
+                                    ? achievement.color.withValues(alpha: 0.6)
+                                    : Colors.white12,
                                 width: 1.5,
                               ),
                               boxShadow: isUnlocked
                                   ? [
                                       BoxShadow(
                                         color: achievement.color
-                                            .withValues(alpha: 0.2),
+                                            .withValues(alpha: 0.25),
                                         blurRadius: 8,
                                         spreadRadius: 1,
                                       )
@@ -968,16 +1185,16 @@ class _AccountScreenState extends State<AccountScreen>
                               color: isUnlocked
                                   ? achievement.color
                                   : Colors.white30,
-                              size: 28,
+                              size: 26,
                             ),
                           ),
                           if (isUnseen)
                             Positioned(
-                              top: -4,
-                              right: -4,
+                              top: -2,
+                              right: -2,
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 2),
+                                    horizontal: 5, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: Colors.redAccent,
                                   borderRadius: BorderRadius.circular(10),
@@ -989,19 +1206,32 @@ class _AccountScreenState extends State<AccountScreen>
                                     )
                                   ],
                                 ),
-                                child: const Text(
-                                  'YENİ',
-                                  style: TextStyle(
+                                child: Text(
+                                  'common.new'.tr(),
+                                  style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 9,
+                                    fontSize: 8.5,
                                     fontWeight: FontWeight.w900,
                                   ),
                                 ),
                               ),
+                            )
+                          else if (isUnlocked && !isClaimed)
+                            Positioned(
+                              top: -2,
+                              right: -2,
+                              child: Container(
+                                padding: const EdgeInsets.all(3),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF10B981),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.card_giftcard_rounded, color: Colors.white, size: 10),
+                              ),
                             ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
                         achievement.titleKey.tr(),
                         textAlign: TextAlign.center,
@@ -1027,6 +1257,8 @@ class _AccountScreenState extends State<AccountScreen>
 
   void _showAchievementsDialog() async {
     final unlockedLocal = await AchievementService.getUnlockedAchievements();
+    final claimedLocal = await AchievementService.getClaimedAchievements();
+    final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
 
     showDialog(
@@ -1035,218 +1267,370 @@ class _AccountScreenState extends State<AccountScreen>
         return StatefulBuilder(
           builder: (context, setDialogState) {
             final activeBadge = _userProfile?['activeBadge'];
+            final unlockedCount = unlockedLocal.length;
+            final totalCount = AchievementService.achievementsList.length;
+
+            final filteredAchievements = AchievementService.achievementsList.where((a) {
+              if (_selectedAchievementCategory == 'all') return true;
+              return a.category == _selectedAchievementCategory;
+            }).toList();
 
             return Dialog(
               backgroundColor: Colors.transparent,
               insetPadding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
               child: GlassContainer(
                 borderRadius: 28,
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(18),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.78,
+                    maxHeight: MediaQuery.of(context).size.height * 0.82,
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Header
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'achievements.title'.tr(),
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                            ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'achievements.title'.tr(),
+                                style: const TextStyle(
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '$unlockedCount / $totalCount ${'achievements.title'.tr().toLowerCase()}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.amberAccent.shade100,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
                           IconButton(
-                            icon:
-                                const Icon(Icons.close, color: Colors.white60),
+                            icon: const Icon(Icons.close, color: Colors.white60),
                             onPressed: () => Navigator.pop(context),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      Flexible(
-                        child: SingleChildScrollView(
-                          child: Column(
-                            children: AchievementService.achievementsList
-                                .map((achievement) {
-                              final isUnlocked =
-                                  unlockedLocal.contains(achievement.id) ||
-                                      (_userProfile?['unlockedBadges']
-                                                  as List<dynamic>?)
-                                              ?.contains(achievement.id) ==
-                                          true;
-                              final isActive = activeBadge == achievement.id;
-                              final isUnseen =
-                                  _unseenAchievements.contains(achievement.id);
+                      const SizedBox(height: 12),
 
-                              return GestureDetector(
-                                  onTap: () async {
-                                    if (isUnseen) {
-                                      await AchievementService.markAsSeen(
-                                          achievement.id);
-                                      if (mounted) {
-                                        setState(() {
-                                          _unseenAchievements
-                                              .remove(achievement.id);
-                                        });
-                                        setDialogState(() {});
-                                      }
-                                    }
-                                  },
-                                  child: Container(
-                                    margin: const EdgeInsets.only(bottom: 12),
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.03),
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: isActive
-                                            ? achievement.color.withValues(alpha: 0.5)
-                                            : Colors.white.withValues(alpha: 0.05),
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Stack(
-                                          clipBehavior: Clip.none,
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.all(10),
-                                              decoration: BoxDecoration(
-                                                color: isUnlocked
-                                                    ? achievement.color
-                                                        .withValues(alpha: 0.15)
-                                                    : Colors.white10,
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: Icon(
-                                                achievement.icon,
-                                                color: isUnlocked
-                                                    ? achievement.color
-                                                    : Colors.grey.shade600,
-                                                size: 24,
+                      // Category Filter Tabs
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        child: Row(
+                          children: [
+                            _buildCategoryFilterChip('all', 'achievements.all'.tr(), setDialogState),
+                            const SizedBox(width: 8),
+                            _buildCategoryFilterChip('quiz', 'achievements.quiz_category'.tr(), setDialogState),
+                            const SizedBox(width: 8),
+                            _buildCategoryFilterChip('duel', 'achievements.duel_category'.tr(), setDialogState),
+                            const SizedBox(width: 8),
+                            _buildCategoryFilterChip('social', 'achievements.social_category'.tr(), setDialogState),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Achievements List
+                      Flexible(
+                        child: ListView.builder(
+                          physics: const BouncingScrollPhysics(),
+                          shrinkWrap: true,
+                          itemCount: filteredAchievements.length,
+                          itemBuilder: (context, index) {
+                            final achievement = filteredAchievements[index];
+                            final isUnlocked =
+                                unlockedLocal.contains(achievement.id) ||
+                                    (_userProfile?['unlockedBadges']
+                                                as List<dynamic>?)
+                                            ?.contains(achievement.id) ==
+                                        true;
+                            final isActive = activeBadge == achievement.id;
+                            final isUnseen =
+                                _unseenAchievements.contains(achievement.id);
+                            final isClaimed = claimedLocal.contains(achievement.id) ||
+                                (_userProfile?['claimedBadges'] as List<dynamic>?)
+                                        ?.contains(achievement.id) ==
+                                    true;
+                            final progress = _getAchievementProgress(achievement, prefs);
+                            final progressRatio = achievement.maxProgress > 0
+                                ? (progress / achievement.maxProgress).clamp(0.0, 1.0)
+                                : (isUnlocked ? 1.0 : 0.0);
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: isUnlocked
+                                    ? achievement.color.withValues(alpha: 0.06)
+                                    : Colors.white.withValues(alpha: 0.02),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: isActive
+                                      ? achievement.color
+                                      : (isUnlocked
+                                          ? achievement.color.withValues(alpha: 0.3)
+                                          : Colors.white.withValues(alpha: 0.06)),
+                                  width: isActive ? 1.5 : 1.0,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      // Icon
+                                      Stack(
+                                        clipBehavior: Clip.none,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(10),
+                                            decoration: BoxDecoration(
+                                              color: isUnlocked
+                                                  ? achievement.color.withValues(alpha: 0.2)
+                                                  : Colors.white.withValues(alpha: 0.05),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(
+                                              achievement.icon,
+                                              color: isUnlocked
+                                                  ? achievement.color
+                                                  : Colors.grey.shade600,
+                                              size: 22,
+                                            ),
+                                          ),
+                                          if (isUnseen)
+                                            Positioned(
+                                              top: -2,
+                                              right: -2,
+                                              child: Container(
+                                                width: 10,
+                                                height: 10,
+                                                decoration: const BoxDecoration(
+                                                  color: Colors.redAccent,
+                                                  shape: BoxShape.circle,
+                                                ),
                                               ),
                                             ),
-                                            if (isUnseen)
-                                              Positioned(
-                                                top: -2,
-                                                right: -2,
-                                                child: Container(
-                                                  width: 12,
-                                                  height: 12,
-                                                  decoration:
-                                                      const BoxDecoration(
-                                                    color: Colors.redAccent,
-                                                    shape: BoxShape.circle,
+                                        ],
+                                      ),
+                                      const SizedBox(width: 12),
+
+                                      // Title & Description
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    achievement.titleKey.tr(),
+                                                    style: TextStyle(
+                                                      color: isUnlocked
+                                                          ? Colors.white
+                                                          : Colors.white60,
+                                                      fontSize: 13.5,
+                                                      fontWeight: FontWeight.w800,
+                                                    ),
                                                   ),
                                                 ),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.amber.withValues(alpha: 0.15),
+                                                    borderRadius: BorderRadius.circular(6),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      const Icon(Icons.monetization_on_rounded, color: Colors.amber, size: 11),
+                                                      const SizedBox(width: 3),
+                                                      Text(
+                                                        '+${achievement.tokenReward}',
+                                                        style: const TextStyle(color: Colors.amber, fontSize: 10, fontWeight: FontWeight.w900),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              achievement.descKey.tr(),
+                                              style: TextStyle(
+                                                color: Colors.white.withValues(alpha: 0.5),
+                                                fontSize: 11,
                                               ),
+                                            ),
                                           ],
                                         ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                achievement.titleKey.tr(),
-                                                style: TextStyle(
-                                                  color: isUnlocked
-                                                      ? Colors.white
-                                                      : Colors.white60,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.bold,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+
+                                  // Progress Bar & Action Button
+                                  Row(
+                                    children: [
+                                      // Progress Bar
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Text(
+                                                  'achievements.progress'.tr(),
+                                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 9.5),
+                                                ),
+                                                Text(
+                                                  '$progress / ${achievement.maxProgress}',
+                                                  style: TextStyle(
+                                                    color: isUnlocked ? achievement.color : Colors.white60,
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 4),
+                                            ClipRRect(
+                                              borderRadius: BorderRadius.circular(4),
+                                              child: LinearProgressIndicator(
+                                                value: progressRatio,
+                                                minHeight: 5,
+                                                backgroundColor: Colors.white.withValues(alpha: 0.08),
+                                                valueColor: AlwaysStoppedAnimation<Color>(
+                                                  isUnlocked ? achievement.color : const Color(0xFF6366F1),
                                                 ),
                                               ),
-                                              const SizedBox(height: 4),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 14),
+
+                                      // Action Buttons
+                                      if (!isUnlocked)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(alpha: 0.05),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.lock_rounded, color: Colors.grey.shade600, size: 13),
+                                            ],
+                                          ),
+                                        )
+                                      else if (!isClaimed)
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(0xFF10B981),
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                            minimumSize: Size.zero,
+                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                          ),
+                                          onPressed: () async {
+                                            final success = await AchievementService.claimReward(achievement.id, context);
+                                            if (success && mounted) {
+                                              setState(() {
+                                                _claimedAchievements.add(achievement.id);
+                                              });
+                                              setDialogState(() {
+                                                claimedLocal.add(achievement.id);
+                                              });
+                                            }
+                                          },
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.card_giftcard_rounded, color: Colors.white, size: 12),
+                                              const SizedBox(width: 4),
                                               Text(
-                                                achievement.descKey.tr(),
-                                                style: TextStyle(
-                                                  color: Colors.white
-                                                      .withValues(alpha: 0.4),
-                                                  fontSize: 11,
-                                                ),
+                                                'achievements.claim_reward'.tr(args: [achievement.tokenReward.toString()]),
+                                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900),
                                               ),
                                             ],
                                           ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        if (!isUnlocked)
-                                          Icon(Icons.lock_outline_rounded,
-                                              color: Colors.grey.shade600,
-                                              size: 20)
-                                        else if (isActive)
-                                          Text(
+                                        )
+                                      else if (isActive)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: achievement.color.withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(color: achievement.color.withValues(alpha: 0.4)),
+                                          ),
+                                          child: Text(
                                             'achievements.equipped'.tr(),
                                             style: TextStyle(
                                               color: achievement.color,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          )
-                                        else
-                                          ElevatedButton(
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: Colors.white10,
-                                              foregroundColor: Colors.white,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 12,
-                                                      vertical: 6),
-                                              minimumSize: Size.zero,
-                                              tapTargetSize:
-                                                  MaterialTapTargetSize
-                                                      .shrinkWrap,
-                                              shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          10)),
-                                            ),
-                                            onPressed: () async {
-                                              await AchievementService
-                                                  .setActiveBadge(
-                                                      achievement.id);
-                                              if (mounted) {
-                                                setState(() {
-                                                  _userProfile?['activeBadge'] =
-                                                      achievement.id;
-                                                });
-                                                setDialogState(() {});
-                                                if (!context.mounted) return;
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  SnackBar(
-                                                    content: Text('quests.reward_claimed'
-                                                                .tr() ==
-                                                            'Ödül başarıyla alındı! 🪙'
-                                                        ? 'Rozet başarıyla kuşanıldı: ${achievement.titleKey.tr()}'
-                                                        : 'Badge successfully equipped: ${achievement.titleKey.tr()}'),
-                                                    backgroundColor:
-                                                        Colors.green,
-                                                  ),
-                                                );
-                                              }
-                                            },
-                                            child: Text(
-                                              'achievements.equip'.tr(),
-                                              style: const TextStyle(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.bold),
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w900,
                                             ),
                                           ),
-                                      ],
-                                    ),
-                                  ));
-                            }).toList(),
-                          ),
+                                        )
+                                      else
+                                        OutlinedButton(
+                                          style: OutlinedButton.styleFrom(
+                                            side: BorderSide(color: achievement.color.withValues(alpha: 0.5)),
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                            minimumSize: Size.zero,
+                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                          ),
+                                          onPressed: () async {
+                                            await AchievementService.setActiveBadge(achievement.id);
+                                            if (mounted) {
+                                              setState(() {
+                                                _userProfile?['activeBadge'] = achievement.id;
+                                              });
+                                              setDialogState(() {});
+                                              if (!context.mounted) return;
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    'achievements.badge_equipped'.tr(args: [achievement.titleKey.tr()]),
+                                                  ),
+                                                  backgroundColor: Colors.green,
+                                                  duration: const Duration(seconds: 2),
+                                                ),
+                                              );
+                                            }
+                                          },
+                                          child: Text(
+                                            'achievements.equip'.tr(),
+                                            style: TextStyle(
+                                              color: achievement.color,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ],
@@ -1257,6 +1641,40 @@ class _AccountScreenState extends State<AccountScreen>
           },
         );
       },
+    );
+  }
+
+  Widget _buildCategoryFilterChip(String catId, String title, StateSetter setDialogState) {
+    final isSelected = _selectedAchievementCategory == catId;
+    return InkWell(
+      onTap: () {
+        setDialogState(() {
+          _selectedAchievementCategory = catId;
+        });
+      },
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF6366F1)
+              : Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF818CF8)
+                : Colors.white.withValues(alpha: 0.08),
+          ),
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.white60,
+            fontSize: 11.5,
+            fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+          ),
+        ),
+      ),
     );
   }
 

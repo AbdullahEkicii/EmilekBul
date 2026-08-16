@@ -41,7 +41,6 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
   static const Color bgElevated = Color(0xFF12141C); // panel surface
   static const Color bgCard = Color(0xFF171A24); // card surface
   static const Color bgCardAlt = Color(0xFF1D2029); // card surface, top rows
-  static const Color hairline = Color(0xFFFFFFFF); // used only at low alpha
 
   static const Color accentGold = Color(0xFFD4AF6A); // signature accent
   static const Color accentGoldSoft = Color(0xFFE8CB94);
@@ -301,9 +300,299 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
               ),
             ],
           ),
+          const SizedBox(height: 16),
+
+          // Önceki 3 Ayın Şampiyonları Butonu (Hall of Fame)
+          GestureDetector(
+            onTap: _showPastChampionsDialog,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    accentGold.withValues(alpha: 0.18),
+                    bgElevated,
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(radiusSm),
+                border: Border.all(
+                  color: accentGold.withValues(alpha: 0.4),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.workspace_premium_rounded,
+                      color: accentGold, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'welcome_screen.past_champions_title'.tr(),
+                      style: const TextStyle(
+                        color: textPrimary,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios_rounded,
+                      color: accentGold, size: 14),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  void _showPastChampionsDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          future: UserService.getPastMonthsChampions(count: 3),
+          builder: (context, snapshot) {
+            final bool loading = snapshot.connectionState == ConnectionState.waiting;
+            final champions = snapshot.data ?? [];
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.7,
+              decoration: const BoxDecoration(
+                color: bgElevated,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border(
+                  top: BorderSide(color: Color(0x2EFFFFFF), width: 1),
+                ),
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: Column(
+                children: [
+                  // Handle
+                  Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Title
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.stars_rounded, color: accentGold, size: 24),
+                      const SizedBox(width: 8),
+                      Text(
+                        'welcome_screen.past_champions_title'.tr(),
+                        style: const TextStyle(
+                          color: textPrimary,
+                          fontSize: 19,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'welcome_screen.past_champions_desc'.tr(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: textSecondary,
+                      fontSize: 12.5,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Content
+                  Expanded(
+                    child: loading
+                        ? const Center(
+                            child: CircularProgressIndicator(color: accentGold),
+                          )
+                        : champions.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.military_tech_outlined,
+                                        color: Colors.white.withValues(alpha: 0.3),
+                                        size: 48),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'welcome_screen.no_past_champions'.tr(),
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: textSecondary,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : ListView.separated(
+                                physics: const BouncingScrollPhysics(),
+                                itemCount: champions.length,
+                                separatorBuilder: (context, i) =>
+                                    const SizedBox(height: 14),
+                                itemBuilder: (context, index) {
+                                  final item = champions[index];
+                                  final int month = item['month'] ?? 1;
+                                  final int year = item['year'] ?? 2026;
+                                  final monthName = _getMonthName(month);
+
+                                  return Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          accentGold.withValues(alpha: 0.12),
+                                          bgCard,
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(radiusMd),
+                                      border: Border.all(
+                                        color: accentGold.withValues(alpha: 0.3),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        // Champion Avatar with Crown
+                                        Stack(
+                                          alignment: Alignment.topCenter,
+                                          children: [
+                                            Padding(
+                                              padding: const EdgeInsets.only(top: 8.0),
+                                              child: Container(
+                                                width: 58,
+                                                height: 58,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  border: Border.all(
+                                                    color: UserService.getFrameColor(
+                                                        item['equippedFrame']?.toString()),
+                                                    width: 2.5,
+                                                  ),
+                                                ),
+                                                child: Builder(
+                                                   builder: (context) {
+                                                     final hasTopAvatar = UserService.hasAvatar(item['avatarIndex']?.toString());
+                                                     return CircleAvatar(
+                                                       radius: 26,
+                                                       backgroundColor: bgElevated,
+                                                       backgroundImage: hasTopAvatar
+                                                           ? ResizeImage(
+                                                               AssetImage(UserService.getAvatarPath(
+                                                                   item['avatarIndex']?.toString() ?? '0')),
+                                                               width: 104,
+                                                               height: 104,
+                                                             )
+                                                           : null,
+                                                       child: hasTopAvatar
+                                                           ? null
+                                                           : const Icon(
+                                                               Icons.person_rounded,
+                                                               color: Colors.white70,
+                                                               size: 24,
+                                                             ),
+                                                     );
+                                                   },
+                                                 ),
+                                              ),
+                                            ),
+                                            Positioned(
+                                              top: -2,
+                                              child: Icon(Icons.emoji_events_rounded,
+                                                  color: rankGold, size: 20),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(width: 14),
+
+                                        // Info
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                    horizontal: 8, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: accentGold.withValues(alpha: 0.2),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  '$monthName $year',
+                                                  style: const TextStyle(
+                                                    color: accentGoldSoft,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                AppUtils.localizeUsername(item['username']),
+                                                style: const TextStyle(
+                                                  color: textPrimary,
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w800,
+                                                ),
+                                              ),
+                                              if (item['equippedTitle'] != null &&
+                                                  item['equippedTitle'] != '0' &&
+                                                  item['equippedTitle'] != 'yok') ...[
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  AppConstants.titleKeys[item['equippedTitle']]?.tr() ??
+                                                      item['equippedTitle'].toString(),
+                                                  style: const TextStyle(
+                                                    color: accentGold,
+                                                    fontSize: 11.5,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+
+                                        const SizedBox(width: 8),
+                                        const Icon(Icons.stars_rounded, color: accentGold, size: 28),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _getMonthName(int month) {
+    if (month >= 1 && month <= 12) {
+      try {
+        final date = DateTime(2026, month, 1);
+        return DateFormat.MMMM(context.locale.languageCode).format(date);
+      } catch (_) {
+        return DateFormat.MMMM().format(DateTime(2026, month, 1));
+      }
+    }
+    return '';
   }
 
   // ---------------------------------------------------------------------
@@ -628,17 +917,30 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
                           ),
                         ),
                         child: ClipOval(
-                          child: Image.asset(
-                            UserService.getAvatarPath(
-                                user['avatarIndex']?.toString() ?? '0'),
-                            fit: BoxFit.cover,
-                            cacheWidth: 160,
-                            cacheHeight: 160,
-                            errorBuilder: (context, error, stackTrace) => Icon(
-                              style.icon,
-                              color: textSecondary,
-                              size: 22,
-                            ),
+                          child: Builder(
+                            builder: (context) {
+                              final hasAvatar = UserService.hasAvatar(
+                                  user['avatarIndex']?.toString());
+                              if (!hasAvatar) {
+                                return Icon(
+                                  style.icon,
+                                  color: textSecondary,
+                                  size: 22,
+                                );
+                              }
+                              return Image.asset(
+                                UserService.getAvatarPath(
+                                    user['avatarIndex']?.toString() ?? '0'),
+                                fit: BoxFit.cover,
+                                cacheWidth: 160,
+                                cacheHeight: 160,
+                                errorBuilder: (context, error, stackTrace) => Icon(
+                                  style.icon,
+                                  color: textSecondary,
+                                  size: 22,
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ),

@@ -382,66 +382,299 @@ class _KategoriScreenState extends State<KategoriScreen>
   }
 
   Widget _buildCategorySection() {
+    final weeklyBonuses = AppCategories.getWeeklyBonusCategories();
+
     return ScaleTransition(
       scale: _scaleAnimation,
       child: GlassContainer(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         opacity: 0.1,
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // --- HAFTALIK 2X BONUS KATEGORİLER VİTRİNİ ---
+            _buildWeeklyBonusHeader(),
+            const SizedBox(height: 12),
+            _buildWeeklyBonusRow(weeklyBonuses),
+            const SizedBox(height: 24),
+
+            // --- TÜM KATEGORİLER BAŞLIĞI ---
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.auto_awesome_mosaic_rounded,
-                  color: Colors.white.withValues(alpha: 0.9),
-                  size: 22,
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  'category_ui.select_category'.tr(),
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.auto_awesome_mosaic_rounded,
+                        color: Colors.white.withValues(alpha: 0.9),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          'category_ui.all_categories'.tr(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+                if (_selectedCategory != null) ...[
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                            color: const Color(0xFF6366F1).withValues(alpha: 0.4)),
+                      ),
+                      child: Text(
+                        'category_ui.selected'.tr(args: [
+                          _getCategoryDisplayName(_selectedCategory!)
+                        ]),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
-            if (_selectedCategory != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6366F1).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: const Color(0xFF6366F1).withValues(alpha: 0.3)),
-                ),
-                child: Text(
-                  'category_ui.selected'.tr(args: [
-                    _categories
-                        .firstWhere((c) => c.name == _selectedCategory)
-                        .key
-                        .tr()
-                  ]),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             _buildCategoryGrid(),
           ],
         ),
       ),
     );
+  }
+
+  String _getCategoryDisplayName(String categoryName) {
+    try {
+      final allCats = [..._categories, ...AppCategories.bonusPoolCategories];
+      final match = allCats.firstWhere((c) => c.name == categoryName);
+      return match.key.tr();
+    } catch (_) {
+      return categoryName;
+    }
+  }
+
+  Widget _buildWeeklyBonusHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFFFF9F43).withValues(alpha: 0.25),
+            const Color(0xFFFF5252).withValues(alpha: 0.2),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFF9F43).withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFF9F43), Color(0xFFFF5252)],
+              ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.local_fire_department_rounded,
+                color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'category_ui.weekly_bonus_title'.tr(),
+                      style: const TextStyle(
+                        color: Color(0xFFFFD56B),
+                        fontWeight: FontWeight.w900,
+                        fontSize: 13,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF5252),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'category_ui.weekly_bonus_badge'.tr(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 9,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'category_ui.weekly_bonus_subtitle'.tr(),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeeklyBonusRow(List<CategoryItem> bonusCategories) {
+    return Row(
+      children: bonusCategories.asMap().entries.map((entry) {
+        final index = entry.key;
+        final category = entry.value;
+        final isSelected = _selectedCategory == category.name;
+
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: index == 0 ? 0 : 4,
+              right: index == bonusCategories.length - 1 ? 0 : 4,
+            ),
+            child: GestureDetector(
+              onTap: () {
+                setState(() => _selectedCategory = category.name);
+                _triggerHapticFeedback();
+                Future.delayed(const Duration(milliseconds: 300), () {
+                  _scrollToDifficulty();
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                  decoration: BoxDecoration(
+                    gradient: isSelected
+                        ? LinearGradient(
+                            colors: [
+                              category.color.withValues(alpha: 0.4),
+                              category.color.withValues(alpha: 0.7),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : LinearGradient(
+                            colors: [
+                              Colors.white.withValues(alpha: 0.08),
+                              category.color.withValues(alpha: 0.12),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSelected
+                          ? const Color(0xFFFFD56B)
+                          : category.color.withValues(alpha: 0.4),
+                      width: isSelected ? 2.0 : 1.0,
+                    ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: category.color.withValues(alpha: 0.4),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Stack(
+                        alignment: Alignment.topRight,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: category.color.withValues(alpha: 0.25),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              category.icon,
+                              size: 22,
+                              color: isSelected ? Colors.white : category.color,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFFF5252),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.flash_on, color: Colors.white, size: 10),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        category.key.tr(),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.9),
+                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                          fontSize: 11,
+                          height: 1.15,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF9F43).withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          '2X ⚡',
+                          style: TextStyle(
+                            color: Color(0xFFFFD56B),
+                            fontWeight: FontWeight.w900,
+                            fontSize: 9,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      );
   }
 
   Widget _buildCategoryGrid() {
@@ -712,8 +945,10 @@ class _KategoriScreenState extends State<KategoriScreen>
       return const SizedBox.shrink();
     }
 
-    final selectedCategoryItem = _categories.firstWhere(
+    final allCats = [..._categories, ...AppCategories.bonusPoolCategories];
+    final selectedCategoryItem = allCats.firstWhere(
       (cat) => cat.name == _selectedCategory,
+      orElse: () => allCats.first,
     );
 
     return AnimatedOpacity(
@@ -805,26 +1040,35 @@ class _KategoriScreenState extends State<KategoriScreen>
 
   Widget _buildPreviewItem(IconData icon, String title, String value) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, color: Colors.white.withValues(alpha: 0.8), size: 16),
         const SizedBox(height: 4),
-        Text(
-          title,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.6),
-            fontSize: 10,
-            fontWeight: FontWeight.w500,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            title,
+            maxLines: 1,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
         const SizedBox(height: 2),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
           ),
-          textAlign: TextAlign.center,
         ),
       ],
     );
@@ -972,117 +1216,6 @@ class _KategoriScreenState extends State<KategoriScreen>
               ),
             );
           },
-        ),
-        const SizedBox(height: 12),
-        AnimatedBuilder(
-          animation: _buttonPulseAnimation,
-          builder: (context, child) {
-            return Transform.scale(
-              scale: isEnabled ? _buttonPulseAnimation.value : 1.0,
-              child: child,
-            );
-          },
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 24),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
-              gradient: LinearGradient(
-                colors: isEnabled
-                    ? [Colors.orangeAccent, Colors.redAccent]
-                    : [Colors.grey.shade800, Colors.grey.shade900],
-              ),
-              boxShadow: isEnabled
-                  ? [
-                      BoxShadow(
-                        color: Colors.redAccent.withValues(alpha: 0.4),
-                        blurRadius: 15,
-                        offset: const Offset(0, 6),
-                      ),
-                    ]
-                  : [],
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: null, // Disabled due to 'Yakında Gelecek'
-                borderRadius: BorderRadius.circular(28),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Opacity(
-                      opacity: 0.5,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.bolt_rounded,
-                              size: 28,
-                              color: isEnabled ? Colors.white : Colors.white54,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'category_ui.start_duel'.tr(),
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: isEnabled ? Colors.white : Colors.white54,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: isEnabled ? Colors.orange.withValues(alpha: 0.2) : Colors.white24,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    '20',
-                                    style: TextStyle(
-                                      color: isEnabled ? Colors.orange : Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Icon(
-                                    Icons.monetization_on_rounded,
-                                    size: 16,
-                                    color: isEnabled ? Colors.orange : Colors.white,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white24),
-                      ),
-                      child: Text(
-                        'shop.coming_soon'.tr(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
         ),
         const SizedBox(height: 16),
       ],

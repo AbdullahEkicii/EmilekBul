@@ -9,10 +9,12 @@ import '../services/database_helper.dart';
 import '../services/notification_service.dart';
 import '../services/quest_service.dart';
 import '../services/achievement_service.dart';
+import '../services/review_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../constants/app_categories.dart';
 import '../services/notification_permission_manager.dart'; // Added for permission handling
 import 'dart:ui'; // For BackdropFilter
 
@@ -140,11 +142,20 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
           _quizzesForNextLevel = nextLevelQuizzes;
         });
 
-        // Test sayısı başarımlarını kontrol et
+        // Test sayısı ve seviye başarımlarını kontrol et
         await AchievementService.checkAndUnlockTestCountAchievements(quizzes, context);
+        if (mounted) {
+          await AchievementService.checkAndUnlockLevelAchievements(level, context);
+        }
       }
 
-      // İmkansız modda tam puan başarımı kontrol et
+      // Kusursuz ve İmkansız mod başarımlarını kontrol et
+      if (!mounted) return;
+      await AchievementService.checkAndUnlockPerfectScore(
+        widget.score,
+        widget.questions.length,
+        context,
+      );
       if (!mounted) return;
       await AchievementService.checkAndUnlockImpossibleMaster(
         widget.difficulty,
@@ -195,6 +206,13 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
         Future.delayed(const Duration(milliseconds: 2000), () {
           if (mounted) {
             importNotificationManagerThenCheck();
+          }
+        });
+      } else if (!widget.isOnboarding && !widget.isDuel) {
+        // Belirli aralıklarla ve test sonrasında Google Play değerlendirme önerisi
+        Future.delayed(const Duration(milliseconds: 3500), () {
+          if (mounted) {
+            ReviewService.checkAndPromptAutoReview(context);
           }
         });
       }
@@ -285,6 +303,12 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
       await TokenService.awardTokensForDuelWin();
     }
 
+    // Haftalık 2X Bonus Kategori kontrolü
+    final bool isWeeklyBonus = AppCategories.isCategoryWeeklyBonus(widget.category);
+    if (isWeeklyBonus) {
+      totalPuan *= 2;
+    }
+
     try {
       await UserService.addPointsToUser(
         uid: user.uid,
@@ -295,7 +319,9 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
       if (mounted) {
         final String msg = playerWonDuel 
             ? 'duel.won_dialog'.tr()
-            : 'result.score_saved'.tr();
+            : (isWeeklyBonus
+                ? 'result.weekly_bonus_applied'.tr()
+                : 'result.score_saved'.tr());
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(msg),
@@ -331,7 +357,15 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
       }
       await TokenService.addTokens(100);
     } else {
-      await TokenService.awardTokensForQuiz(widget.difficulty, widget.score);
+      final bool isWeeklyBonus = AppCategories.isCategoryWeeklyBonus(widget.category);
+      if (isWeeklyBonus) {
+        // 2X Token Ödülü
+        final tokensPerAnswer = TokenService.getTokensForCorrectAnswer(widget.difficulty);
+        final totalTokens = widget.score * tokensPerAnswer * 2;
+        await TokenService.addTokens(totalTokens);
+      } else {
+        await TokenService.awardTokensForQuiz(widget.difficulty, widget.score);
+      }
       final bool playerWonDuel = widget.isDuel && (widget.score > widget.botScore);
       if (playerWonDuel) {
         await TokenService.addTokens(50);
@@ -1346,32 +1380,8 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
   }
 
   String _getTranslatedCategory(String cat) {
-    switch (cat) {
-      case 'Genel':
-        return 'categories.general'.tr();
-      case 'Genel Kültür':
-        return 'categories.general_culture'.tr();
-      case 'Yemek Kültürü':
-        return 'categories.food'.tr();
-      case 'Coğrafya':
-        return 'categories.geography'.tr();
-      case 'Futbol':
-        return 'categories.football'.tr();
-      case 'Dini':
-        return 'categories.religious'.tr();
-      case 'Bilim':
-        return 'categories.science'.tr();
-      case 'Sinema ve Dizi':
-        return 'categories.cinema'.tr();
-      case 'Tarih':
-        return 'categories.history'.tr();
-      case 'Magazin':
-        return 'categories.magazine'.tr();
-      case 'Müzik':
-        return 'categories.music'.tr();
-      default:
-        return cat; // Fallback
-    }
+    final key = AppCategories.getCategoryKey(cat);
+    return key.isNotEmpty ? key.tr() : cat;
   }
 
   Widget _buildCategoryMasteryCard() {
@@ -1602,9 +1612,9 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
     if (playerWonByScore) {
       resultText = 'duel.won'.tr();
     } else if (playerWonBySpeed) {
-      resultText = 'Hızla Kazandın!';
+      resultText = 'result.won_by_speed'.tr();
     } else if (playerLostBySpeed) {
-      resultText = 'Rakip Daha Hızlı!';
+      resultText = 'result.lost_by_speed'.tr();
     } else if (isTie) {
       resultText = 'duel.tie'.tr();
     } else {
@@ -1666,7 +1676,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
                       ),
                     ),
                     Text(
-                      'DOĞRU',
+                      'result.correct'.tr().toUpperCase(),
                       style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                   ],
@@ -1683,7 +1693,11 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
                   children: [
                     CircleAvatar(
                       radius: 30,
-                      backgroundImage: AssetImage(widget.botAvatar),
+                      backgroundImage: ResizeImage(
+                        AssetImage(widget.botAvatar),
+                        width: 120,
+                        height: 120,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -1700,7 +1714,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
                       ),
                     ),
                     Text(
-                      'DOĞRU',
+                      'result.correct'.tr().toUpperCase(),
                       style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                   ],

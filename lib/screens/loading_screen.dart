@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:animated_text_kit/animated_text_kit.dart';
@@ -29,6 +30,10 @@ class _LoadingScreenState extends State<LoadingScreen>
   late AnimationController _progressController;
   late Animation<double> _progressAnimation;
 
+  Timer? _minWaitTimer;
+  bool _minTimeElapsed = false;
+  bool _hasStarted = false;
+
   @override
   void initState() {
     super.initState();
@@ -50,33 +55,41 @@ class _LoadingScreenState extends State<LoadingScreen>
           ..repeat();
 
     _progressController =
-        AnimationController(duration: const Duration(seconds: 15), vsync: this);
+        AnimationController(duration: const Duration(seconds: 7), vsync: this);
 
     _progressController.forward();
 
-    // Animate to 99%
+    // Animate smoothly to 99% across 7 seconds
     _progressAnimation = Tween<double>(begin: 0.0, end: 0.99).animate(
-        CurvedAnimation(parent: _progressController, curve: Curves.linear));
+        CurvedAnimation(parent: _progressController, curve: Curves.easeInOutCubic));
 
-    if (widget.isDataReady) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        widget.onStart?.call();
-      });
+    // Garanti 7 saniye bekleme süresi
+    _minWaitTimer = Timer(const Duration(seconds: 7), () {
+      if (!mounted) return;
+      _minTimeElapsed = true;
+      _checkAndTriggerStart();
+    });
+  }
+
+  void _checkAndTriggerStart() {
+    if (!mounted || _hasStarted) return;
+    if (_minTimeElapsed && widget.isDataReady) {
+      _hasStarted = true;
+      widget.onStart?.call();
     }
   }
 
   @override
   void didUpdateWidget(LoadingScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // If data just became ready
     if (widget.isDataReady && !oldWidget.isDataReady) {
-      // Immediately start when data is ready
-      widget.onStart?.call();
+      _checkAndTriggerStart();
     }
   }
 
   @override
   void dispose() {
+    _minWaitTimer?.cancel();
     _orbController.dispose();
     _pulseController.dispose();
     _shimmerController.dispose();

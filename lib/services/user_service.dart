@@ -1,8 +1,12 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
+import 'token_service.dart';
+import 'analytics_service.dart';
 
 class UserService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -18,9 +22,14 @@ class UserService {
     String username = '',
     String firstName = '',
     String lastName = '',
-    String avatarIndex = '1',
+    String avatarIndex = '0',
   }) async {
     try {
+      final List<String> initialOwnedAvatars =
+          (avatarIndex != '0' && avatarIndex.isNotEmpty && avatarIndex != 'yok')
+              ? [avatarIndex]
+              : [];
+
       await _firestore.collection(usersCollection).doc(uid).set({
         'email': email,
         'username': username,
@@ -34,12 +43,14 @@ class UserService {
         'tokens': 50, // Default start token
         'level': 1,
         'completedQuizzes': 0,
-        'ownedAvatars': [avatarIndex],
+        'ownedAvatars': initialOwnedAvatars,
         'ownedFrames': ['0'],
         'ownedTitles': ['0'],
         'equippedFrame': '0',
         'equippedTitle': 'yok',
       });
+      AnalyticsService.setUserId(uid);
+      AnalyticsService.logSignUp(signUpMethod: email.isNotEmpty ? 'email' : 'anonymous');
       return true;
     } catch (e) {
       debugPrint('Error creating user profile: $e');
@@ -331,7 +342,7 @@ class UserService {
             'completedQuizzes': 0,
             'tokens': 50, // Default start token
             'isGuest': true,
-            'ownedAvatars': ['0'],
+            'ownedAvatars': <String>[],
             'ownedFrames': ['0'],
             'ownedTitles': ['0'],
             'equippedFrame': '0',
@@ -346,6 +357,10 @@ class UserService {
         } catch (prefError) {
           debugPrint('Error setting guest tokens in SharedPreferences: $prefError');
         }
+
+        // Analytics Kaydı
+        AnalyticsService.setUserId(user.uid);
+        AnalyticsService.logLogin(loginMethod: 'guest');
 
         return userCredential;
       }
@@ -370,6 +385,7 @@ class UserService {
 
       Map<String, dynamic> updateData = {
         'username': username.trim(),
+        'username_lower': username.trim().toLowerCase(),
         'firstName': firstName.trim(),
         'lastName': lastName.trim(),
         'avatarIndex': avatarIndex,
@@ -446,20 +462,55 @@ class UserService {
     return _firestore.collection(usersCollection).doc(userId).snapshots();
   }
 
+  /// Kullanıcı profili için username_lower alanını garantiye al
+  static Future<void> ensureUsernameLowerIndex(String uid) async {
+    try {
+      final doc = await _firestore.collection(usersCollection).doc(uid).get();
+      if (doc.exists) {
+        final data = doc.data();
+        if (data != null && data['username_lower'] == null && data['username'] != null) {
+          final username = data['username'].toString().trim();
+          if (username.isNotEmpty) {
+            await doc.reference.update({
+              'username_lower': username.toLowerCase(),
+            });
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
   /// Kullanıcı adına göre kullanıcı arama
   static Future<Map<String, dynamic>?> getUserByUsername(
       String username) async {
     try {
-      final querySnapshot = await _firestore
+      final normalized = username.trim();
+      final lower = normalized.toLowerCase();
+
+      // 1. Önce username_lower alanından dene
+      var querySnapshot = await _firestore
           .collection(usersCollection)
-          .where('username', isEqualTo: username.trim())
+          .where('username_lower', isEqualTo: lower)
           .limit(1)
           .get();
+
+      // 2. Bulunamadıysa orijinal username alanından dene
+      if (querySnapshot.docs.isEmpty) {
+        querySnapshot = await _firestore
+            .collection(usersCollection)
+            .where('username', isEqualTo: normalized)
+            .limit(1)
+            .get();
+      }
 
       if (querySnapshot.docs.isNotEmpty) {
         final doc = querySnapshot.docs.first;
         final data = doc.data();
         data['uid'] = doc.id; // Document ID'yi de ekle
+        // Eğer username_lower eksikse arka planda güncelle
+        if (data['username_lower'] == null && data['username'] != null) {
+          doc.reference.update({'username_lower': lower}).catchError((_) {});
+        }
         return data;
       }
       return null;
@@ -484,13 +535,31 @@ class UserService {
     }
   }
 
-  /// Profil fotoğrafı path'ini getir
+  /// Kullanıcının seçili bir avatarı olup olmadığını kontrol et
+  static bool hasAvatar(String? avatarIndex) {
+    if (avatarIndex == null ||
+        avatarIndex.isEmpty ||
+        avatarIndex == '0' ||
+        avatarIndex == 'yok' ||
+        avatarIndex == 'none') {
+      return false;
+    }
+    return true;
+  }
+
+  /// Profil fotoğrafı path'ini getir (Seçili avatar yoksa boş döner)
   static String getAvatarPath(String avatarIndex) {
+    if (!hasAvatar(avatarIndex)) {
+      return '';
+    }
     if (avatarIndex.startsWith('shop_')) {
       return 'lib/assets/avatars/$avatarIndex.jpg';
     }
-    final index = int.tryParse(avatarIndex) ?? 0;
-    return 'avatars/avatar_${index + 1}.jpg';
+    final index = int.tryParse(avatarIndex);
+    if (index == null || index < 1 || index > 52) {
+      return '';
+    }
+    return 'avatars/avatar_$index.jpg';
   }
 
   static String getFramePath(String frameId) {
@@ -765,6 +834,302 @@ class UserService {
     }
   }
 
+  /// 3 aydır (90 gün) girilmeyen inaktif misafir hesaplarını temizle
+  static Future<int> cleanupInactiveGuestAccounts({int cutoffDays = 90, int batchLimit = 150}) async {
+    try {
+      final currentUid = _auth.currentUser?.uid;
+      final cutoffDate = DateTime.now().subtract(Duration(days: cutoffDays));
+      debugPrint('🧹 Misafir Hesabı Temizliği Başlatılıyor... (Kriter: $cutoffDays gün öncesi - ${cutoffDate.toIso8601String()})');
+
+      // 1. isGuest == true olan misafir hesaplarını çek (Tek alanlı indeks, kompozit indeks gerektirmez)
+      final querySnapshot = await _firestore
+          .collection(usersCollection)
+          .where('isGuest', isEqualTo: true)
+          .limit(batchLimit)
+          .get();
+
+      if (querySnapshot.docs.isEmpty) {
+        debugPrint('🧹 Kontrol edilecek misafir hesabı bulunamadı.');
+        return 0;
+      }
+
+      final batch = _firestore.batch();
+      int deletedCount = 0;
+
+      for (final doc in querySnapshot.docs) {
+        final uid = doc.id;
+        final data = doc.data();
+
+        // 1. Botları asla silme
+        if (uid.startsWith('bot_')) continue;
+
+        // 2. Mevcut oturum açmış kullanıcıyı asla silme
+        if (currentUid != null && uid == currentUid) continue;
+
+        // 3. E-postası olan veya kalıcı hesaba dönüşmüş olanları asla silme
+        final email = data['email']?.toString() ?? '';
+        final isGuest = data['isGuest'] == true;
+        if (email.isNotEmpty || !isGuest) continue;
+
+        // 4. Son aktiflik tarihini kontrol et (lastLogin -> updatedAt -> createdAt)
+        DateTime? lastActive;
+        if (data['lastLogin'] is Timestamp) {
+          lastActive = (data['lastLogin'] as Timestamp).toDate();
+        } else if (data['updatedAt'] is Timestamp) {
+          lastActive = (data['updatedAt'] as Timestamp).toDate();
+        } else if (data['createdAt'] is Timestamp) {
+          lastActive = (data['createdAt'] as Timestamp).toDate();
+        }
+
+        // Eğer son aktiflik tarihi 90 günden eskiyse (veya hiç tarih yoksa çok eski bir kalıntıysa)
+        if (lastActive == null || lastActive.isBefore(cutoffDate)) {
+          batch.delete(doc.reference);
+          deletedCount++;
+        }
+      }
+
+      if (deletedCount > 0) {
+        await batch.commit();
+        debugPrint('🧹 Başarıyla $deletedCount inaktif misafir hesabı Firestore\'dan temizlendi.');
+      } else {
+        debugPrint('🧹 90 günden eski inaktif misafir hesabı bulunamadı.');
+      }
+
+      return deletedCount;
+    } catch (e) {
+      debugPrint('🧹 Misafir hesabı temizleme hatası: $e');
+      return 0;
+    }
+  }
+
+  /// Arka planda periyodik misafir temizleme tetikleyicisi (24 saatte en fazla 1 kez çalışır)
+  static Future<void> triggerPeriodicGuestCleanup() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      const prefKey = 'last_guest_cleanup_time';
+      final lastRunMillis = prefs.getInt(prefKey) ?? 0;
+      final nowMillis = DateTime.now().millisecondsSinceEpoch;
+
+      // 24 saat (86.400.000 ms) kontrolü
+      if (nowMillis - lastRunMillis > 86400000) {
+        await prefs.setInt(prefKey, nowMillis);
+        // Arka planda asenkron çalıştır
+        unawaited(cleanupInactiveGuestAccounts(cutoffDays: 90));
+      }
+    } catch (e) {
+      debugPrint('Periodic guest cleanup trigger warning: $e');
+    }
+  }
+
+  /// Misafir kullanıcının tüm ilerlemesini (token, puan, seviye, envanter, arkadaşlar) kalıcı hesaba eksiksiz aktar
+  static Future<bool> migrateGuestDataToUser({
+    required String sourceGuestUid,
+    required String targetUid,
+    String? newUsername,
+    String? newFirstName,
+    String? newLastName,
+    String? email,
+  }) async {
+    if (sourceGuestUid.isEmpty || targetUid.isEmpty) return false;
+    try {
+      debugPrint('🔄 Misafir hesabı veri aktarımı başlatıldı: $sourceGuestUid -> $targetUid');
+
+      final sourceDoc = await _firestore.collection(usersCollection).doc(sourceGuestUid).get();
+      final targetDoc = await _firestore.collection(usersCollection).doc(targetUid).get();
+
+      final sourceData = sourceDoc.data() ?? {};
+      final targetData = targetDoc.data() ?? {};
+
+      // 1. Token Aktarımı (Firestore ve SharedPreferences senkronizasyonu)
+      final localTokens = await TokenService.getTokenAmount();
+      final sourceTokens = (sourceData['tokens'] as num?)?.toInt() ?? localTokens;
+      final targetTokens = (targetData['tokens'] as num?)?.toInt() ?? 0;
+      final mergedTokens = (sourceGuestUid == targetUid)
+          ? max(sourceTokens, localTokens)
+          : (targetTokens + sourceTokens);
+
+      // 2. İstatistikler & Puanlar
+      final mergedPoints = (sourceGuestUid == targetUid)
+          ? ((targetData['totalPoints'] as num?)?.toInt() ?? (sourceData['totalPoints'] as num?)?.toInt() ?? 0)
+          : (((targetData['totalPoints'] as num?)?.toInt() ?? 0) + ((sourceData['totalPoints'] as num?)?.toInt() ?? 0));
+
+      final mergedQuizzes = (sourceGuestUid == targetUid)
+          ? ((targetData['totalQuizzes'] as num?)?.toInt() ?? (sourceData['totalQuizzes'] as num?)?.toInt() ?? 0)
+          : (((targetData['totalQuizzes'] as num?)?.toInt() ?? 0) + ((sourceData['totalQuizzes'] as num?)?.toInt() ?? 0));
+
+      final mergedCorrect = (sourceGuestUid == targetUid)
+          ? ((targetData['correctAnswers'] as num?)?.toInt() ?? (sourceData['correctAnswers'] as num?)?.toInt() ?? 0)
+          : (((targetData['correctAnswers'] as num?)?.toInt() ?? 0) + ((sourceData['correctAnswers'] as num?)?.toInt() ?? 0));
+
+      final mergedCompleted = (sourceGuestUid == targetUid)
+          ? ((targetData['completedQuizzes'] as num?)?.toInt() ?? (sourceData['completedQuizzes'] as num?)?.toInt() ?? 0)
+          : (((targetData['completedQuizzes'] as num?)?.toInt() ?? 0) + ((sourceData['completedQuizzes'] as num?)?.toInt() ?? 0));
+
+      final mergedLevel = max(
+        (targetData['level'] as num?)?.toInt() ?? 1,
+        (sourceData['level'] as num?)?.toInt() ?? 1,
+      );
+
+      // 3. Envanter Birleştirme (Avatar, Çerçeve, Ünvanlar)
+      final sourceAvatars = List<String>.from(sourceData['ownedAvatars'] ?? [])
+          .where((a) => a != '0' && a != 'yok' && a.isNotEmpty)
+          .toList();
+      final targetAvatars = List<String>.from(targetData['ownedAvatars'] ?? [])
+          .where((a) => a != '0' && a != 'yok' && a.isNotEmpty)
+          .toList();
+      final mergedAvatars = {...targetAvatars, ...sourceAvatars}.toList();
+
+      final sourceFrames = List<String>.from(sourceData['ownedFrames'] ?? ['0']);
+      final targetFrames = List<String>.from(targetData['ownedFrames'] ?? ['0']);
+      final mergedFrames = {...targetFrames, ...sourceFrames}.toList();
+
+      final sourceTitles = List<String>.from(sourceData['ownedTitles'] ?? ['0']);
+      final targetTitles = List<String>.from(targetData['ownedTitles'] ?? ['0']);
+      final mergedTitles = {...targetTitles, ...sourceTitles}.toList();
+
+      final activeAvatar = (newUsername != null && newUsername.isNotEmpty)
+          ? (targetData['avatarIndex'] ?? sourceData['avatarIndex'] ?? '0')
+          : (sourceData['avatarIndex'] ?? targetData['avatarIndex'] ?? '0');
+
+      final activeFrame = (targetData['equippedFrame'] != null && targetData['equippedFrame'] != '0')
+          ? targetData['equippedFrame']
+          : (sourceData['equippedFrame'] ?? '0');
+
+      final activeTitle = (targetData['equippedTitle'] != null && targetData['equippedTitle'] != 'yok' && targetData['equippedTitle'] != '0')
+          ? targetData['equippedTitle']
+          : (sourceData['equippedTitle'] ?? 'yok');
+
+      final finalUsername = (newUsername?.trim().isNotEmpty == true)
+          ? newUsername!.trim()
+          : (targetData['username'] ?? sourceData['username'] ?? 'Oyuncu');
+
+      final finalFirstName = (newFirstName?.trim().isNotEmpty == true)
+          ? newFirstName!.trim()
+          : (targetData['firstName'] ?? sourceData['firstName'] ?? '');
+
+      final finalLastName = (newLastName?.trim().isNotEmpty == true)
+          ? newLastName!.trim()
+          : (targetData['lastName'] ?? sourceData['lastName'] ?? '');
+
+      final finalEmail = (email?.trim().isNotEmpty == true)
+          ? email!.trim()
+          : (targetData['email'] ?? sourceData['email'] ?? '');
+
+      // 4. Hedef Kullanıcı Profilini Eksiksiz Güncelle
+      final Map<String, dynamic> updateData = {
+        'username': finalUsername,
+        'username_lower': finalUsername.toLowerCase(),
+        'firstName': finalFirstName,
+        'lastName': finalLastName,
+        'email': finalEmail,
+        'avatarIndex': activeAvatar,
+        'equippedFrame': activeFrame,
+        'equippedTitle': activeTitle,
+        'ownedAvatars': mergedAvatars,
+        'ownedFrames': mergedFrames,
+        'ownedTitles': mergedTitles,
+        'tokens': mergedTokens,
+        'totalPoints': mergedPoints,
+        'totalQuizzes': mergedQuizzes,
+        'correctAnswers': mergedCorrect,
+        'completedQuizzes': mergedCompleted,
+        'level': mergedLevel,
+        'isGuest': false,
+        'isEmailVerified': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      if (sourceData['activeBadge'] != null) {
+        updateData['activeBadge'] = targetData['activeBadge'] ?? sourceData['activeBadge'];
+      }
+      if (sourceData['badges'] != null || targetData['badges'] != null) {
+        final sBadges = List<String>.from(sourceData['badges'] ?? []);
+        final tBadges = List<String>.from(targetData['badges'] ?? []);
+        updateData['badges'] = {...tBadges, ...sBadges}.toList();
+      }
+      if (sourceData['unlockedBadges'] != null || targetData['unlockedBadges'] != null) {
+        final sUnl = List<String>.from(sourceData['unlockedBadges'] ?? []);
+        final tUnl = List<String>.from(targetData['unlockedBadges'] ?? []);
+        updateData['unlockedBadges'] = {...tUnl, ...sUnl}.toList();
+      }
+      if (sourceData['claimedBadges'] != null || targetData['claimedBadges'] != null) {
+        final sClm = List<String>.from(sourceData['claimedBadges'] ?? []);
+        final tClm = List<String>.from(targetData['claimedBadges'] ?? []);
+        updateData['claimedBadges'] = {...tClm, ...sClm}.toList();
+      }
+      if (sourceData['hasClaimedReviewReward'] == true || targetData['hasClaimedReviewReward'] == true) {
+        updateData['hasClaimedReviewReward'] = true;
+      }
+
+      await _firestore.collection(usersCollection).doc(targetUid).set(updateData, SetOptions(merge: true));
+
+      // 5. Arkadaş Listesi Aktarımı (Eğer farklı UID'ye geçiş olduysa)
+      if (sourceGuestUid != targetUid) {
+        final friendsSnap = await _firestore
+            .collection(usersCollection)
+            .doc(sourceGuestUid)
+            .collection('friends')
+            .get();
+
+        if (friendsSnap.docs.isNotEmpty) {
+          final batch = _firestore.batch();
+          for (final fDoc in friendsSnap.docs) {
+            final fData = fDoc.data();
+            final friendUid = fDoc.id;
+
+            // Hedef kullanıcının arkadaşlarına ekle
+            final targetFriendRef = _firestore
+                .collection(usersCollection)
+                .doc(targetUid)
+                .collection('friends')
+                .doc(friendUid);
+            batch.set(targetFriendRef, fData);
+
+            // Karşı tarafın listesindeki sourceGuestUid'yi targetUid ile değiştir
+            final reciprocalOldRef = _firestore
+                .collection(usersCollection)
+                .doc(friendUid)
+                .collection('friends')
+                .doc(sourceGuestUid);
+            batch.delete(reciprocalOldRef);
+
+            final reciprocalNewRef = _firestore
+                .collection(usersCollection)
+                .doc(friendUid)
+                .collection('friends')
+                .doc(targetUid);
+            batch.set(reciprocalNewRef, {
+              'uid': targetUid,
+              'username': finalUsername,
+              'avatarIndex': activeAvatar,
+              'equippedFrame': activeFrame,
+              'equippedTitle': activeTitle,
+              'level': mergedLevel,
+              'totalPoints': mergedPoints,
+              'addedAt': FieldValue.serverTimestamp(),
+            });
+
+            // Eski misafir arkadaş dökümanını sil
+            batch.delete(fDoc.reference);
+          }
+          await batch.commit();
+        }
+
+        // Eski geçici misafir dökümanını sil (artık taşındı)
+        await _firestore.collection(usersCollection).doc(sourceGuestUid).delete();
+      }
+
+      // 6. Token Servisini Güncelle
+      await TokenService.updateTokenAmount(mergedTokens);
+
+      debugPrint('✅ Misafir verileri eksiksiz aktarıldı! (Toplam Token: $mergedTokens, Puan: $mergedPoints, Seviye: $mergedLevel)');
+      return true;
+    } catch (e) {
+      debugPrint('❌ Misafir veri aktarımı hatası: $e');
+      return false;
+    }
+  }
+
   /// En yüksek puanlı kullanıcıyı getir
   static Future<Map<String, dynamic>?> getTopUser() async {
     try {
@@ -859,6 +1224,93 @@ class UserService {
       debugPrint('Error getting last winner: $e');
       return null;
     }
+  }
+
+  /// Önceki 3 ayın şampiyonlarını getirir (monthly_winners veya monthly_scores arşivinden)
+  static Future<List<Map<String, dynamic>>> getPastMonthsChampions({int count = 3}) async {
+    final List<Map<String, dynamic>> champions = [];
+    final now = DateTime.now();
+
+    for (int i = 1; i <= count; i++) {
+      // Önceki ayları hesapla (1 ay önce, 2 ay önce, 3 ay önce)
+      var targetMonth = now.month - i;
+      var targetYear = now.year;
+      while (targetMonth <= 0) {
+        targetMonth += 12;
+        targetYear -= 1;
+      }
+      final yearMonthKey = "${targetYear}_${targetMonth.toString().padLeft(2, '0')}";
+
+      try {
+        // 1. Önce monthly_winners tablosunu kontrol et
+        final winnerDoc = await _firestore.collection('monthly_winners').doc(yearMonthKey).get();
+        if (winnerDoc.exists && winnerDoc.data() != null) {
+          final data = winnerDoc.data()!;
+          final uid = data['uid'] ?? '';
+          
+          // Profil verilerini alarak en güncel avatar / çerçeve / unvan ile zenginleştir
+          Map<String, dynamic>? profile;
+          if (uid.isNotEmpty) {
+            final userDoc = await _firestore.collection(usersCollection).doc(uid).get();
+            if (userDoc.exists) {
+              profile = userDoc.data();
+            }
+          }
+
+          champions.add({
+            'yearMonth': yearMonthKey,
+            'year': targetYear,
+            'month': targetMonth,
+            'uid': uid,
+            'username': data['username'] ?? profile?['username'] ?? 'Şampiyon',
+            'points': data['score'] ?? data['points'] ?? 0,
+            'avatarIndex': profile?['avatarIndex'] ?? data['avatarIndex'] ?? '0',
+            'equippedFrame': profile?['equippedFrame'] ?? data['equippedFrame'] ?? '0',
+            'equippedTitle': profile?['equippedTitle'] ?? data['equippedTitle'] ?? 'yok',
+          });
+          continue;
+        }
+
+        // 2. Eğer monthly_winners'ta yoksa, monthly_scores tablosundaki lideri çek
+        final scoresSnapshot = await _firestore
+            .collection('monthly_scores')
+            .doc(yearMonthKey)
+            .collection('scores')
+            .orderBy('totalPoints', descending: true)
+            .limit(1)
+            .get();
+
+        if (scoresSnapshot.docs.isNotEmpty) {
+          final topDoc = scoresSnapshot.docs.first;
+          final topData = topDoc.data();
+          final uid = topData['uid'] ?? topDoc.id;
+
+          Map<String, dynamic>? profile;
+          if (uid.isNotEmpty) {
+            final userDoc = await _firestore.collection(usersCollection).doc(uid).get();
+            if (userDoc.exists) {
+              profile = userDoc.data();
+            }
+          }
+
+          champions.add({
+            'yearMonth': yearMonthKey,
+            'year': targetYear,
+            'month': targetMonth,
+            'uid': uid,
+            'username': topData['username'] ?? profile?['username'] ?? 'Şampiyon',
+            'points': topData['totalPoints'] ?? 0,
+            'avatarIndex': profile?['avatarIndex'] ?? topData['avatarIndex'] ?? '0',
+            'equippedFrame': profile?['equippedFrame'] ?? topData['equippedFrame'] ?? '0',
+            'equippedTitle': profile?['equippedTitle'] ?? topData['equippedTitle'] ?? 'yok',
+          });
+        }
+      } catch (e) {
+        debugPrint('Error getting past champion for $yearMonthKey: $e');
+      }
+    }
+
+    return champions;
   }
 
   /// Kullanıcının sıralamasını hesapla (Aylık)

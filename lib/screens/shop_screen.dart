@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'token_screen.dart';
@@ -24,16 +25,58 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
   List<Map<String, dynamic>> _avatars = [];
 
   void _generateShopAvatars() {
-    _avatars = List.generate(41, (index) {
-      final avatarIdx = index + 11; // filename: avatar_11.jpg to avatar_51.jpg
-      final isAvailable = avatarIdx <= 30;
+    // 3 günlük deterministik indirim döngüsü
+    final now = DateTime.now();
+    final epochDays = now.millisecondsSinceEpoch ~/ (1000 * 60 * 60 * 24);
+    final discountCycleSeed = epochDays ~/ 3;
+
+    // 0 ile 51 arasındaki indekslerden rastgele 10 tanesini indirimli seçelim
+    final random = Random(discountCycleSeed);
+    final List<int> allIndices = List.generate(52, (i) => i);
+    allIndices.shuffle(random);
+    final Set<int> discountedIndices = allIndices.take(10).toSet();
+
+    _avatars = List.generate(52, (index) {
+      final avatarIdx = index + 1; // 1 to 52 (avatar_1.jpg to avatar_52.jpg)
+      
+      // Fiyatlandırma:
+      // İlk 10 avatar (1-10) -> Daha ulaşılabilir ve uygun (500 - 800)
+      // Diğerleri (11-52) -> Kademeli ve karma fiyatlar (1200 - 3500)
+      int originalCost;
+      if (index < 5) {
+        originalCost = 500;
+      } else if (index < 10) {
+        originalCost = 800;
+      } else if (index < 20) {
+        originalCost = 1200 + ((index * 73) % 400); // 1200 - 1500 karma
+      } else if (index < 35) {
+        originalCost = 1800 + ((index * 97) % 600); // 1800 - 2300 karma
+      } else {
+        originalCost = 2500 + ((index * 131) % 1000); // 2500 - 3500 prestij
+      }
+
+      // 50'nin katına yuvarlayalım
+      originalCost = (originalCost ~/ 50) * 50;
+
+      final bool isOnSale = discountedIndices.contains(index);
+      int finalCost = originalCost;
+      int discountPercent = 0;
+
+      if (isOnSale) {
+        // %25 - %40 indirim
+        discountPercent = (index % 2 == 0) ? 30 : 25;
+        finalCost = ((originalCost * (100 - discountPercent)) ~/ 100 ~/ 50) * 50;
+      }
 
       return {
-        'id': '${avatarIdx - 1}',
-        'name': isAvailable ? 'Avatar $avatarIdx' : 'mystery_avatar',
-        'cost': 2000,
+        'id': '$avatarIdx', // 1 to 52 (avatar_1.jpg to avatar_52.jpg)
+        'name': 'Avatar $avatarIdx',
+        'cost': finalCost,
+        'originalCost': originalCost,
+        'isOnSale': isOnSale,
+        'discountPercent': discountPercent,
         'path': 'avatars/avatar_$avatarIdx.jpg',
-        'isAvailable': isAvailable,
+        'isAvailable': true,
       };
     });
   }
@@ -93,9 +136,18 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
     {'id': 'Üstad', 'name': 'shop.title_master', 'cost': 3000},
     {'id': 'Melek', 'name': 'shop.title_angel', 'cost': 3500},
     {'id': 'Prenses', 'name': 'shop.title_princess', 'cost': 4000},
-    {'id': 'Kraliçe', 'name': 'shop.title_queen', 'cost': 4500},
+    {'id': 'Leydi', 'name': 'shop.title_lady', 'cost': 4200},
+    {'id': 'Büyücü', 'name': 'shop.title_sorceress', 'cost': 4500},
+    {'id': 'Yıldız', 'name': 'shop.title_star', 'cost': 4500},
+    {'id': 'Kraliçe', 'name': 'shop.title_queen', 'cost': 5000},
     {'id': 'Kral', 'name': 'shop.title_king', 'cost': 5000},
-    {'id': 'Yenilmez', 'name': 'shop.title_invincible', 'cost': 5000},
+    {'id': 'Sultan', 'name': 'shop.title_sultan', 'cost': 5500},
+    {'id': 'Savaşçı Prenses', 'name': 'shop.title_warrior_princess', 'cost': 6000},
+    {'id': 'İmparatoriçe', 'name': 'shop.title_empress', 'cost': 6500},
+    {'id': 'Tanrıça', 'name': 'shop.title_goddess', 'cost': 7000},
+    {'id': 'Şampiyon', 'name': 'shop.title_champion', 'cost': 7500},
+    {'id': 'Hükümdar', 'name': 'shop.title_sovereign', 'cost': 8000},
+    {'id': 'Yenilmez', 'name': 'shop.title_invincible', 'cost': 8500},
   ];
 
   @override
@@ -149,81 +201,198 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
     }
   }
 
+  String _getItemDisplayName(String category, Map<String, dynamic> item) {
+    if (category == 'avatars') {
+      final id = item['id'];
+      return 'shop.avatar_title'.tr(args: [id.toString()]);
+    }
+    return item['name'].toString().tr();
+  }
+
   void _showPurchaseDialog(
       String category, Map<String, dynamic> item, bool isOwned) {
+    final int userTokens = _userProfile?['tokens'] ?? 0;
+    final int itemCost = item['cost'] ?? 0;
+    final bool canAfford = userTokens >= itemCost;
+    final bool isOnSale = item['isOnSale'] == true;
+    final int originalCost = item['originalCost'] ?? itemCost;
+
     showDialog(
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         child: GlassContainer(
           borderRadius: 30,
+          opacity: 0.2,
+          blur: 25,
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'shop.product_detail'.tr(),
-                style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500),
+              // Header Tag
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'shop.product_detail'.tr(),
+                      style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  if (isOnSale && !isOwned)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF416C), Color(0xFFFF4B2B)],
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '%${item['discountPercent']} ${'shop.sale_badge'.tr()}',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                ],
               ),
-              const SizedBox(height: 16),
-              _buildItemPreview(category, item, size: 120),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
+
+              // Large Preview
+              Hero(
+                tag: 'shop_${category}_${item['id']}',
+                child: _buildItemPreview(category, item, size: 140),
+              ),
+              const SizedBox(height: 20),
+
+              // Title
               Text(
-                item['name'].toString().tr(),
+                _getItemDisplayName(category, item),
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 24,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
+
+              // Price Row
               if (!isOwned)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.monetization_on,
-                        color: Colors.amber, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${item['cost']} Token',
-                      style: const TextStyle(
-                          color: Colors.amber,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ],
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.monetization_on,
+                          color: Colors.amber, size: 22),
+                      const SizedBox(width: 8),
+                      if (isOnSale) ...[
+                        Text(
+                          '$originalCost',
+                          style: const TextStyle(
+                            color: Colors.white38,
+                            fontSize: 15,
+                            decoration: TextDecoration.lineThrough,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Text(
+                        '$itemCost Token',
+                        style: TextStyle(
+                            color: isOnSale ? const Color(0xFFFF5252) : Colors.amber,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.greenAccent.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.check_circle_rounded,
+                          color: Colors.greenAccent, size: 18),
+                      const SizedBox(width: 6),
+                      Text(
+                        'shop.owned'.tr(),
+                        style: const TextStyle(
+                            color: Colors.greenAccent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14),
+                      ),
+                    ],
+                  ),
                 ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 28),
+
+              // Action Buttons
               Row(
                 children: [
                   Expanded(
                     child: TextButton(
                       onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
                       child: Text('shop.close'.tr(),
-                          style: const TextStyle(color: Colors.white54)),
+                          style: const TextStyle(color: Colors.white60, fontSize: 15)),
                     ),
                   ),
-                  if (!isOwned)
+                  if (!isOwned) ...[
+                    const SizedBox(width: 12),
                     Expanded(
+                      flex: 2,
                       child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _handlePurchase(category, item);
-                        },
+                        onPressed: canAfford
+                            ? () {
+                                Navigator.pop(context);
+                                _handlePurchase(category, item);
+                              }
+                            : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
+                          backgroundColor: canAfford ? Colors.blueAccent : Colors.grey.shade800,
+                          elevation: canAfford ? 6 : 0,
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                              borderRadius: BorderRadius.circular(14)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
-                        child: Text('shop.buy'.tr(),
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold)),
+                        child: Text(
+                          canAfford ? 'shop.buy'.tr() : 'shop.insufficient_funds'.tr(),
+                          style: TextStyle(
+                              color: canAfford ? Colors.white : Colors.white38,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15),
+                        ),
                       ),
                     ),
+                  ],
                 ],
               ),
             ],
@@ -249,6 +418,18 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.blueAccent.withValues(alpha: 0.1),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 200,
+            left: -100,
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.purpleAccent.withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -377,7 +558,7 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       child: Row(
         children: [
-          AppBackButton(),
+          const AppBackButton(),
           const SizedBox(width: 10),
           Text(
             'shop.title'.tr(),
@@ -439,12 +620,13 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
 
   Widget _buildGrid(String category, List<Map<String, dynamic>> items) {
     return GridView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
+      physics: const BouncingScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.7,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
+        childAspectRatio: 0.72,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 14,
       ),
       itemCount: items.length,
       itemBuilder: (context, index) {
@@ -454,8 +636,10 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
         if (category == 'avatars') {
           isOwned = List<String>.from(_userProfile?['ownedAvatars'] ?? [])
               .contains(item['id']);
-          // Legacy support: If user is wearing this avatar, they own it
-          if (!isOwned && (_userProfile?['avatarIndex'] ?? '0') == item['id']) {
+          final currentAvatar = _userProfile?['avatarIndex']?.toString();
+          if (!isOwned &&
+              UserService.hasAvatar(currentAvatar) &&
+              currentAvatar == item['id']) {
             isOwned = true;
           }
         } else if (category == 'frames') {
@@ -473,143 +657,180 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
 
   Widget _buildShopCard(
       String category, Map<String, dynamic> item, bool isOwned) {
-    // Default to true if not specified (backend compatibility)
-    final bool isAvailable = item['isAvailable'] ?? true;
+    final bool isOnSale = item['isOnSale'] == true && !isOwned;
+    final int originalCost = item['originalCost'] ?? item['cost'];
 
-    return GlassContainer(
-      opacity: 0.05,
-      borderRadius: 24,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Opacity(
-            opacity: isAvailable ? 1.0 : 0.5,
-            child: _buildItemPreview(category, item),
-          ),
-          const SizedBox(height: 12),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              item['name'].toString().tr(),
-              style: TextStyle(
-                  color: Colors.white.withValues(alpha: isAvailable ? 1.0 : 0.5),
-                  fontWeight: FontWeight.bold),
-            ),
-          ),
-          const SizedBox(height: 8),
-          if (!isAvailable)
-            Container(
-              margin: const EdgeInsets.only(top: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.white.withValues(alpha: 0.05),
-                    Colors.white.withValues(alpha: 0.1),
-                  ],
+    return GestureDetector(
+      onTap: () => _showPurchaseDialog(category, item, isOwned),
+      child: GlassContainer(
+        opacity: 0.08,
+        borderRadius: 22,
+        padding: const EdgeInsets.all(12),
+        border: isOnSale
+            ? Border.all(color: Colors.redAccent.withValues(alpha: 0.4), width: 1.5)
+            : Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        child: Stack(
+          children: [
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Spacer(),
+                Hero(
+                  tag: 'shop_${category}_${item['id']}',
+                  child: _buildItemPreview(category, item, size: 76),
                 ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.timer_outlined,
-                      color: Colors.white54, size: 14),
-                  const SizedBox(width: 6),
-                  Flexible(
+                const SizedBox(height: 10),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    _getItemDisplayName(category, item),
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                if (isOwned)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.greenAccent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     child: Text(
-                      'shop.coming_soon'.tr(),
+                      'shop.owned'.tr(),
                       style: const TextStyle(
-                          color: Colors.white54,
+                          color: Colors.greenAccent,
                           fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                          letterSpacing: 0.5),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
+                          fontSize: 12),
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.blueAccent.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.monetization_on,
+                            size: 13, color: Colors.amber),
+                        const SizedBox(width: 4),
+                        if (isOnSale) ...[
+                          Text(
+                            '$originalCost',
+                            style: const TextStyle(
+                              color: Colors.white38,
+                              fontSize: 11,
+                              decoration: TextDecoration.lineThrough,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                        Text(
+                          '${item['cost']}',
+                          style: TextStyle(
+                            color: isOnSale ? const Color(0xFFFF6B81) : Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            )
-          else if (isOwned)
-            Text('shop.owned'.tr(),
-                style: const TextStyle(
-                    color: Colors.greenAccent, fontWeight: FontWeight.bold))
-          else
-            ElevatedButton(
-              onPressed: () => _showPurchaseDialog(category, item, isOwned),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blueAccent,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.monetization_on,
-                      size: 14, color: Colors.amber),
-                  const SizedBox(width: 4),
-                  Text('${item['cost']}',
-                      style: const TextStyle(color: Colors.white)),
-                ],
-              ),
+                const Spacer(),
+              ],
             ),
-        ],
+
+            // İndirim Rozeti
+            if (isOnSale)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF416C), Color(0xFFFF4B2B)],
+                    ),
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.redAccent.withValues(alpha: 0.3),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    '%${item['discountPercent']}',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildItemPreview(String category, Map<String, dynamic> item,
       {double size = 60}) {
-    final bool isAvailable = item['isAvailable'] ?? true;
-
     if (category == 'avatars') {
-      if (!isAvailable) {
-        return Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.blueAccent.withValues(alpha: 0.2),
-                Colors.purpleAccent.withValues(alpha: 0.2),
-              ],
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-            border: Border.all(color: Colors.white10, width: 2),
-          ),
-          child:
-              Icon(Icons.lock_rounded, color: Colors.white24, size: size * 0.5),
-        );
-      }
-      return CircleAvatar(
+          ],
+        ),
+        child: CircleAvatar(
           radius: size / 2,
+          backgroundColor: const Color(0xFF1E293B),
           backgroundImage: ResizeImage(
             AssetImage(UserService.getAvatarPath(item['id'])),
             width: (size * 2).toInt(),
             height: (size * 2).toInt(),
-          ));
+          ),
+        ),
+      );
     } else if (category == 'frames') {
       return Container(
         width: size,
         height: size,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(size / 4),
-          border: Border.all(color: item['color'], width: size / 15),
+          shape: BoxShape.circle,
+          border: Border.all(color: item['color'], width: size / 14),
+          boxShadow: [
+            BoxShadow(
+              color: (item['color'] as Color).withValues(alpha: 0.4),
+              blurRadius: 12,
+            ),
+          ],
         ),
-        child: Icon(Icons.person, color: Colors.white24, size: size / 2),
+        child: Icon(Icons.person, color: Colors.white38, size: size / 2),
       );
     } else {
       return Container(
         padding:
-            EdgeInsets.symmetric(horizontal: size / 5, vertical: size / 15),
+            EdgeInsets.symmetric(horizontal: size / 5, vertical: size / 12),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(size / 8),
+          borderRadius: BorderRadius.circular(size / 6),
+          border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
         ),
         child: FittedBox(
           fit: BoxFit.scaleDown,
@@ -618,10 +839,11 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
             style: TextStyle(
                 color: Colors.amber,
                 fontWeight: FontWeight.bold,
-                fontSize: size / 4),
+                fontSize: size / 3.5),
           ),
         ),
       );
     }
   }
 }
+

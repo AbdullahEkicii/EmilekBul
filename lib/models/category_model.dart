@@ -8,6 +8,8 @@ class CategoryItem {
   final String questionCount;
   final String key; // Localization key for name
   final String descriptionKey; // Localization key for description
+  final bool isWeeklyBonus;
+  final int bonusMultiplier;
 
   const CategoryItem({
     required this.name,
@@ -17,5 +19,7 @@ class CategoryItem {
     required this.key,
     required this.descriptionKey,
     this.questionCount = '5 soru',
+    this.isWeeklyBonus = false,
+    this.bonusMultiplier = 1,
   });
 }

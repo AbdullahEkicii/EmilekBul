@@ -1,51 +1,55 @@
-# Flutter ve Kotlin standard kütüphaneleri için
+# -----------------------------------------------------------------------------
+# Flutter & Kotlin Base Rules
+# -----------------------------------------------------------------------------
 -keep class io.flutter.embedding.** { *; }
 -keep class io.flutter.plugin.** { *; }
 -keep class io.flutter.app.** { *; }
--keep class kotlin.** { *; }
--keep class com.google.android.play.core.** { *; }
--dontwarn com.google.android.play.core.**
 
+# R8 Code Optimization & Obfuscation
+-optimizationpasses 5
+-allowaccessmodification
+-dontusemixedcaseclassnames
+-repackageclasses ''
+-overloadaggressively
 
-# Firebase Authentication, Firestore, Storage, Core
--keep class com.google.firebase.** { *; }
--keep class com.google.android.gms.** { *; }
+# Keep attributes needed for Reflection & Debugging
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod,SourceFile,LineNumberTable
 
-# Google Sign-In
--keep class com.google.android.gms.auth.api.signin.** { *; }
-
-# Google Mobile Ads (AdMob)
--keep class com.google.android.gms.ads.** { *; }
--keep class com.google.android.gms.common.internal.safeparcel.** { *; }
-
-# Gson or Json parsing (if kullanıyorsan)
--keepattributes Signature
--keepattributes *Annotation*
--keep class com.google.gson.** { *; }
--keep class com.google.gson.annotations.** { *; }
-
-# Firebase Cloud Firestore model sınıfları için (eğer model kullanıyorsan)
--keepclassmembers class * {
-  @com.google.firebase.firestore.PropertyName <fields>;
-  @com.google.firebase.firestore.PropertyName <methods>;
-}
-
-# Keep native libraries (so dosyaları) strip sonrası çalışması için
--keep class *Native* { *; }
-
-# Genel uyarılar ve uyarıları bastırmak için (isteğe bağlı)
--dontwarn com.google.firebase.**
--dontwarn com.google.android.gms.**
--dontwarn kotlin.**
--dontwarn okhttp3.**
--dontwarn okio.**
-
-# Önemli: Proguard minify sırasında reflection kullanan Firebase ve Google API’leri için gerekli
+# -----------------------------------------------------------------------------
+# Firebase & Google Play Services
+# -----------------------------------------------------------------------------
 -keepattributes *Annotation*
 -keepclassmembers class * {
     @com.google.firebase.firestore.PropertyName <fields>;
     @com.google.firebase.firestore.PropertyName <methods>;
 }
 
-# Flutter Local Notifications
+-keep class com.google.android.gms.common.annotation.KeepName { *; }
+-keepclassmembernames class * {
+    @com.google.android.gms.common.annotation.KeepName *;
+}
+
+# Google Sign-In & Auth
+-keep class com.google.android.gms.auth.api.signin.** { *; }
+
+# Firebase Auth internal
+-dontwarn com.google.android.gms.internal.firebase-auth-api.**
+
+# Play Integrity
+-keep class com.google.android.play.core.** { *; }
+-dontwarn com.google.android.play.core.**
+
+# Local Notifications
 -keep class com.dexterous.flutterlocalnotifications.** { *; }
+
+# Native libs (JNI)
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+# Suppress harmless warnings from dependencies
+-dontwarn com.google.firebase.**
+-dontwarn com.google.android.gms.**
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-dontwarn kotlin.**

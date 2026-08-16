@@ -3,9 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/auth.dart';
 import '../services/user_service.dart';
 import '../services/fullscreen_service.dart';
+import '../services/analytics_service.dart';
 import '../main.dart'; // To navigate to QuizFlow
+import 'onboarding_screen.dart';
 
 class AnimatedSplashScreen extends StatefulWidget {
   const AnimatedSplashScreen({super.key});
@@ -71,11 +75,15 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
     // Give a tiny buffer for smoothness
     await Future.delayed(const Duration(milliseconds: 200));
 
+    final prefs = await SharedPreferences.getInstance();
+    final bool hasSeenOnboarding =
+        prefs.getBool('has_seen_onboarding_v3') ?? false;
+
     if (mounted) {
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) =>
-              const QuizFlow(),
+              hasSeenOnboarding ? const QuizFlow() : const OnboardingScreen(),
           transitionsBuilder:
               (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
@@ -90,18 +98,51 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
     try {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
-        // Auto Guest Login in the background during splash!
-        debugPrint("Splash: Starting background guest login...");
-        final userCredential = await UserService.signInAsGuest().timeout(
-          const Duration(seconds: 10),
-          onTimeout: () => throw Exception("Guest Login Timeout"),
-        );
-        if (userCredential != null) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setBool('has_seen_onboarding_v2', true);
-          await prefs.setInt('user_tokens', 50); // initial tokens
+        debugPrint("Splash: Attempting auto Play Games sign-in...");
+        UserCredential? userCredential;
+        try {
+          userCredential = await Auth().signInWithPlayGames().timeout(
+            const Duration(seconds: 8),
+            onTimeout: () => null,
+          );
+        } catch (e) {
+          debugPrint("Splash: Play Games auto-login skipped/error: $e");
         }
+
+        if (userCredential == null) {
+          // Auto Guest Login in the background during splash!
+          debugPrint("Splash: Starting background guest login...");
+          userCredential = await UserService.signInAsGuest().timeout(
+            const Duration(seconds: 8),
+            onTimeout: () => throw Exception("Guest Login Timeout"),
+          );
+          if (userCredential != null) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setInt('user_tokens', 50); // initial tokens
+          }
+        } else {
+          debugPrint("Splash: Successfully signed in with Play Games!");
+          AnalyticsService.setUserId(userCredential.user?.uid);
+          AnalyticsService.logLogin(loginMethod: 'play_games');
+          final prefs = await SharedPreferences.getInstance();
+          try {
+            final userDoc = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(userCredential.user!.uid)
+                .get();
+            final tokens = userDoc.data()?['tokens'] as int? ?? 50;
+            await prefs.setInt('user_tokens', tokens);
+          } catch (_) {}
+        }
+      } else {
+        // Mevcut kullanıcı ID'sini analytics'e bildir
+        AnalyticsService.setUserId(currentUser.uid);
+        // Mevcut kullanıcı için username_lower indeksini kontrol et ve arka planda güncelle
+        UserService.ensureUsernameLowerIndex(currentUser.uid);
       }
+
+      // Arka planda 3 aydır girilmeyen inaktif misafir hesaplarını periyodik olarak temizle
+      UserService.triggerPeriodicGuestCleanup();
     } catch (e) {
       debugPrint("Splash init error: $e");
     }

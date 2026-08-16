@@ -4,7 +4,7 @@ import 'user_service.dart';
 class TokenService {
   static const String _tokenKey = 'user_tokens';
   static const String _lastDailyRewardKey = 'last_daily_reward';
-  static const int _dailyRewardAmount = 100;
+  static const int _dailyRewardAmount = 50;
   static const int _quizCost = 10;
   static const int _duelCost = 20;
   static const int _duelReward = 40;

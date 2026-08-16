@@ -1,7 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'screens/animated_splash_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/kategori_screen.dart';
@@ -11,8 +10,8 @@ import 'models/question.dart';
 import 'services/ai_api_service.dart';
 import 'screens/test_sonucu_screen.dart';
 import 'services/notification_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
+import 'services/analytics_service.dart';
 import 'services/user_service.dart';
 import 'services/sound_service.dart';
 import 'services/performance_service.dart';
@@ -20,6 +19,7 @@ import 'services/fullscreen_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -35,9 +35,18 @@ void main() async {
       SoundService.init(),
       PerformanceService.init(),
     ]);
+
+    // Analytics servisini başlat
+    await AnalyticsService.init();
     
+    // Firestore önbellek boyutunu 15 MB ile sınırla (Varsayılan 100 MB veri şişmesini önler)
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+      cacheSizeBytes: 15 * 1024 * 1024,
+    );
+
     await FirebaseAppCheck.instance.activate(
-      androidProvider: AndroidProvider.playIntegrity, // Production provider
+      providerAndroid: const AndroidPlayIntegrityProvider(), // Production provider
     );
   } catch (e) {
     debugPrint("Kritik başlatma hatası: $e");
@@ -45,31 +54,42 @@ void main() async {
 
   // Arka planda başlasınlar, açılışı geciktirmesinler
   Future(() {
-    // Ads init + config birlikte — race condition düzeltmesi
-    MobileAds.instance.initialize().then((_) {
-      RequestConfiguration configuration = RequestConfiguration(
-          testDeviceIds: ["5a60f6ab-9ccf-4ef5-802f-10bdf30314ff"]);
-      MobileAds.instance.updateRequestConfiguration(configuration);
-    }).catchError((e) {
-      debugPrint("Ads error: $e");
-    });
-
     NotificationService.init().catchError((e) => debugPrint("Notif init error: $e"));
   });
 
   runApp(
     EasyLocalization(
       supportedLocales: const [
-        Locale('tr'),
         Locale('en'),
+        Locale('tr'),
         Locale('ru'),
         Locale('ar'),
         Locale('es'),
         Locale('fr'),
+        Locale('de'),
+        Locale('it'),
+        Locale('pt'),
+        Locale('ja'),
+        Locale('ko'),
+        Locale('zh'),
+        Locale('hi'),
+        Locale('id'),
+        Locale('nl'),
+        Locale('pl'),
+        Locale('sv'),
+        Locale('uk'),
+        Locale('vi'),
+        Locale('th'),
+        Locale('cs'),
+        Locale('el'),
+        Locale('ro'),
+        Locale('hu'),
+        Locale('da'),
+        Locale('fi'),
       ],
       path: 'assets/translations',
       fallbackLocale: const Locale('en'),
-      // startLocale removed to allow auto-detection of device locale
+      useOnlyLangCode: true,
       child: const MyApp(),
     ),
   );
@@ -83,6 +103,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Quiz Oyunu',
       debugShowCheckedModeBanner: false,
+      navigatorObservers: [AnalyticsService.observer],
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,
       locale: context.locale,
@@ -185,17 +206,11 @@ class _QuizFlowState extends State<QuizFlow> {
       debugPrint("_autoLoginAndSetup: Guest Login completed, userCredential: ${userCredential?.user?.uid}");
 
       if (userCredential != null) {
-        // 2. Onboarding quiz başlat (setState dışında çağır — async race condition düzeltmesi)
         if (mounted) {
-          _isOnboarding = true;
-          // SharedPreferences'ta onboarding görüldü olarak işaretle
-          SharedPreferences.getInstance().then((prefs) {
-            prefs.setBool('has_seen_onboarding_v2', true);
-            prefs.setInt('user_tokens', 50); // Initialize guest tokens locally
-          }).catchError((e) {
-            debugPrint("Onboarding pref set error: $e");
+          setState(() {
+            _loading = false;
+            _screenState = 'welcome';
           });
-          _startQuiz('Genel Kültür', 'Orta', 30, count: 5);
         }
       } else {
         // Fallback if guest login fails (extremely rare)
@@ -232,6 +247,13 @@ class _QuizFlowState extends State<QuizFlow> {
   }) async {
     debugPrint('Quiz başlatılıyor: $category, $difficulty, $duration, isDuel: $isDuel');
     final languageCode = context.locale.languageCode;
+
+    AnalyticsService.logQuizStart(
+      category: category,
+      difficulty: difficulty,
+      isDuel: isDuel,
+      questionCount: count,
+    );
 
     setState(() {
       _loading = true;
@@ -299,6 +321,28 @@ class _QuizFlowState extends State<QuizFlow> {
     String? botAvatar,
     bool? playerFinishedFirst,
   }) {
+    // Doğru cevap sayısını hesapla
+    int correctCount = 0;
+    for (int i = 0; i < _questions.length; i++) {
+      if (i < userAnswers.length &&
+          userAnswers[i] != null &&
+          userAnswers[i] == _questions[i].correctIndex) {
+        correctCount++;
+      }
+    }
+
+    final isWinner = _isDuel ? (score > (botScore ?? 0)) : false;
+
+    AnalyticsService.logQuizCompleted(
+      category: _selectedCategory,
+      difficulty: _selectedDifficulty,
+      score: score,
+      correctAnswers: correctCount,
+      totalQuestions: _questions.length,
+      isDuel: _isDuel,
+      isWinner: isWinner,
+    );
+
     setState(() {
       _userAnswers = userAnswers;
       _score = score;

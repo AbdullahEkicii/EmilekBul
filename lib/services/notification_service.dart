@@ -57,11 +57,21 @@ class NotificationService {
       importance: Importance.high,
     );
 
+    final AndroidNotificationChannel socialChannel = const AndroidNotificationChannel(
+      'social_channel',
+      'Arkadaş & Düello Bildirimleri',
+      description: 'Arkadaşlık istekleri, düello davetleri ve dürtme bildirimleri',
+      importance: Importance.max,
+      enableVibration: true,
+      playSound: true,
+    );
+
     final androidPlugin = _notifications.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
 
     if (androidPlugin != null) {
       await androidPlugin.createNotificationChannel(channel);
+      await androidPlugin.createNotificationChannel(socialChannel);
     }
   }
 
@@ -228,24 +238,24 @@ class NotificationService {
     }
   }
 
-  /// Haftalık hatırlatıcı (Pazartesi 09:00 - Sabit)
+  /// Haftalık hatırlatıcı (Pazartesi 09:00 - Sabit) - Bonuslu Kategoriler Duyurusu
   static Future<void> scheduleWeeklyReminder() async {
     final scheduledTime = _nextInstanceOfWeekly();
 
     try {
       await _notifications.zonedSchedule(
         999,
-        'notifications.weekly_title'.tr(),
-        'notifications.weekly_body'.tr(),
+        'notifications.weekly_bonus_title'.tr(),
+        'notifications.weekly_bonus_body'.tr(),
         scheduledTime,
         NotificationDetails(
           android: AndroidNotificationDetails(
             'daily_channel',
             'notifications.daily_channel_name'.tr(),
-            channelDescription: 'Haftalık hatırlatıcı',
+            channelDescription: 'Haftalık 2X bonus kategoriler duyurusu',
             importance: Importance.high,
             priority: Priority.high,
-            color: const Color(0xFF6366F1),
+            color: const Color(0xFFFF9F43),
           ),
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -403,5 +413,39 @@ class NotificationService {
     final androidPlugin = _notifications.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
     return await androidPlugin?.requestNotificationsPermission();
+  }
+
+  /// Anlık Bildirim Göster (Arkadaş isteği, düello daveti, dürtme vb.)
+  static Future<void> showInstantNotification({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    try {
+      const androidDetails = AndroidNotificationDetails(
+        'social_channel',
+        'Arkadaş & Düello Bildirimleri',
+        channelDescription: 'Arkadaşlık istekleri, düello davetleri ve dürtme bildirimleri',
+        importance: Importance.max,
+        priority: Priority.high,
+        showWhen: true,
+        enableVibration: true,
+        playSound: true,
+        icon: 'ic_stat_notification',
+      );
+
+      const notificationDetails = NotificationDetails(android: androidDetails);
+
+      await _notifications.show(
+        id,
+        title,
+        body,
+        notificationDetails,
+        payload: payload,
+      );
+    } catch (e) {
+      debugPrint('Error showing instant notification: $e');
+    }
   }
 }
