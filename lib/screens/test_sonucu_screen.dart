@@ -1499,8 +1499,8 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
               child: MyNativeAd(
-                height: 120,
-                factoryId: 'adFactoryExample',
+                height: 65,
+                factoryId: 'adFactorySmall',
                 refreshInterval: 30,
               ),
             ),
@@ -1575,23 +1575,32 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
             borderRadius: BorderRadius.circular(16),
           ),
           child: Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (icon != null) ...[
-                  Icon(icon, color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
-                ],
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, color: Colors.white, size: 18),
+                    const SizedBox(width: 6),
+                  ],
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

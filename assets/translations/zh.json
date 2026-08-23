@@ -1,5 +1,5 @@
 {
-  "app_title": "问答游戏",
+  "app_title": "知识问答",
   "welcome": {
     "title": "欢迎",
     "start_button": "开始",
@@ -800,7 +800,18 @@
     "host_wants_start_badge": "想要开始🚀",
     "host_waiting_for_you": "主持人正在等待您准备好开始！ 🚀",
     "start_when_guest_ready": "当客人准备好后就开始 ⏳",
-    "guest_is_ready_start": "客人准备好了！开始决斗🚀"
+    "guest_is_ready_start": "客人准备好了！开始决斗🚀",
+    "calculating_results": "确定结果...",
+    "feedback_correct": "正确的！ 🔥",
+    "feedback_wrong": "错误的！ ❌",
+    "next_question_preparing": "正在准备问题 {}...",
+    "see_results": "查看结果",
+    "kick_guest": "踢客",
+    "kick_confirm_title": "踢球员",
+    "kick_confirm_msg": "您确定要将 {} 踢出房间吗？",
+    "kicked_from_room": "你被主人踢出了房间。",
+    "special_bet_badge": "特别🔥",
+    "fee_info": "{}％ 费用"
   },
   "errors": {
     "no_internet_ai": "您需要有效的互联网连接才能访问我们的人工智能。 📡",
@@ -882,5 +893,22 @@
     "reward_claimed_toast": "感谢您的反馈！您收到了 {} 个令牌！ ⭐",
     "claimed": "已索赔",
     "rate_action": "速度"
+  },
+  "referral": {
+    "title": "邀请好友",
+    "desc": "输入朋友的邀请码即可赚取 500 代币！分享您的代码并邀请您的朋友。",
+    "your_code": "您的邀请码",
+    "enter_code": "输入邀请码（+500 代币）",
+    "hint": "输入代码",
+    "claim_button": "宣称",
+    "claimed_badge": "使用的邀请码",
+    "share_button": "分享",
+    "copy_button": "复制",
+    "code_copied": "邀请码已复制！ 📋",
+    "share_msg": "🏆 和我一起参加测验竞技场！使用我的邀请码即可立即获得 500 代币：\n👉 代码：{}\n📲 下载应用程序：https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "success": "恭喜！ {} 令牌已添加到您的帐户！ 🎉",
+    "already_used": "您已经使用了邀请码。",
+    "own_code": "您不能使用自己的邀请码。",
+    "invalid_code": "邀请码无效或不存在。"
   }
 }

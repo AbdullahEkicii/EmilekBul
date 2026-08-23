@@ -199,8 +199,8 @@ class _BasariHesaplaScreenState extends State<BasariHesaplaScreen>
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: MyNativeAd(
-                    height: 120,
-                    factoryId: 'adFactoryExample',
+                    height: 65,
+                    factoryId: 'adFactorySmall',
                     refreshInterval: 30,
                   ),
                 ),

@@ -1,5 +1,5 @@
 {
-  "app_title": "Trivia kvíz",
+  "app_title": "Tudás Kvíz",
   "welcome": {
     "title": "Üdvözöljük",
     "start_button": "INDUL",
@@ -800,7 +800,18 @@
     "host_wants_start_badge": "ELKEZDNI AKAR 🚀",
     "host_waiting_for_you": "A házigazda várja, hogy készen állj a kezdésre! 🚀",
     "start_when_guest_ready": "Akkor kezdődik, amikor a vendég készen áll ⏳",
-    "guest_is_ready_start": "A vendég készen áll! Kezdje a párbajt 🚀"
+    "guest_is_ready_start": "A vendég készen áll! Kezdje a párbajt 🚀",
+    "calculating_results": "Az eredmények meghatározása...",
+    "feedback_correct": "HELYES! 🔥",
+    "feedback_wrong": "ROSSZ! ❌",
+    "next_question_preparing": "{} kérdés előkészítése...",
+    "see_results": "Lásd Eredmények",
+    "kick_guest": "Kick Guest",
+    "kick_confirm_title": "Kick Player",
+    "kick_confirm_msg": "Biztosan ki akarod rúgni a szobából {} személyt?",
+    "kicked_from_room": "Kirúgott a szobából a házigazda.",
+    "special_bet_badge": "KÜLÖNLEGES 🔥",
+    "fee_info": "{}% díj"
   },
   "errors": {
     "no_internet_ai": "Az AI eléréséhez aktív internetkapcsolatra van szüksége. 📡",
@@ -882,5 +893,22 @@
     "reward_claimed_toast": "Köszönjük visszajelzését! {} tokent kapott! ⭐",
     "claimed": "IGÉNYELT",
     "rate_action": "ARÁNY"
+  },
+  "referral": {
+    "title": "Ismerősök meghívása",
+    "desc": "Adja meg egy barátja meghívókódját, és szerezzen 500 tokent! Ossza meg kódját, és hívja meg barátait.",
+    "your_code": "A MEGHÍVÓ KÓDJA",
+    "enter_code": "Írja be a meghívó kódot (+500 token)",
+    "hint": "KÓD BEÍRÁSA",
+    "claim_button": "Követelés",
+    "claimed_badge": "HASZNÁLT MEGHÍVÓKÓD",
+    "share_button": "Részesedés",
+    "copy_button": "Másolat",
+    "code_copied": "Meghívó kód kimásolva! 📋",
+    "share_msg": "🏆 Csatlakozz hozzám a Quiz Arénában! Használja a meghívókódomat, hogy azonnal szerezzen 500 tokent:\n👉 Kód: {}\n📲 Alkalmazás letöltése: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "success": "Gratulálok! {} Token hozzáadva a fiókjához! 🎉",
+    "already_used": "Már használt meghívókódot.",
+    "own_code": "Nem használhatja saját meghívókódját.",
+    "invalid_code": "Érvénytelen vagy nem létező meghívókód."
   }
 }

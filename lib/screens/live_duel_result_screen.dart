@@ -15,16 +15,19 @@ import '../models/friend_model.dart';
 import '../utils/app_utils.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/token_widget.dart';
+import '../widgets/my_native_ad.dart';
 import 'duel_room_screen.dart';
 
 class LiveDuelResultScreen extends StatefulWidget {
   final String roomCode;
   final bool isHost;
+  final DuelRoom? initialRoom;
 
   const LiveDuelResultScreen({
     super.key,
     required this.roomCode,
     required this.isHost,
+    this.initialRoom,
   });
 
   @override
@@ -43,6 +46,13 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
   @override
   void initState() {
     super.initState();
+    _room = widget.initialRoom;
+    if (_room != null) {
+      final initialWinner = _getEffectiveWinnerUid(_room!);
+      if (initialWinner != null) {
+        _handleRewardDistribution(_room!, initialWinner);
+      }
+    }
     _listenToRoom();
     _startAutoReturnTimer();
   }
@@ -64,6 +74,41 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
     });
   }
 
+  String? _getEffectiveWinnerUid(DuelRoom room) {
+    if (room.winnerUid != null && room.winnerUid!.isNotEmpty) {
+      return room.winnerUid;
+    }
+    final host = room.host;
+    final guest = room.guest;
+    if (guest == null) return host.uid;
+
+    final hostScore = host.score;
+    final guestScore = guest.score;
+    final hostTime = host.finishTime;
+    final guestTime = guest.finishTime;
+
+    if (hostScore > guestScore) {
+      return host.uid;
+    } else if (guestScore > hostScore) {
+      return guest.uid;
+    } else {
+      if (hostTime > 0 && guestTime > 0) {
+        if (hostTime < guestTime) {
+          return host.uid;
+        } else if (guestTime < hostTime) {
+          return guest.uid;
+        } else {
+          return 'tie';
+        }
+      } else if (hostTime > 0 && guestTime == 0) {
+        return host.uid;
+      } else if (guestTime > 0 && hostTime == 0) {
+        return guest.uid;
+      }
+      return null;
+    }
+  }
+
   void _listenToRoom() {
     _roomSubscription = DuelService.streamRoom(widget.roomCode).listen((room) {
       if (!mounted || room == null) return;
@@ -72,9 +117,10 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
         _room = room;
       });
 
+      final effectiveWinner = _getEffectiveWinnerUid(room);
       // Distribute prize and calculate leaderboard points once
-      if (!_rewardAwarded && room.winnerUid != null) {
-        _handleRewardDistribution(room);
+      if (!_rewardAwarded && effectiveWinner != null) {
+        _handleRewardDistribution(room, effectiveWinner);
       }
     });
   }
@@ -94,13 +140,13 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
     );
   }
 
-  Future<void> _handleRewardDistribution(DuelRoom room) async {
+  Future<void> _handleRewardDistribution(DuelRoom room, String effectiveWinnerUid) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     _rewardAwarded = true;
-    final bool isWinner = room.winnerUid == user.uid;
-    final bool isTie = room.winnerUid == 'tie';
+    final bool isWinner = effectiveWinnerUid == user.uid;
+    final bool isTie = effectiveWinnerUid == 'tie';
 
     // 1. Token Ödül Dağıtımı
     if (isWinner) {
@@ -234,13 +280,15 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
     final room = _room!;
     final user = FirebaseAuth.instance.currentUser;
     final myUid = user?.uid ?? '';
-    final bool isWinner = room.winnerUid == myUid;
-    final bool isTie = room.winnerUid == 'tie';
+    final effectiveWinnerUid = _getEffectiveWinnerUid(room);
+    final bool isWinner = effectiveWinnerUid != null && effectiveWinnerUid == myUid;
+    final bool isTie = effectiveWinnerUid == 'tie';
 
     final betTokens = room.config.betTokens;
     final totalPot = betTokens * 2;
-    final fee = (totalPot * 0.2).round();
-    final prize = room.prizeTokens;
+    final feeRate = DuelRoom.getCommissionRate(betTokens);
+    final fee = (totalPot * feeRate).round();
+    final prize = (room.prizeTokens > 0) ? room.prizeTokens : DuelRoom.calculatePrize(betTokens);
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
@@ -268,9 +316,14 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
                     child: Column(
                       children: [
                         const SizedBox(height: 10),
-                        _buildWinnerBanner(isWinner: isWinner, isTie: isTie),
+                        _buildWinnerBanner(effectiveWinnerUid: effectiveWinnerUid, myUid: myUid),
                         const SizedBox(height: 16),
                         _buildPointsEarnedCard(room: room, isWinner: isWinner),
+                        const SizedBox(height: 16),
+                        const MyNativeAd(
+                          height: 70,
+                          factoryId: 'adFactorySmall',
+                        ),
                         const SizedBox(height: 16),
                         _buildPrizeBreakdownCard(
                           isWinner: isWinner,
@@ -282,7 +335,7 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
                         ),
                         const SizedBox(height: 16),
                         _buildPlayerComparisonCard(room, myUid),
-                        const SizedBox(height: 30),
+                        const SizedBox(height: 20),
                       ],
                     ),
                   ),
@@ -317,7 +370,41 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
     );
   }
 
-  Widget _buildWinnerBanner({required bool isWinner, required bool isTie}) {
+  Widget _buildWinnerBanner({required String? effectiveWinnerUid, required String myUid}) {
+    if (effectiveWinnerUid == null) {
+      return GlassContainer(
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+        borderRadius: 24,
+        opacity: 0.12,
+        child: Column(
+          children: [
+            const SizedBox(
+              width: 36,
+              height: 36,
+              child: CircularProgressIndicator(
+                color: Color(0xFFFF9F43),
+                strokeWidth: 3,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'duel.calculating_results'.tr(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFFFF9F43),
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final bool isWinner = effectiveWinnerUid == myUid;
+    final bool isTie = effectiveWinnerUid == 'tie';
+
     String title;
     IconData icon;
     Color color;

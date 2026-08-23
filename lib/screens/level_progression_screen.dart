@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../services/user_service.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/navigation_buttons.dart';
+import '../widgets/my_native_ad.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -61,8 +62,17 @@ class _LevelProgressionScreenState extends State<LevelProgressionScreen> {
                             _buildCurrentStatus(currentQuizzes, currentLevel),
                       ),
                     ),
+                    const SliverPadding(
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      sliver: SliverToBoxAdapter(
+                        child: MyNativeAd(
+                          height: 70,
+                          factoryId: 'adFactorySmall',
+                        ),
+                      ),
+                    ),
                     SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(20, 32, 20, 16),
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                       sliver: SliverToBoxAdapter(
                         child: Text(
                           'level_progression.level_list_title'.tr(),

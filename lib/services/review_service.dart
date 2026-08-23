@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'token_service.dart';
 import '../widgets/glass_container.dart';
 
@@ -105,19 +106,34 @@ class ReviewService {
     }
   }
 
-  /// Uygulama içi (In-App) Google Play yorum & puan akışını başlatır
+  /// Google Play / App Store uygulamadan çıkmadan in-app puan verme penceresini açar ve 200 token ödülünü tanımlar
   static Future<void> startReviewFlow({
     required BuildContext context,
     VoidCallback? onRewardClaimed,
   }) async {
     try {
-      if (await _inAppReview.isAvailable()) {
-        await _inAppReview.requestReview();
-      } else {
-        await _inAppReview.openStoreListing();
+      // 1. Önce uygulamadan çıkmadan açılan yerel Google Play / App Store In-App Review penceresini göster
+      bool inAppShowed = false;
+      try {
+        if (await _inAppReview.isAvailable()) {
+          await _inAppReview.requestReview();
+          inAppShowed = true;
+        }
+      } catch (e) {
+        debugPrint('In-app review error, falling back: $e');
       }
 
-      // İnceleme modalı kapandıktan sonra (veya mağaza açıldıktan sonra) ödülü güvenle ver
+      // Eğer in-app review cihazda desteklenmiyorsa mağaza sayfasına yönlendir
+      if (!inAppShowed) {
+        try {
+          await _inAppReview.openStoreListing();
+        } catch (_) {
+          final url = Uri.parse('https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul');
+          await launchUrl(url, mode: LaunchMode.externalApplication);
+        }
+      }
+
+      // 2. Ödülü kullanıcıya güvenle tanımla
       final isAlreadyClaimed = await hasClaimedReward();
       if (!isAlreadyClaimed && context.mounted) {
         final success = await claimReward(context);
@@ -126,11 +142,7 @@ class ReviewService {
         }
       }
     } catch (e) {
-      debugPrint('In-App Review flow error: $e');
-      // Hata durumunda fallback olarak mağaza sayfasını aç
-      try {
-        await _inAppReview.openStoreListing();
-      } catch (_) {}
+      debugPrint('Review flow error: $e');
     }
   }
 

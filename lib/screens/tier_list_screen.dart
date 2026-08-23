@@ -1276,8 +1276,8 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             child: MyNativeAd(
-              height: 120,
-              factoryId: 'adFactoryExample',
+              height: 65,
+              factoryId: 'adFactorySmall',
               refreshInterval: 30,
             ),
           ),

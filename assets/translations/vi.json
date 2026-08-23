@@ -1,5 +1,5 @@
 {
-  "app_title": "Câu đố đố vui",
+  "app_title": "Đố Vui Tri Thức",
   "welcome": {
     "title": "Chào mừng",
     "start_button": "BẮT ĐẦU",
@@ -800,7 +800,18 @@
     "host_wants_start_badge": "MUỐN BẮT ĐẦU 🚀",
     "host_waiting_for_you": "Chủ nhà đang chờ bạn sẵn sàng bắt đầu! 🚀",
     "start_when_guest_ready": "Sẽ bắt đầu khi khách đã sẵn sàng ⏳",
-    "guest_is_ready_start": "Khách đã sẵn sàng! Bắt đầu trận đấu 🚀"
+    "guest_is_ready_start": "Khách đã sẵn sàng! Bắt đầu trận đấu 🚀",
+    "calculating_results": "Xác định kết quả...",
+    "feedback_correct": "CHÍNH XÁC! 🔥",
+    "feedback_wrong": "SAI! ❌",
+    "next_question_preparing": "Đang chuẩn bị câu hỏi {}...",
+    "see_results": "Xem kết quả",
+    "kick_guest": "Đá khách",
+    "kick_confirm_title": "Cầu thủ đá",
+    "kick_confirm_msg": "Bạn có chắc chắn muốn đuổi {} ra khỏi phòng không?",
+    "kicked_from_room": "Bạn bị chủ nhà đuổi ra khỏi phòng.",
+    "special_bet_badge": "ĐẶC BIỆT 🔥",
+    "fee_info": "{}% Phí"
   },
   "errors": {
     "no_internet_ai": "Bạn cần có kết nối Internet đang hoạt động để tiếp cận AI của chúng tôi. 📡",
@@ -882,5 +893,22 @@
     "reward_claimed_toast": "Cảm ơn bạn đã phản hồi của bạn! Bạn đã nhận được {} Token! ⭐",
     "claimed": "ĐÃ YÊU CẦU",
     "rate_action": "TỶ LỆ"
+  },
+  "referral": {
+    "title": "Mời bạn bè",
+    "desc": "Nhập mã mời của bạn bè để kiếm 500 Token! Chia sẻ mã của bạn và mời bạn bè của bạn.",
+    "your_code": "MÃ MỜI CỦA BẠN",
+    "enter_code": "Nhập mã mời (+500 Token)",
+    "hint": "NHẬP MÃ",
+    "claim_button": "Khẳng định",
+    "claimed_badge": "MÃ MỜI ĐƯỢC SỬ DỤNG",
+    "share_button": "Chia sẻ",
+    "copy_button": "Sao chép",
+    "code_copied": "Đã sao chép mã mời! 📋",
+    "share_msg": "🏆 Hãy tham gia cùng tôi tại Đấu trường đố vui! Sử dụng mã mời của tôi để nhận ngay 500 Token:\n👉 Mã số: {}\n📲 Tải xuống ứng dụng: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "success": "Chúc mừng! {} Mã thông báo đã được thêm vào tài khoản của bạn! 🎉",
+    "already_used": "Bạn đã sử dụng mã mời.",
+    "own_code": "Bạn không thể sử dụng mã mời của riêng bạn.",
+    "invalid_code": "Mã mời không hợp lệ hoặc không tồn tại."
   }
 }

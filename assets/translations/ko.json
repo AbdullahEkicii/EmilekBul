@@ -1,5 +1,5 @@
 {
-  "app_title": "퀴즈 퀴즈",
+  "app_title": "상식 퀴즈",
   "welcome": {
     "title": "환영",
     "start_button": "시작",
@@ -800,7 +800,18 @@
     "host_wants_start_badge": "시작하고 싶어요 🚀",
     "host_waiting_for_you": "호스트가 시작할 준비가 되기를 기다리고 있습니다! 🚀",
     "start_when_guest_ready": "게스트가 준비되면 시작됩니다 ⏳",
-    "guest_is_ready_start": "손님이 준비되었습니다! 결투 시작 🚀"
+    "guest_is_ready_start": "손님이 준비되었습니다! 결투 시작 🚀",
+    "calculating_results": "결과 결정 중...",
+    "feedback_correct": "옳은! 🔥",
+    "feedback_wrong": "잘못된! ❌",
+    "next_question_preparing": "질문 {} 준비 중...",
+    "see_results": "결과 보기",
+    "kick_guest": "킥 게스트",
+    "kick_confirm_title": "킥 플레이어",
+    "kick_confirm_msg": "정말로 {}을(를) 방에서 쫓아내시겠습니까?",
+    "kicked_from_room": "당신은 호스트에 의해 방에서 쫓겨났습니다.",
+    "special_bet_badge": "특별 🔥",
+    "fee_info": "{}% 요금"
   },
   "errors": {
     "no_internet_ai": "AI에 접근하려면 활성 인터넷 연결이 필요합니다. 📡",
@@ -882,5 +893,22 @@
     "reward_claimed_toast": "피드백을 보내주셔서 감사합니다! 귀하는 {}개의 토큰을 받았습니다! ⭐",
     "claimed": "청구됨",
     "rate_action": "비율"
+  },
+  "referral": {
+    "title": "친구 초대",
+    "desc": "친구 초대 코드를 입력하면 토큰 500개를 얻을 수 있습니다! 코드를 공유하고 친구를 초대하세요.",
+    "your_code": "귀하의 초대 코드",
+    "enter_code": "초대 코드 입력(+500토큰)",
+    "hint": "코드를 입력하세요",
+    "claim_button": "주장하다",
+    "claimed_badge": "사용된 초대 코드",
+    "share_button": "공유하다",
+    "copy_button": "복사",
+    "code_copied": "초대코드가 복사되었습니다! 📋",
+    "share_msg": "🏆 퀴즈 아레나에 참여해보세요! 내 초대 코드를 사용하여 즉시 500개의 토큰을 받으세요:\n👉 코드: {}\n📲 앱 다운로드: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "success": "축하해요! {} 귀하의 계정에 토큰이 추가되었습니다! 🎉",
+    "already_used": "이미 초대 코드를 사용하셨습니다.",
+    "own_code": "본인의 초대코드를 사용할 수 없습니다.",
+    "invalid_code": "초대 코드가 잘못되었거나 존재하지 않습니다."
   }
 }

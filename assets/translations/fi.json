@@ -1,5 +1,5 @@
 {
-  "app_title": "Trivia-visa",
+  "app_title": "Tietovisa",
   "welcome": {
     "title": "Tervetuloa",
     "start_button": "ALOITA",
@@ -800,7 +800,18 @@
     "host_wants_start_badge": "HALUAA ALOITTAA 🚀",
     "host_waiting_for_you": "Isäntä odottaa, että olet valmis aloittamaan! 🚀",
     "start_when_guest_ready": "Alkaa, kun vieras on valmis ⏳",
-    "guest_is_ready_start": "Vieras on valmis! Aloita kaksintaistelu 🚀"
+    "guest_is_ready_start": "Vieras on valmis! Aloita kaksintaistelu 🚀",
+    "calculating_results": "Tulosten määrittäminen...",
+    "feedback_correct": "KORJATA! 🔥",
+    "feedback_wrong": "VÄÄRIN! ❌",
+    "next_question_preparing": "Valmistellaan kysymystä {}...",
+    "see_results": "Katso tulokset",
+    "kick_guest": "Kick Vieras",
+    "kick_confirm_title": "Kick Player",
+    "kick_confirm_msg": "Haluatko varmasti potkaista {} huoneesta?",
+    "kicked_from_room": "Isäntä potkaisi sinut huoneesta.",
+    "special_bet_badge": "ERIKOISTA 🔥",
+    "fee_info": "Maksu {} %"
   },
   "errors": {
     "no_internet_ai": "Tarvitset aktiivisen Internet-yhteyden päästäksesi tekoälyyn. 📡",
@@ -882,5 +893,22 @@
     "reward_claimed_toast": "Kiitos palautteestasi! Sait {} merkkiä! ⭐",
     "claimed": "VAATIMUS",
     "rate_action": "RATE"
+  },
+  "referral": {
+    "title": "Kutsu ystäviä",
+    "desc": "Syötä ystäväsi kutsukoodi ansaitaksesi 500 Tokenia! Jaa koodisi ja kutsu ystäväsi.",
+    "your_code": "KUTSUKOODISI",
+    "enter_code": "Anna kutsukoodi (+500 merkkiä)",
+    "hint": "ANNA KOODI",
+    "claim_button": "Väite",
+    "claimed_badge": "KUTSUKOODI KÄYTETTY",
+    "share_button": "Jakaa",
+    "copy_button": "Kopioida",
+    "code_copied": "Kutsukoodi kopioitu! 📋",
+    "share_msg": "🏆 Tule mukaan Quiz Arenalle! Käytä kutsukoodiani saadaksesi 500 Tokenia välittömästi:\n👉 Koodi: {}\n📲 Lataa sovellus: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "success": "Onnittelut! {} Tunnuksia lisätty tilillesi! 🎉",
+    "already_used": "Olet jo käyttänyt kutsukoodia.",
+    "own_code": "Et voi käyttää omaa kutsukoodiasi.",
+    "invalid_code": "Virheellinen kutsukoodi tai sitä ei ole olemassa."
   }
 }

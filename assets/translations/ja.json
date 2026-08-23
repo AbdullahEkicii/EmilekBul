@@ -1,5 +1,5 @@
 {
-  "app_title": "トリビアクイズ",
+  "app_title": "知識クイズ",
   "welcome": {
     "title": "いらっしゃいませ",
     "start_button": "始める",
@@ -800,7 +800,18 @@
     "host_wants_start_badge": "始めたい 🚀",
     "host_waiting_for_you": "ホストはあなたが始める準備ができるのを待っています。 🚀",
     "start_when_guest_ready": "ゲストの準備ができたら開始します ⏳",
-    "guest_is_ready_start": "ゲストの準備は完了です!デュエルを開始 🚀"
+    "guest_is_ready_start": "ゲストの準備は完了です!デュエルを開始 🚀",
+    "calculating_results": "結果を判断中...",
+    "feedback_correct": "正しい！ 🔥",
+    "feedback_wrong": "間違っている！ ❌",
+    "next_question_preparing": "質問 {} を準備しています...",
+    "see_results": "結果を見る",
+    "kick_guest": "キックゲスト",
+    "kick_confirm_title": "キックプレイヤー",
+    "kick_confirm_msg": "{} を部屋から追い出してもよろしいですか?",
+    "kicked_from_room": "あなたはホストによって部屋から追い出されました。",
+    "special_bet_badge": "スペシャル🔥",
+    "fee_info": "{}％ 手数料"
   },
   "errors": {
     "no_internet_ai": "AI にアクセスするには、アクティブなインターネット接続が必要です。 📡",
@@ -882,5 +893,22 @@
     "reward_claimed_toast": "フィードバックをいただきありがとうございます。 {} トークンを受け取りました! ⭐",
     "claimed": "請求済み",
     "rate_action": "レート"
+  },
+  "referral": {
+    "title": "友達を招待する",
+    "desc": "友達の招待コードを入力して 500 トークンを獲得しましょう!コードを共有して友達を招待してください。",
+    "your_code": "あなたの招待コード",
+    "enter_code": "招待コードを入力してください (+500 トークン)",
+    "hint": "コードを入力してください",
+    "claim_button": "請求",
+    "claimed_badge": "使用された招待コード",
+    "share_button": "共有",
+    "copy_button": "コピー",
+    "code_copied": "招待コードをコピーしました! 📋",
+    "share_msg": "🏆 クイズアリーナに参加しましょう！私の招待コードを使用すると、すぐに 500 トークンを取得できます。\n👉 コード: {}\n📲 アプリをダウンロード: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "success": "おめでとう！ {} トークンがアカウントに追加されました。 🎉",
+    "already_used": "すでに招待コードを使用しています。",
+    "own_code": "自分の招待コードを使用することはできません。",
+    "invalid_code": "招待コードが無効または存在しません。"
   }
 }

@@ -126,8 +126,8 @@ class _PastTestsScreenState extends State<PastTestsScreen>
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 20, vertical: 5),
                   child: MyNativeAd(
-                    height: 100,
-                    factoryId: 'adFactoryExample',
+                    height: 65,
+                    factoryId: 'adFactorySmall',
                     refreshInterval: 30,
                   ),
                 ),

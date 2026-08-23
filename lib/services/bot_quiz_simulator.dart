@@ -24,10 +24,10 @@ class BotQuizSimulator {
   void start() {
     _isCancelled = false;
     _stopwatch.start();
-    _simulateNextQuestion(0, 0, []);
+    _simulateNextQuestion(0, 0, 0, []);
   }
 
-  void _simulateNextQuestion(int index, int currentScore, List<int?> answers) {
+  void _simulateNextQuestion(int index, int currentScore, int currentCombo, List<int?> answers) {
     if (_isCancelled) return;
 
     final questions = room.questions;
@@ -39,29 +39,46 @@ class BotQuizSimulator {
     final question = questions[index];
     final difficulty = room.config.difficulty;
 
-    // Gerçekçi düşünme süreleri ve insani doğruluk oranları
+    // Gerçekçi insan okuma ve düşünme süreleri (Her soru 7-20 sn aralığında çözülür)
     int delayMs;
     double accuracyChance;
-    switch (difficulty) {
-      case 'Kolay':
-        accuracyChance = 0.40 + (_random.nextDouble() * 0.12); // %40 - %52 (Yeni başlayanlar rahatça kazanır)
-        delayMs = 3800 + _random.nextInt(4200); // 3.8s - 8.0s
+    final int initialBuffer = (index == 0) ? 2000 : 0;
+
+    final diffLower = difficulty.toLowerCase().trim();
+    switch (diffLower) {
+      case 'kolay':
+      case 'easy':
+        // Kolay: Ortalama 5'te 4 doğru (bazen 5/5, bazen 3/5) -> %75 - %88
+        accuracyChance = 0.75 + (_random.nextDouble() * 0.13);
+        delayMs = 7000 + initialBuffer + _random.nextInt(6000); // 7.0s - 13.0s (+2s ilk soru)
         break;
-      case 'Zor':
-        accuracyChance = 0.68 + (_random.nextDouble() * 0.12); // %68 - %80
-        delayMs = 2800 + _random.nextInt(3200); // 2.8s - 6.0s
+      case 'zor':
+      case 'hard':
+        // Zor: Ortalama 2.5 - 2.75 doğru (5'te 2 ya da 3 doğru) -> %48 - %58
+        accuracyChance = 0.48 + (_random.nextDouble() * 0.10);
+        delayMs = 13000 + initialBuffer + _random.nextInt(8000); // 13.0s - 21.0s (+2s ilk soru)
         break;
-      case 'Imkansız':
-      case 'İmkansız':
-        accuracyChance = 0.78 + (_random.nextDouble() * 0.10); // %78 - %88
-        delayMs = 2200 + _random.nextInt(2800); // 2.2s - 5.0s
+      case 'imkansız':
+      case 'imkansiz':
+      case 'impossible':
+        // İmkansız: Ortalama 1.75 - 2 doğru (5'te 1 ya da 2 doğru) -> %33 - %42
+        accuracyChance = 0.33 + (_random.nextDouble() * 0.09);
+        delayMs = 15000 + initialBuffer + _random.nextInt(8000); // 15.0s - 23.0s (+2s ilk soru)
         break;
-      default: // Orta
-        accuracyChance = 0.55 + (_random.nextDouble() * 0.12); // %55 - %67 (Tatmin edici, dengeli rekabet)
-        delayMs = 3200 + _random.nextInt(3800); // 3.2s - 7.0s
+      case 'orta':
+      case 'medium':
+      default:
+        // Orta: Ortalama 3.5 - 4 doğru -> %68 - %80
+        accuracyChance = 0.68 + (_random.nextDouble() * 0.12);
+        delayMs = 10000 + initialBuffer + _random.nextInt(8000); // 10.0s - 18.0s (+2s ilk soru)
+        break;
     }
 
+    // Maksimum 24 saniye ile sınırla (Süre aşımı olmaması için)
+    delayMs = min(delayMs, 24000);
+
     _stepTimer = Timer(Duration(milliseconds: delayMs), () async {
+      if (_isCancelled) return;
 
       final isCorrect = _random.nextDouble() < accuracyChance;
       int selectedAnswer;
@@ -75,10 +92,17 @@ class BotQuizSimulator {
       }
 
       int newScore = currentScore;
+      int nextCombo = currentCombo;
       if (isCorrect) {
-        // Hız bonuslu puanlama (10-15 puan)
-        final timeBonus = max(1, (25 - (delayMs / 1000)).round());
-        newScore += 10 + (timeBonus ~/ 5);
+        nextCombo++;
+        // Hızlı doğru cevap için hız bonuslu maç içi puanlama:
+        // Taban 50 puan + (Kalan saniye * 4) + Kombo bonusu
+        final remainingSec = max(0, 25 - (delayMs ~/ 1000));
+        final speedBonus = remainingSec * 4;
+        final comboBonus = (nextCombo > 1 ? (nextCombo * 10) : 0);
+        newScore += 50 + speedBonus + comboBonus;
+      } else {
+        nextCombo = 0;
       }
 
       final updatedAnswers = List<int?>.from(answers)..add(selectedAnswer);
@@ -95,12 +119,15 @@ class BotQuizSimulator {
           finishTime: isLast ? totalElapsedMs : 0,
           userAnswers: updatedAnswers,
         );
+        if (isLast) {
+          DuelService.resolveDuelResult(roomCode);
+        }
       } catch (e) {
         debugPrint('Bot progress submit error: $e');
       }
 
       if (!isLast && !_isCancelled) {
-        _simulateNextQuestion(index + 1, newScore, updatedAnswers);
+        _simulateNextQuestion(index + 1, newScore, nextCombo, updatedAnswers);
       }
     });
   }

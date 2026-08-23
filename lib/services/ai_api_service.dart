@@ -9,18 +9,18 @@ import 'dart:convert';
 
 import '../services/database_helper.dart';
 import '../utils/app_utils.dart';
+import '../constants/category_taxonomy.dart';
 
 class AiApiService {
   final List<String> _modelList = [
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-3-flash',
     'gemini-2.5-flash',
     'gemini-2.5-flash-lite',
-    'gemini-2.5-pro',
-    'gemini-3-flash-preview',
-    'gemini-3-flash',
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite',
-    'gemini-2.0-flash-001',
-    'gemini-2.0-flash-lite-001',
+    'gemini-3.5-flash',
+    'gemini-3.6-flash',
+    'gemini-3.7-flash',
   ];
   final String _apiKey = dotenv.env['API_KEY']!;
   Future<GenerateContentResponse> _generateContentWithFallback(
@@ -35,17 +35,12 @@ class AiApiService {
         return response;
       } catch (e) {
         debugPrint('⚠️ $modelName modeli hata verdi: $e');
-        if (!e.toString().contains('429') &&
-            !e.toString().contains('quota') &&
-            !e.toString().contains('RESOURCE_EXHAUSTED') &&
-            !e.toString().contains('404') &&
-            !e.toString().contains('503')) {
-          rethrow; // Beklenmeyen hata varsa dur
-        }
+        // Tüm hata türlerinde bir sonraki yedek modele geç
+        continue;
       }
     }
     throw Exception(
-        'Tüm modellerle istek başarısız oldu. Limitler dolmuş olabilir.');
+        'Tüm modellerle istek başarısız oldu. Limitler dolmuş veya internet bağlantısı kesilmiş olabilir.');
   }
 
   Future<List<Question>> fetchMultilingualQuestions({
@@ -219,8 +214,11 @@ class AiApiService {
         .map((code) => "$code (${_languageNames[code] ?? code})")
         .join(', ');
 
+    final subTopic = CategoryTaxonomy.getRandomSubTopic(category);
+    final questionAngle = CategoryTaxonomy.getRandomQuestionAngle();
+
     final previousTextBlock = previousQuestionRoots.isNotEmpty
-        ? "Previously used question roots (DO NOT duplicate these):\n${previousQuestionRoots.map((q) => "- $q").join("\n")}"
+        ? "Previously used question roots (DO NOT duplicate these topics):\n${previousQuestionRoots.take(20).map((q) => "- $q").join("\n")}"
         : "No previous questions recorded for this category and difficulty yet.";
 
     return '''You are a multilingual trivia quiz AI. Generate $count original trivia questions for a synchronized 1v1 live multiplayer duel.
@@ -228,6 +226,8 @@ Both players are playing at the exact same time against each other, but each pla
 
 Parameters:
 - Category: '$category'
+- Sub-Topic Focus: '$subTopic'
+- Question Angle / Perspective: '$questionAngle'
 - Difficulty: '$difficulty'
 - Languages needed: $langListStr
 
@@ -236,8 +236,10 @@ Rules:
 2. The options at index 0, 1, 2, 3 in each language MUST be exact translations/equivalents of each other so both players have matching choices.
 3. The 'correctIndex' (0, 1, 2, or 3) MUST be identical and correct across all languages.
 4. Language & Quality: The questions and choices in each language MUST be grammatically flawless, natural, and clear for native speakers.
-5. Focus on fair, universally verifiable knowledge suitable for global players.
-6. UNIQUENESS:
+5. Focus on fair, universally verifiable knowledge suitable for global players within '$subTopic'.
+6. UNIQUENESS & DIVERSITY:
+   - Deeply explore the sub-topic '$subTopic' using the angle '$questionAngle'.
+   - Avoid generic, overused trivia tropes.
    - $previousTextBlock
 
 OUTPUT STRICTLY AND ONLY IN VALID JSON FORMAT (no preamble, no markdown tags other than standard json, no explanations):
@@ -267,8 +269,11 @@ Seed: $randomSeed
     final promptCategory =
         languageCode == 'tr' ? category : (_categoryMap[category] ?? category);
 
+    final subTopic = CategoryTaxonomy.getRandomSubTopic(category);
+    final questionAngle = CategoryTaxonomy.getRandomQuestionAngle();
+
     final previousTextBlock = previousQuestionRoots.isNotEmpty
-        ? "Previously used question roots (DO NOT duplicate these):\n${previousQuestionRoots.map((q) => "- $q").join("\n")}"
+        ? "Previously used question roots (DO NOT duplicate these topics):\n${previousQuestionRoots.take(20).map((q) => "- $q").join("\n")}"
         : "No previous questions recorded for this category and difficulty yet.";
 
     return '''You are an expert trivia quiz AI. Generate $count unique and original trivia questions.
@@ -276,6 +281,8 @@ Seed: $randomSeed
 Parameters:
 - Target Language: $targetLangName (ISO Code: $languageCode)
 - Category: '$promptCategory'
+- Sub-Topic Focus: '$subTopic'
+- Question Angle / Perspective: '$questionAngle'
 - Difficulty: '$difficulty' (Easy: Basic common knowledge, Medium: Doable/general knowledge, Hard: Detailed knowledge, Impossible: Very technical/niche knowledge)
 
 Critical Rules:
@@ -285,9 +292,9 @@ Critical Rules:
    - Exactly 4 options per question with exactly 1 unambiguously correct option.
    - Questions and options should be concise, clear, and proportional to the difficulty.
    - The 'correctIndex' MUST be an integer between 0 and 3 matching the correct option.
-3. GLOBAL FAIRNESS:
-   - If the category relates to History, Geography, or General Culture, focus on globally known, verifiable facts rather than ultra-local obscure trivia.
-4. UNIQUENESS:
+3. UNIQUENESS & DIVERSITY:
+   - Specifically focus on the sub-topic '$subTopic' with the perspective '$questionAngle'.
+   - Avoid generic, overused clichés. Create high-engagement, fresh trivia.
    - $previousTextBlock
 
 OUTPUT STRICTLY AND ONLY IN VALID JSON FORMAT (no preamble, no markdown tags other than standard json, no explanations):

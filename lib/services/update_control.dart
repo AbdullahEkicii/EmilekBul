@@ -177,19 +177,24 @@ Future<void> checkUpdate(BuildContext context) async {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.download,
                                 color: Color(0xFF7F7CFF),
                                 size: 24,
                               ),
-                              SizedBox(width: 12),
-                              Text(
-                                'update.button'.tr(),
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF7F7CFF),
-                                  letterSpacing: 0.5,
+                              const SizedBox(width: 12),
+                              Flexible(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    'update.button'.tr(),
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF7F7CFF),
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],

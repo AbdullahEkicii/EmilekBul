@@ -1,5 +1,5 @@
 {
-  "app_title": "Trivia Quiz",
+  "app_title": "Quiz de Cultură",
   "welcome": {
     "title": "Bun venit",
     "start_button": "ÎNCEPUT",
@@ -800,7 +800,18 @@
     "host_wants_start_badge": "VREA SA ÎNCEPE 🚀",
     "host_waiting_for_you": "Gazda te așteaptă să fii gata de început! 🚀",
     "start_when_guest_ready": "Va începe când oaspetele este gata ⏳",
-    "guest_is_ready_start": "Oaspetele este gata! Începe Duelul 🚀"
+    "guest_is_ready_start": "Oaspetele este gata! Începe Duelul 🚀",
+    "calculating_results": "Determinarea rezultatelor...",
+    "feedback_correct": "CORECTA! 🔥",
+    "feedback_wrong": "GREŞIT! ❌",
+    "next_question_preparing": "Se pregătește întrebarea {}...",
+    "see_results": "Vezi Rezultate",
+    "kick_guest": "Kick Guest",
+    "kick_confirm_title": "Kick Player",
+    "kick_confirm_msg": "Sigur vrei să-l dai cu piciorul pe {} din cameră?",
+    "kicked_from_room": "Ai fost dat afară din cameră de gazdă.",
+    "special_bet_badge": "SPECIAL 🔥",
+    "fee_info": "Taxă de {}%."
   },
   "errors": {
     "no_internet_ai": "Aveți nevoie de o conexiune activă la internet pentru a ajunge la AI-ul nostru. 📡",
@@ -882,5 +893,22 @@
     "reward_claimed_toast": "Vă mulțumim pentru feedback! Ați primit {} jetoane! ⭐",
     "claimed": "REVENITĂ",
     "rate_action": "RATA"
+  },
+  "referral": {
+    "title": "Invitați prieteni",
+    "desc": "Introdu codul de invitație al unui prieten pentru a câștiga 500 de jetoane! Distribuie codul și invită-ți prietenii.",
+    "your_code": "CODUL DVS. DE INVITARE",
+    "enter_code": "Introdu codul de invitație (+500 de jetoane)",
+    "hint": "INTRODUCE CODUL",
+    "claim_button": "Revendicare",
+    "claimed_badge": "COD DE INVITARE UTILIZAT",
+    "share_button": "Distribuie",
+    "copy_button": "Copie",
+    "code_copied": "Codul de invitație a fost copiat! 📋",
+    "share_msg": "🏆 Alătură-te mie în Quiz Arena! Folosește codul meu de invitație pentru a obține instantaneu 500 de jetoane:\n👉 Cod: {}\n📲 Descărcați aplicația: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "success": "Felicitări! {} Jetoane adăugate în contul dvs.! 🎉",
+    "already_used": "Ați folosit deja un cod de invitație.",
+    "own_code": "Nu vă puteți folosi propriul cod de invitație.",
+    "invalid_code": "Cod de invitație nevalid sau inexistent."
   }
 }

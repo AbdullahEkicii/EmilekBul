@@ -3,8 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../services/auth.dart';
 import '../services/user_service.dart';
 import '../services/fullscreen_service.dart';
 import '../services/analytics_service.dart';
@@ -98,41 +96,16 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
     try {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
-        debugPrint("Splash: Attempting auto Play Games sign-in...");
-        UserCredential? userCredential;
-        try {
-          userCredential = await Auth().signInWithPlayGames().timeout(
-            const Duration(seconds: 8),
-            onTimeout: () => null,
-          );
-        } catch (e) {
-          debugPrint("Splash: Play Games auto-login skipped/error: $e");
-        }
-
-        if (userCredential == null) {
-          // Auto Guest Login in the background during splash!
-          debugPrint("Splash: Starting background guest login...");
-          userCredential = await UserService.signInAsGuest().timeout(
-            const Duration(seconds: 8),
-            onTimeout: () => throw Exception("Guest Login Timeout"),
-          );
-          if (userCredential != null) {
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setInt('user_tokens', 50); // initial tokens
-          }
-        } else {
-          debugPrint("Splash: Successfully signed in with Play Games!");
-          AnalyticsService.setUserId(userCredential.user?.uid);
-          AnalyticsService.logLogin(loginMethod: 'play_games');
+        // İlk açılışta kullanıcıyı zorlayıcı Play Games/Google popup'larıyla rahatsız etmeden
+        // doğrudan arka planda hızlı ve sessiz misafir girişi yapıyoruz
+        debugPrint("Splash: Starting background guest login...");
+        final userCredential = await UserService.signInAsGuest().timeout(
+          const Duration(seconds: 8),
+          onTimeout: () => throw Exception("Guest Login Timeout"),
+        );
+        if (userCredential != null) {
           final prefs = await SharedPreferences.getInstance();
-          try {
-            final userDoc = await FirebaseFirestore.instance
-                .collection('users')
-                .doc(userCredential.user!.uid)
-                .get();
-            final tokens = userDoc.data()?['tokens'] as int? ?? 50;
-            await prefs.setInt('user_tokens', tokens);
-          } catch (_) {}
+          await prefs.setInt('user_tokens', 50); // initial tokens
         }
       } else {
         // Mevcut kullanıcı ID'sini analytics'e bildir

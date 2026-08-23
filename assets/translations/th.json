@@ -1,5 +1,5 @@
 {
-  "app_title": "แบบทดสอบเรื่องไม่สำคัญ",
+  "app_title": "เกมตอบคำถามความรู้",
   "welcome": {
     "title": "ยินดีต้อนรับ",
     "start_button": "เริ่ม",
@@ -800,7 +800,18 @@
     "host_wants_start_badge": "ต้องการเริ่มต้น 🚀",
     "host_waiting_for_you": "โฮสต์กำลังรอให้คุณพร้อมที่จะเริ่ม! 🚀",
     "start_when_guest_ready": "จะเริ่มเมื่อแขกพร้อม ⏳",
-    "guest_is_ready_start": "แขกพร้อม! เริ่มดวล 🚀"
+    "guest_is_ready_start": "แขกพร้อม! เริ่มดวล 🚀",
+    "calculating_results": "กำลังพิจารณาผลลัพธ์...",
+    "feedback_correct": "ถูกต้อง! 🔥",
+    "feedback_wrong": "ผิด! ❌",
+    "next_question_preparing": "กำลังเตรียมคำถาม {}...",
+    "see_results": "ดูผลลัพธ์",
+    "kick_guest": "เตะแขก",
+    "kick_confirm_title": "นักเตะเตะ",
+    "kick_confirm_msg": "คุณแน่ใจหรือว่าต้องการเตะ {} ออกจากห้อง?",
+    "kicked_from_room": "คุณถูกเจ้าบ้านไล่ออกจากห้อง",
+    "special_bet_badge": "พิเศษ 🔥",
+    "fee_info": "{}% ค่าธรรมเนียม"
   },
   "errors": {
     "no_internet_ai": "คุณต้องเชื่อมต่ออินเทอร์เน็ตเพื่อเข้าถึง AI ของเรา 📡",
@@ -882,5 +893,22 @@
     "reward_claimed_toast": "ขอบคุณสำหรับคำติชมของคุณ! คุณได้รับโทเค็น {}! ⭐",
     "claimed": "อ้างสิทธิ์",
     "rate_action": "ประเมิน"
+  },
+  "referral": {
+    "title": "เชิญเพื่อน",
+    "desc": "กรอกรหัสเชิญเพื่อนเพื่อรับ 500 Tokens! แบ่งปันรหัสของคุณและเชิญเพื่อนของคุณ",
+    "your_code": "รหัสเชิญของคุณ",
+    "enter_code": "กรอกรหัสเชิญ (+500 โทเค็น)",
+    "hint": "ใส่รหัส",
+    "claim_button": "เรียกร้อง",
+    "claimed_badge": "ใช้รหัสเชิญแล้ว",
+    "share_button": "แบ่งปัน",
+    "copy_button": "สำเนา",
+    "code_copied": "คัดลอกรหัสเชิญแล้ว! 📋",
+    "share_msg": "🏆 เข้าร่วมกับฉันใน Quiz Arena! ใช้รหัสเชิญของฉันเพื่อรับ 500 Tokens ทันที:\n👉 รหัส: {}\n📲 ดาวน์โหลดแอป: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "success": "ยินดีด้วย! {} เพิ่มโทเค็นในบัญชีของคุณแล้ว! 🎉",
+    "already_used": "คุณใช้รหัสเชิญแล้ว",
+    "own_code": "คุณไม่สามารถใช้รหัสเชิญของคุณเองได้",
+    "invalid_code": "รหัสเชิญไม่ถูกต้องหรือไม่มีอยู่"
   }
 }

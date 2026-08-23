@@ -1,5 +1,5 @@
 {
-  "app_title": "Trivia Quiz",
+  "app_title": "Kunskapsquiz",
   "welcome": {
     "title": "Välkomna",
     "start_button": "START",
@@ -800,7 +800,18 @@
     "host_wants_start_badge": "VILL BÖRJA 🚀",
     "host_waiting_for_you": "Värden väntar på att du ska vara redo att börja! 🚀",
     "start_when_guest_ready": "Startar när gästen är redo ⏳",
-    "guest_is_ready_start": "Gästen är redo! Starta duellen 🚀"
+    "guest_is_ready_start": "Gästen är redo! Starta duellen 🚀",
+    "calculating_results": "Fastställer resultat...",
+    "feedback_correct": "RÄTTA! 🔥",
+    "feedback_wrong": "FEL! ❌",
+    "next_question_preparing": "Förbereder fråga {}...",
+    "see_results": "Se resultat",
+    "kick_guest": "Sparka gäst",
+    "kick_confirm_title": "Sparka spelare",
+    "kick_confirm_msg": "Är du säker på att du vill sparka {} från rummet?",
+    "kicked_from_room": "Du blev sparkad från rummet av värden.",
+    "special_bet_badge": "SPECIAL 🔥",
+    "fee_info": "{} % avgift"
   },
   "errors": {
     "no_internet_ai": "Du behöver en aktiv internetanslutning för att nå vår AI. 📡",
@@ -882,5 +893,22 @@
     "reward_claimed_toast": "Tack för din feedback! Du har fått {} tokens! ⭐",
     "claimed": "KRÄVS",
     "rate_action": "HASTIGHET"
+  },
+  "referral": {
+    "title": "Bjud in vänner",
+    "desc": "Ange en väns inbjudningskod för att tjäna 500 tokens! Dela din kod och bjud in dina vänner.",
+    "your_code": "DIN INBJUDNINGSKOD",
+    "enter_code": "Ange inbjudningskod (+500 tokens)",
+    "hint": "SKRIV IN KOD",
+    "claim_button": "Krav",
+    "claimed_badge": "INBJUDNINGSKOD ANVÄND",
+    "share_button": "Dela",
+    "copy_button": "Kopiera",
+    "code_copied": "Inbjudningskoden har kopierats! 📋",
+    "share_msg": "🏆 Följ med mig i Quiz Arena! Använd min inbjudningskod för att få 500 tokens direkt:\n👉 Kod: {}\n📲 Ladda ner appen: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "success": "Grattis! {} Tokens har lagts till på ditt konto! 🎉",
+    "already_used": "Du har redan använt en inbjudningskod.",
+    "own_code": "Du kan inte använda din egen inbjudningskod.",
+    "invalid_code": "Ogiltig eller obefintlig inbjudningskod."
   }
 }

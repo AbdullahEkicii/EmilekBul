@@ -12,153 +12,288 @@ class BotRoomService {
 
   /// Farklı ülkelerden, kültürlerden, oyun nicklerinden ve mizahi lakaplardan oluşan zengin havuz
   static const List<Map<String, String>> _botProfiles = [
-    // 🎭 Esprili & Mizahi Nickler (TR)
+    // 👤 Doğal & Gerçekçi İsimler (TR)
+    {'name': 'Emre', 'lang': 'tr'},
+    {'name': 'Merve', 'lang': 'tr'},
+    {'name': 'Burak', 'lang': 'tr'},
+    {'name': 'Selin', 'lang': 'tr'},
+    {'name': 'Eren', 'lang': 'tr'},
+    {'name': 'Defne', 'lang': 'tr'},
+    {'name': 'Kaan', 'lang': 'tr'},
+    {'name': 'Melis', 'lang': 'tr'},
+    {'name': 'Alper', 'lang': 'tr'},
+    {'name': 'Zeynep', 'lang': 'tr'},
+    {'name': 'Buse', 'lang': 'tr'},
+    {'name': 'Kerem', 'lang': 'tr'},
+    {'name': 'Berk', 'lang': 'tr'},
+    {'name': 'Ada', 'lang': 'tr'},
+    {'name': 'Yusuf', 'lang': 'tr'},
+    {'name': 'Cansu', 'lang': 'tr'},
+    {'name': 'Deniz', 'lang': 'tr'},
+    {'name': 'Barış', 'lang': 'tr'},
+    {'name': 'Hazal', 'lang': 'tr'},
+    {'name': 'Onur', 'lang': 'tr'},
+    {'name': 'Elif', 'lang': 'tr'},
+    {'name': 'Tolga', 'lang': 'tr'},
+    {'name': 'Caner', 'lang': 'tr'},
+    {'name': 'Gamze', 'lang': 'tr'},
+    {'name': 'Mert', 'lang': 'tr'},
+    {'name': 'Tuğçe', 'lang': 'tr'},
+    {'name': 'Pelin', 'lang': 'tr'},
+    {'name': 'Arda', 'lang': 'tr'},
+    {'name': 'Serkan', 'lang': 'tr'},
+    {'name': 'İrem', 'lang': 'tr'},
+    {'name': 'Görkem', 'lang': 'tr'},
+    {'name': 'Sinem', 'lang': 'tr'},
+    {'name': 'Volkan', 'lang': 'tr'},
+    {'name': 'Cemre', 'lang': 'tr'},
+
+    // 🎭 Eğlenceli & Akılda Kalıcı Takma Adlar (TR)
     {'name': 'TestBükücü', 'lang': 'tr'},
     {'name': 'ProfDrCevap', 'lang': 'tr'},
     {'name': 'SallamasyonMaster', 'lang': 'tr'},
     {'name': 'BeyinYakan', 'lang': 'tr'},
     {'name': 'Bilirkişi', 'lang': 'tr'},
     {'name': 'GoogleDeğilim', 'lang': 'tr'},
-    {'name': 'SonDakikaGolü', 'lang': 'tr'},
     {'name': 'KahveDelisi', 'lang': 'tr'},
-    {'name': 'UykusuzKütüphane', 'lang': 'tr'},
     {'name': 'AtomKarınca', 'lang': 'tr'},
-    {'name': 'ÇayİçenFilozof', 'lang': 'tr'},
     {'name': 'NöronReis', 'lang': 'tr'},
     {'name': 'KafaAçan', 'lang': 'tr'},
-    {'name': 'EinsteinınTorunu', 'lang': 'tr'},
     {'name': 'BiBilenVar', 'lang': 'tr'},
-    {'name': 'KlavyeninEfendisi', 'lang': 'tr'},
     {'name': 'TekAtan', 'lang': 'tr'},
-    {'name': 'MatrixtekiAdam', 'lang': 'tr'},
     {'name': 'SoruCanavarı', 'lang': 'tr'},
     {'name': 'CevapAnahtarı', 'lang': 'tr'},
-    {'name': 'KafamdaKırkTilki', 'lang': 'tr'},
-    {'name': 'AkılKüpü06', 'lang': 'tr'},
+    {'name': 'AkılKüpü', 'lang': 'tr'},
     {'name': 'SoruUstası', 'lang': 'tr'},
     {'name': 'BiSorupÇıkıcam', 'lang': 'tr'},
-    {'name': 'TaktikYokBamBam', 'lang': 'tr'},
-    {'name': 'GözüKapalıÇözen', 'lang': 'tr'},
-    {'name': 'HızlıVeÖfkeli', 'lang': 'tr'},
-    {'name': 'GönüllerinBirincisi', 'lang': 'tr'},
+    {'name': 'BilgeBaykuş', 'lang': 'tr'},
+    {'name': 'GeceKuşu', 'lang': 'tr'},
+    {'name': 'PikselUsta', 'lang': 'tr'},
 
-    // 👤 Doğal & Gerçekçi Kullanıcı Adları (TR)
-    {'name': 'baris_dmr', 'lang': 'tr'},
-    {'name': 'serkan.oz', 'lang': 'tr'},
-    {'name': 'irem_kaya98', 'lang': 'tr'},
-    {'name': 'volkan_yilmaz', 'lang': 'tr'},
-    {'name': 'tugce_ak', 'lang': 'tr'},
-    {'name': 'onurcan', 'lang': 'tr'},
-    {'name': 'hazal_s', 'lang': 'tr'},
-    {'name': 'berke_k', 'lang': 'tr'},
-    {'name': 'merveylmz', 'lang': 'tr'},
-    {'name': 'batuhan_35', 'lang': 'tr'},
-    {'name': 'gamze.t', 'lang': 'tr'},
-    {'name': 'arda_bjk', 'lang': 'tr'},
-    {'name': 'melike_arslan', 'lang': 'tr'},
-    {'name': 'yigit_efe', 'lang': 'tr'},
-    {'name': 'cansu_polat', 'lang': 'tr'},
-    {'name': 'koray_ay', 'lang': 'tr'},
-    {'name': 'ozge_demir', 'lang': 'tr'},
-    {'name': 'tolga_1907', 'lang': 'tr'},
-    {'name': 'asli_nur', 'lang': 'tr'},
-    {'name': 'fatih_tr', 'lang': 'tr'},
-    {'name': 'gorkem_gs', 'lang': 'tr'},
-    {'name': 'sinem_k', 'lang': 'tr'},
-    {'name': 'emre_92', 'lang': 'tr'},
-    {'name': 'pinar_aydin', 'lang': 'tr'},
-    {'name': 'cemre_su', 'lang': 'tr'},
-    {'name': 'burakhan', 'lang': 'tr'},
-    {'name': 'sedef_oz', 'lang': 'tr'},
-    {'name': 'kaan_07', 'lang': 'tr'},
-    {'name': 'alperen_ts', 'lang': 'tr'},
-    {'name': 'deniz.arslan', 'lang': 'tr'},
-    {'name': 'alican_95', 'lang': 'tr'},
-    {'name': 'caglar_fb', 'lang': 'tr'},
-
-    // 🎮 Mizahi & Havalı Global / Oyun Nickleri (EN)
-    {'name': 'BrainySmurf', 'lang': 'en'},
-    {'name': 'QuizLord', 'lang': 'en'},
-    {'name': 'CoffeeAndCode', 'lang': 'en'},
+    // 🎮 Küresel / Gaming Nickleri (EN)
+    {'name': 'QuizMaster', 'lang': 'en'},
+    {'name': 'BrainStorm', 'lang': 'en'},
+    {'name': 'NeonRider', 'lang': 'en'},
     {'name': 'SilentNinja', 'lang': 'en'},
-    {'name': 'MindOverMatter', 'lang': 'en'},
+    {'name': 'MindGamer', 'lang': 'en'},
     {'name': 'LuckyStrike', 'lang': 'en'},
-    {'name': 'NoGoogleHere', 'lang': 'en'},
-    {'name': 'NightOwl99', 'lang': 'en'},
-    {'name': 'QuizWhisperer', 'lang': 'en'},
-    {'name': 'SmartPanda', 'lang': 'en'},
+    {'name': 'NightOwl', 'lang': 'en'},
     {'name': 'TriviaTitan', 'lang': 'en'},
-    {'name': 'RandomGuesser', 'lang': 'en'},
-    {'name': 'PixelMaster', 'lang': 'en'},
-    {'name': 'SpeedyGonzalez', 'lang': 'en'},
-    {'name': 'BigBrainEnergy', 'lang': 'en'},
-    {'name': 'LateNightScholar', 'lang': 'en'},
-    {'name': 'ZenMaster_', 'lang': 'en'},
-    {'name': 'CaptainCurious', 'lang': 'en'},
-    {'name': 'ThinkingCap', 'lang': 'en'},
-    {'name': 'FactChecker', 'lang': 'en'},
-    {'name': 'CtrlAltDefeat', 'lang': 'en'},
-    {'name': 'TheQuizWizard', 'lang': 'en'},
-    {'name': 'QuantumThinker', 'lang': 'en'},
+    {'name': 'PixelHero', 'lang': 'en'},
+    {'name': 'SpeedyThinker', 'lang': 'en'},
+    {'name': 'BigBrain', 'lang': 'en'},
+    {'name': 'StarGazer', 'lang': 'en'},
+    {'name': 'CaptainTrivia', 'lang': 'en'},
+    {'name': 'FactHunter', 'lang': 'en'},
+    {'name': 'QuantumMind', 'lang': 'en'},
 
-    // 🇬🇧 / 🇺🇸 Gerçekçi İngilizce İsimler
-    {'name': 'jordan_b', 'lang': 'en'},
-    {'name': 'sarah.jenkins', 'lang': 'en'},
-    {'name': 'oliver_twist99', 'lang': 'en'},
-    {'name': 'emily_rose', 'lang': 'en'},
-    {'name': 'marcus_v', 'lang': 'en'},
-    {'name': 'charlotte.w', 'lang': 'en'},
-    {'name': 'liam_miller', 'lang': 'en'},
-    {'name': 'hannah_baker', 'lang': 'en'},
-    {'name': 'noah_carter', 'lang': 'en'},
-    {'name': 'mason_lee', 'lang': 'en'},
-    {'name': 'grace_hopper', 'lang': 'en'},
-    {'name': 'ethan_hunt', 'lang': 'en'},
+    // 🇬🇧 / 🇺🇸 Gerçekçi Global İsimler
+    {'name': 'Alex', 'lang': 'en'},
+    {'name': 'Jordan', 'lang': 'en'},
+    {'name': 'Sarah', 'lang': 'en'},
+    {'name': 'Oliver', 'lang': 'en'},
+    {'name': 'Emily', 'lang': 'en'},
+    {'name': 'Marcus', 'lang': 'en'},
+    {'name': 'Charlotte', 'lang': 'en'},
+    {'name': 'Liam', 'lang': 'en'},
+    {'name': 'Hannah', 'lang': 'en'},
+    {'name': 'Noah', 'lang': 'en'},
+    {'name': 'Mason', 'lang': 'en'},
+    {'name': 'Lucas', 'lang': 'en'},
+    {'name': 'Chloe', 'lang': 'en'},
+    {'name': 'Sophie', 'lang': 'en'},
+    {'name': 'Leo', 'lang': 'en'},
+    {'name': 'Ethan', 'lang': 'en'},
+    {'name': 'Mia', 'lang': 'en'},
+    {'name': 'James', 'lang': 'en'},
+    {'name': 'Maya', 'lang': 'en'},
+    {'name': 'Aria', 'lang': 'en'},
 
     // 🇩🇪 Almanya
-    {'name': 'lukas.weber', 'lang': 'de'},
-    {'name': 'max_muster', 'lang': 'de'},
-    {'name': 'hannah_schmidt', 'lang': 'de'},
-    {'name': 'felix_bauer', 'lang': 'de'},
-    {'name': 'leon_berlin', 'lang': 'de'},
-    {'name': 'mia_wagner', 'lang': 'de'},
-    {'name': 'jonas_keller', 'lang': 'de'},
+    {'name': 'Lukas', 'lang': 'de'},
+    {'name': 'Felix', 'lang': 'de'},
+    {'name': 'Leon', 'lang': 'de'},
+    {'name': 'Mia', 'lang': 'de'},
+    {'name': 'Jonas', 'lang': 'de'},
+    {'name': 'Maximilian', 'lang': 'de'},
+    {'name': 'Hannah', 'lang': 'de'},
+    {'name': 'Elias', 'lang': 'de'},
 
     // 🇪🇸 İspanya / Latin Amerika
-    {'name': 'mateo_valencia', 'lang': 'es'},
-    {'name': 'lucia_rodriguez', 'lang': 'es'},
-    {'name': 'carlos_santana', 'lang': 'es'},
-    {'name': 'elena_madrid', 'lang': 'es'},
-    {'name': 'diego_armando', 'lang': 'es'},
-    {'name': 'valentina_sol', 'lang': 'es'},
-    {'name': 'javier_bcn', 'lang': 'es'},
+    {'name': 'Mateo', 'lang': 'es'},
+    {'name': 'Lucia', 'lang': 'es'},
+    {'name': 'Carlos', 'lang': 'es'},
+    {'name': 'Elena', 'lang': 'es'},
+    {'name': 'Diego', 'lang': 'es'},
+    {'name': 'Valentina', 'lang': 'es'},
+    {'name': 'Javier', 'lang': 'es'},
+    {'name': 'Sofia', 'lang': 'es'},
 
     // 🇫🇷 Fransa
-    {'name': 'antoine_paris', 'lang': 'fr'},
-    {'name': 'chloe_dupont', 'lang': 'fr'},
-    {'name': 'julien_moreau', 'lang': 'fr'},
-    {'name': 'camille_lyon', 'lang': 'fr'},
-    {'name': 'lucas_dubois', 'lang': 'fr'},
-    {'name': 'amelie_poulain', 'lang': 'fr'},
+    {'name': 'Antoine', 'lang': 'fr'},
+    {'name': 'Chloe', 'lang': 'fr'},
+    {'name': 'Julien', 'lang': 'fr'},
+    {'name': 'Camille', 'lang': 'fr'},
+    {'name': 'Gabriel', 'lang': 'fr'},
+    {'name': 'Manon', 'lang': 'fr'},
+    {'name': 'Louis', 'lang': 'fr'},
+    {'name': 'Lea', 'lang': 'fr'},
 
     // 🇮🇹 İtalya
-    {'name': 'marco_roma', 'lang': 'it'},
-    {'name': 'giulia_rossi', 'lang': 'it'},
-    {'name': 'matteo_milan', 'lang': 'it'},
-    {'name': 'chiara_ferrari', 'lang': 'it'},
-    {'name': 'leonardo_da', 'lang': 'it'},
+    {'name': 'Marco', 'lang': 'it'},
+    {'name': 'Giulia', 'lang': 'it'},
+    {'name': 'Matteo', 'lang': 'it'},
+    {'name': 'Chiara', 'lang': 'it'},
+    {'name': 'Leonardo', 'lang': 'it'},
+    {'name': 'Francesca', 'lang': 'it'},
+    {'name': 'Alessandro', 'lang': 'it'},
 
-    // 🇯🇵 Japonya / Asya
-    {'name': 'kenji_sato', 'lang': 'ja'},
-    {'name': 'yuki_t', 'lang': 'ja'},
-    {'name': 'haruto_tokyo', 'lang': 'ja'},
-    {'name': 'sakura_m', 'lang': 'ja'},
+    // 🇵🇹 Portekiz / Brezilya
+    {'name': 'Gabriel', 'lang': 'pt'},
+    {'name': 'Beatriz', 'lang': 'pt'},
+    {'name': 'Lucas', 'lang': 'pt'},
+    {'name': 'Mariana', 'lang': 'pt'},
+    {'name': 'Matheus', 'lang': 'pt'},
+    {'name': 'Larissa', 'lang': 'pt'},
+    {'name': 'Rafael', 'lang': 'pt'},
+
+    // 🇳🇱 Hollanda
+    {'name': 'Daan', 'lang': 'nl'},
+    {'name': 'Emma', 'lang': 'nl'},
+    {'name': 'Sem', 'lang': 'nl'},
+    {'name': 'Sophie', 'lang': 'nl'},
+    {'name': 'Milan', 'lang': 'nl'},
+    {'name': 'Tess', 'lang': 'nl'},
 
     // 🇷🇺 Rusya
-    {'name': 'dmitry_v', 'lang': 'ru'},
-    {'name': 'anastasia_k', 'lang': 'ru'},
-    {'name': 'ivan_spb', 'lang': 'ru'},
-    {'name': 'elena_volkova', 'lang': 'ru'},
+    {'name': 'Dmitry', 'lang': 'ru'},
+    {'name': 'Anastasia', 'lang': 'ru'},
+    {'name': 'Ivan', 'lang': 'ru'},
+    {'name': 'Elena', 'lang': 'ru'},
+    {'name': 'Mikhail', 'lang': 'ru'},
+    {'name': 'Daria', 'lang': 'ru'},
+    {'name': 'Alexander', 'lang': 'ru'},
+
+    // 🇵🇱 Polonya
+    {'name': 'Jan', 'lang': 'pl'},
+    {'name': 'Zuzanna', 'lang': 'pl'},
+    {'name': 'Antoni', 'lang': 'pl'},
+    {'name': 'Julia', 'lang': 'pl'},
+    {'name': 'Jakub', 'lang': 'pl'},
+    {'name': 'Maja', 'lang': 'pl'},
+
+    // 🇺🇦 Ukrayna
+    {'name': 'Taras', 'lang': 'uk'},
+    {'name': 'Oksana', 'lang': 'uk'},
+    {'name': 'Andriy', 'lang': 'uk'},
+    {'name': 'Yulia', 'lang': 'uk'},
+    {'name': 'Bohdan', 'lang': 'uk'},
+    {'name': 'Iryna', 'lang': 'uk'},
+
+    // 🇷🇴 Romanya
+    {'name': 'Andrei', 'lang': 'ro'},
+    {'name': 'Maria', 'lang': 'ro'},
+    {'name': 'Alexandru', 'lang': 'ro'},
+    {'name': 'Stefan', 'lang': 'ro'},
+    {'name': 'Ioana', 'lang': 'ro'},
+
+    // 🇭🇺 Macaristan
+    {'name': 'Bence', 'lang': 'hu'},
+    {'name': 'Hanna', 'lang': 'hu'},
+    {'name': 'Mate', 'lang': 'hu'},
+    {'name': 'Anna', 'lang': 'hu'},
+    {'name': 'Levente', 'lang': 'hu'},
+
+    // 🇨🇿 Çek Cumhuriyeti
+    {'name': 'Jakub', 'lang': 'cs'},
+    {'name': 'Eliska', 'lang': 'cs'},
+    {'name': 'Jan', 'lang': 'cs'},
+    {'name': 'Tereza', 'lang': 'cs'},
+    {'name': 'Tomas', 'lang': 'cs'},
+
+    // 🇸🇪 İsveç
+    {'name': 'William', 'lang': 'sv'},
+    {'name': 'Alice', 'lang': 'sv'},
+    {'name': 'Liam', 'lang': 'sv'},
+    {'name': 'Elsa', 'lang': 'sv'},
+    {'name': 'Noah', 'lang': 'sv'},
+
+    // 🇩🇰 Danimarka
+    {'name': 'William', 'lang': 'da'},
+    {'name': 'Emma', 'lang': 'da'},
+    {'name': 'Noah', 'lang': 'da'},
+    {'name': 'Ida', 'lang': 'da'},
+    {'name': 'Oliver', 'lang': 'da'},
+
+    // 🇫🇮 Finlandiya
+    {'name': 'Leo', 'lang': 'fi'},
+    {'name': 'Aino', 'lang': 'fi'},
+    {'name': 'Eino', 'lang': 'fi'},
+    {'name': 'Olivia', 'lang': 'fi'},
+    {'name': 'Oliver', 'lang': 'fi'},
+
+    // 🇬🇷 Yunanistan
+    {'name': 'Nikos', 'lang': 'el'},
+    {'name': 'Maria', 'lang': 'el'},
+    {'name': 'Giorgos', 'lang': 'el'},
+    {'name': 'Eleni', 'lang': 'el'},
+    {'name': 'Dimitris', 'lang': 'el'},
+
+    // 🇮🇩 Endonezya
+    {'name': 'Budi', 'lang': 'id'},
+    {'name': 'Siti', 'lang': 'id'},
+    {'name': 'Reza', 'lang': 'id'},
+    {'name': 'Dewi', 'lang': 'id'},
+    {'name': 'Dimas', 'lang': 'id'},
+
+    // 🇻🇳 Vietnam
+    {'name': 'Nam', 'lang': 'vi'},
+    {'name': 'Linh', 'lang': 'vi'},
+    {'name': 'Minh', 'lang': 'vi'},
+    {'name': 'Trang', 'lang': 'vi'},
+    {'name': 'Duc', 'lang': 'vi'},
+
+    // 🇹🇭 Tayland
+    {'name': 'Somchai', 'lang': 'th'},
+    {'name': 'May', 'lang': 'th'},
+    {'name': 'Kittisak', 'lang': 'th'},
+    {'name': 'Fah', 'lang': 'th'},
+    {'name': 'Ploi', 'lang': 'th'},
+
+    // 🇮🇳 Hindistan
+    {'name': 'Aarav', 'lang': 'hi'},
+    {'name': 'Ananya', 'lang': 'hi'},
+    {'name': 'Vihaan', 'lang': 'hi'},
+    {'name': 'Diya', 'lang': 'hi'},
+    {'name': 'Kabir', 'lang': 'hi'},
+
+    // 🇸🇦 Arapça
+    {'name': 'Omar', 'lang': 'ar'},
+    {'name': 'Layla', 'lang': 'ar'},
+    {'name': 'Karim', 'lang': 'ar'},
+    {'name': 'Noor', 'lang': 'ar'},
+    {'name': 'Zaid', 'lang': 'ar'},
+
+    // 🇯🇵 Japonya
+    {'name': 'Ren', 'lang': 'ja'},
+    {'name': 'Yui', 'lang': 'ja'},
+    {'name': 'Haruto', 'lang': 'ja'},
+    {'name': 'Hina', 'lang': 'ja'},
+    {'name': 'Minato', 'lang': 'ja'},
+
+    // 🇰🇷 Kore
+    {'name': 'Minjun', 'lang': 'ko'},
+    {'name': 'Seoyeon', 'lang': 'ko'},
+    {'name': 'Dohoon', 'lang': 'ko'},
+    {'name': 'Jiwoo', 'lang': 'ko'},
+    {'name': 'Hajun', 'lang': 'ko'},
+
+    // 🇨🇳 Çin
+    {'name': 'Wei', 'lang': 'zh'},
+    {'name': 'Jing', 'lang': 'zh'},
+    {'name': 'Hao', 'lang': 'zh'},
+    {'name': 'Fang', 'lang': 'zh'},
+    {'name': 'Lei', 'lang': 'zh'},
   ];
 
   static const List<String> _titles = [
@@ -186,9 +321,19 @@ class BotRoomService {
     return uid.startsWith('bot_');
   }
 
-  /// Rastgele Gerçekçi Bot Oyuncusu Üret
+  /// Rastgele Gerçekçi Bot Oyuncusu Üret (İstenen dile özel)
   static DuelPlayer generateRandomBotPlayer({String? preferredLang}) {
-    final profile = _botProfiles[_random.nextInt(_botProfiles.length)];
+    List<Map<String, String>> pool = _botProfiles;
+    if (preferredLang != null) {
+      final langMatches = _botProfiles
+          .where((p) => p['lang']?.toLowerCase() == preferredLang.toLowerCase())
+          .toList();
+      if (langMatches.isNotEmpty) {
+        pool = langMatches;
+      }
+    }
+
+    final profile = pool[_random.nextInt(pool.length)];
     final botId = 'bot_${_random.nextInt(900000) + 100000}';
     final avatarNum = _random.nextInt(20) + 1;
     final frame = _random.nextInt(6).toString(); // 0 ile 5
@@ -205,6 +350,20 @@ class BotRoomService {
       language: preferredLang ?? profile['lang'] ?? 'tr',
       isReady: true,
     );
+  }
+
+  /// Verilen dile uygun rastgele bot ismi döner
+  static String getRandomBotName(String? lang) {
+    List<Map<String, String>> pool = _botProfiles;
+    if (lang != null) {
+      final langMatches = _botProfiles
+          .where((p) => p['lang']?.toLowerCase() == lang.toLowerCase())
+          .toList();
+      if (langMatches.isNotEmpty) {
+        pool = langMatches;
+      }
+    }
+    return pool[_random.nextInt(pool.length)]['name'] ?? 'Player';
   }
 
   /// Açık Bekleyen Bot Odalarını Kontrol Et ve Gerekirse Yeni Bot Odası Oluştur

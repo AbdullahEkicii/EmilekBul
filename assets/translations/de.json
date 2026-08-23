@@ -1,5 +1,5 @@
 {
-  "app_title": "Wissenswertes-Quiz",
+  "app_title": "Wissensquiz",
   "welcome": {
     "title": "Willkommen",
     "start_button": "START",
@@ -800,7 +800,18 @@
     "host_wants_start_badge": "WILL STARTEN 🚀",
     "host_waiting_for_you": "Der Gastgeber wartet darauf, dass Sie startbereit sind! 🚀",
     "start_when_guest_ready": "Beginnt, wenn der Gast bereit ist ⏳",
-    "guest_is_ready_start": "Gast ist bereit! Duell starten 🚀"
+    "guest_is_ready_start": "Gast ist bereit! Duell starten 🚀",
+    "calculating_results": "Ergebnisse ermitteln...",
+    "feedback_correct": "RICHTIG! 🔥",
+    "feedback_wrong": "FALSCH! ❌",
+    "next_question_preparing": "Frage wird vorbereitet {}...",
+    "see_results": "Siehe Ergebnisse",
+    "kick_guest": "Tritt Gast",
+    "kick_confirm_title": "Kick-Spieler",
+    "kick_confirm_msg": "Sind Sie sicher, dass Sie {} aus dem Raum werfen möchten?",
+    "kicked_from_room": "Du wurdest vom Gastgeber aus dem Zimmer geworfen.",
+    "special_bet_badge": "BESONDERES 🔥",
+    "fee_info": "{}% Gebühr"
   },
   "errors": {
     "no_internet_ai": "Sie benötigen eine aktive Internetverbindung, um unsere KI zu erreichen. 📡",
@@ -882,5 +893,22 @@
     "reward_claimed_toast": "Vielen Dank für Ihr Feedback! Du hast {} Token erhalten! ⭐",
     "claimed": "Behauptet",
     "rate_action": "RATE"
+  },
+  "referral": {
+    "title": "Freunde einladen",
+    "desc": "Geben Sie den Einladungscode eines Freundes ein, um 500 Token zu verdienen! Teilen Sie Ihren Code und laden Sie Ihre Freunde ein.",
+    "your_code": "IHR EINLADUNGSCODE",
+    "enter_code": "Geben Sie den Einladungscode ein (+500 Token)",
+    "hint": "CODE EINGEBEN",
+    "claim_button": "Beanspruchen",
+    "claimed_badge": "EINLADUNGSCODE VERWENDET",
+    "share_button": "Aktie",
+    "copy_button": "Kopie",
+    "code_copied": "Einladungscode kopiert! 📋",
+    "share_msg": "🏆 Begleiten Sie mich in der Quiz Arena! Verwenden Sie meinen Einladungscode, um sofort 500 Token zu erhalten:\n👉 Code: {}\n📲 App herunterladen: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "success": "Glückwunsch! {} Tokens wurden Ihrem Konto hinzugefügt! 🎉",
+    "already_used": "Sie haben bereits einen Einladungscode verwendet.",
+    "own_code": "Sie können Ihren eigenen Einladungscode nicht verwenden.",
+    "invalid_code": "Ungültiger oder nicht vorhandener Einladungscode."
   }
 }

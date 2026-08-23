@@ -8,6 +8,7 @@ import '../services/performance_service.dart';
 import '../constants/app_categories.dart';
 import '../widgets/my_native_ad.dart';
 import '../widgets/glass_container.dart';
+import '../services/bot_room_service.dart';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'dart:async';
@@ -219,17 +220,13 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   void _startBotSimulation() {
     if (!widget.isDuel) return;
 
-    final botNames = [
-      'ZekaKüpü', 'SoruUstası', 'BilgiAvcısı',
-      'AkılKüpü', 'DahiBot', 'EfsaneKayıp', 'QuizMaster'
-    ];
     final botAvatars = [
       'avatars/avatar_1.jpg', 'avatars/avatar_2.jpg',
       'avatars/avatar_3.jpg', 'avatars/avatar_4.jpg', 'avatars/avatar_5.jpg'
     ];
     final random = math.Random();
 
-    _botName = botNames[random.nextInt(botNames.length)];
+    _botName = BotRoomService.getRandomBotName(context.locale.languageCode);
     _botAvatar = botAvatars[random.nextInt(botAvatars.length)];
 
     // Mark bot as thinking immediately
@@ -242,26 +239,27 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     if (_botCompleted) return;
 
     final random = math.Random();
+    final int initialBuffer = (_botCurrentIndex == 0) ? 2000 : 0;
 
-    // Difficulty-based timing ranges (milliseconds for finer control)
-    int minMs = 7000;
-    int maxMs = 15000;
-    double accuracy = 0.42; // Kolay: %42 başarı
+    // Difficulty-based timing ranges (milliseconds for realistic human tempo)
+    int minMs = 8000 + initialBuffer;
+    int maxMs = 14000 + initialBuffer;
+    double accuracy = 0.40; // Kolay: %40 başarı
 
     switch (widget.difficulty) {
       case 'Orta':
-        minMs = 5000; maxMs = 11000; accuracy = 0.56; break; // %56 başarı
+        minMs = 6500 + initialBuffer; maxMs = 11000 + initialBuffer; accuracy = 0.54; break; // %54 başarı
       case 'Zor':
-        minMs = 3500; maxMs = 8000; accuracy = 0.70; break; // %70 başarı
+        minMs = 5000 + initialBuffer; maxMs = 8500 + initialBuffer; accuracy = 0.70; break; // %70 başarı
       case 'İmkansız':
       case 'Imkansız':
-        minMs = 2500; maxMs = 6000; accuracy = 0.80; break; // %80 başarı
+        minMs = 4200 + initialBuffer; maxMs = 7000 + initialBuffer; accuracy = 0.80; break; // %80 başarı
     }
 
-    // Add ±30% jitter — sometimes surprisingly fast, sometimes slow
+    // Add ±25% jitter
     final baseMs = minMs + random.nextInt(maxMs - minMs + 1);
-    final jitter = (baseMs * 0.30 * (random.nextDouble() * 2 - 1)).toInt();
-    final finalMs = (baseMs + jitter).clamp(1500, maxMs + 3000);
+    final jitter = (baseMs * 0.25 * (random.nextDouble() * 2 - 1)).toInt();
+    final finalMs = (baseMs + jitter).clamp(3800, maxMs + 2000);
 
     _botTimer = Timer(Duration(milliseconds: finalMs), () {
       if (!mounted || _botCompleted) return;
@@ -822,9 +820,9 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: MyNativeAd(
-                    height: 80,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  child: const MyNativeAd(
+                    height: 65,
                     factoryId: 'adFactorySmall',
                     refreshInterval: 30,
                   ),

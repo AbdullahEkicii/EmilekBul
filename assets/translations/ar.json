@@ -1,5 +1,5 @@
 {
-  "app_title": "مسابقة التوافه",
+  "app_title": "مسابقة المعرفة",
   "welcome": {
     "title": "مرحباً",
     "start_button": "ابدأ",
@@ -800,7 +800,18 @@
     "host_wants_start_badge": "يريد أن يبدأ 🚀",
     "host_waiting_for_you": "المضيف في انتظارك لتكون جاهزًا للبدء! 🚀",
     "start_when_guest_ready": "سيبدأ عندما يكون الضيف جاهزًا ⏳",
-    "guest_is_ready_start": "الضيف جاهز! ابدأ المبارزة 🚀"
+    "guest_is_ready_start": "الضيف جاهز! ابدأ المبارزة 🚀",
+    "calculating_results": "تحديد النتائج...",
+    "feedback_correct": "صحيح! 🔥",
+    "feedback_wrong": "خطأ! ❌",
+    "next_question_preparing": "تحضير السؤال {}...",
+    "see_results": "انظر النتائج",
+    "kick_guest": "ركلة الضيف",
+    "kick_confirm_title": "لاعب ركلة",
+    "kick_confirm_msg": "هل أنت متأكد أنك تريد طرد {} من الغرفة؟",
+    "kicked_from_room": "لقد طردك المضيف من الغرفة.",
+    "special_bet_badge": "خاص 🔥",
+    "fee_info": "{}٪ مصاريف"
   },
   "errors": {
     "no_internet_ai": "تحتاج إلى اتصال إنترنت نشط للوصول إلى الذكاء الاصطناعي الخاص بنا. 📡",
@@ -882,5 +893,22 @@
     "reward_claimed_toast": "شكرا لتعليقاتك! لقد تلقيت {} من الرموز! ⭐",
     "claimed": "ادعى",
     "rate_action": "معدل"
+  },
+  "referral": {
+    "title": "دعوة الأصدقاء",
+    "desc": "أدخل رمز دعوة صديقك لتحصل على 500 رمز! شارك الكود الخاص بك وقم بدعوة أصدقائك.",
+    "your_code": "رمز الدعوة الخاص بك",
+    "enter_code": "أدخل رمز الدعوة (+500 رمزًا)",
+    "hint": "أدخل الرمز",
+    "claim_button": "مطالبة",
+    "claimed_badge": "رمز الدعوة المستخدم",
+    "share_button": "يشارك",
+    "copy_button": "ينسخ",
+    "code_copied": "تم نسخ رمز الدعوة! 📋",
+    "share_msg": "🏆 انضم إلي في Quiz Arena! استخدم رمز الدعوة الخاص بي لتحصل على 500 رمز على الفور:\n👉 الكود: {}\n📲 تحميل التطبيق: https://play.google.com/store/apps/details?id=com.abdallahekici.emilekbul",
+    "success": "تهانينا! {} تمت إضافة الرموز المميزة إلى حسابك! 🎉",
+    "already_used": "لقد استخدمت بالفعل رمز الدعوة.",
+    "own_code": "لا يمكنك استخدام رمز الدعوة الخاص بك.",
+    "invalid_code": "رمز الدعوة غير صالح أو غير موجود."
   }
 }

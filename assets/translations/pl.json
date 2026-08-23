@@ -1,5 +1,5 @@
 {
-  "app_title": "Ciekawostki Quiz",
+  "app_title": "Quiz Wiedzy",
   "welcome": {
     "title": "Powitanie",
     "start_button": "START",
@@ -800,7 +800,18 @@
     "host_wants_start_badge": "CHCE ZACZĄĆ 🚀",
     "host_waiting_for_you": "Gospodarz czeka, aż będziesz gotowy do startu! 🚀",
     "start_when_guest_ready": "Rozpocznie się, gdy gość będzie gotowy ⏳",
-    "guest_is_ready_start": "Gość gotowy! Rozpocznij pojedynek 🚀"
+    "guest_is_ready_start": "Gość gotowy! Rozpocznij pojedynek 🚀",
+    "calculating_results": "Określanie wyników...",
+    "feedback_correct": "PRAWIDŁOWY! 🔥",
+    "feedback_wrong": "ZŁO! ❌",
+    "next_question_preparing": "Przygotowywanie pytania {}...",
+    "see_results": "Zobacz Wyniki",
+    "kick_guest": "Kopnij gościa",
+    "kick_confirm_title": "Wyrzuć gracza",
+    "kick_confirm_msg": "Czy na pewno chcesz wyrzucić {} z pokoju?",
+    "kicked_from_room": "Zostałeś wyrzucony z pokoju przez gospodarza.",
+    "special_bet_badge": "SPECJALNE 🔥",
+    "fee_info": "{}% Opłata"
   },
   "errors": {
     "no_internet_ai": "Aby połączyć się z naszą sztuczną inteligencją, potrzebujesz aktywnego połączenia internetowego. 📡",
@@ -882,5 +893,22 @@
     "reward_claimed_toast": "Dziękujemy za Twoją opinię! Otrzymałeś {} tokenów! ⭐",
     "claimed": "ZASTRZEŻONE",
     "rate_action": "WSKAŹNIK"
+  },
+  "referral": {
+    "title": "Zaproś znajomych",
+    "desc": "Wpisz kod zaproszenia znajomego, aby zdobyć 500 tokenów! Udostępnij swój kod i zaproś znajomych.",
+    "your_code": "TWÓJ KOD ZAPROSZENIA",
+    "enter_code": "Wpisz kod zaproszenia (+500 tokenów)",
+    "hint": "WPISZ KOD",
+    "claim_button": "Prawo",
+    "claimed_badge": "UŻYTO KODU ZAPROSZENIA",
+    "share_button": "Udział",
+    "copy_button": "Kopia",
+    "code_copied": "Kod zaproszenia został skopiowany! 📋",
+    "share_msg": "🏆 Dołącz do mnie w Quiz Arenie! Użyj mojego kodu zaproszenia, aby natychmiast zdobyć 500 tokenów:\n👉 Kod: {}\n📲 Pobierz aplikację: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "success": "Gratulacje! {} Tokeny dodane do Twojego konta! 🎉",
+    "already_used": "Wykorzystałeś już kod zaproszenia.",
+    "own_code": "Nie możesz użyć własnego kodu zaproszenia.",
+    "invalid_code": "Nieprawidłowy lub nieistniejący kod zaproszenia."
   }
 }

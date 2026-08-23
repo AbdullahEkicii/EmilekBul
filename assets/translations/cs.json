@@ -1,5 +1,5 @@
 {
-  "app_title": "Kvíz drobností",
+  "app_title": "Vědomostní Kvíz",
   "welcome": {
     "title": "Vítejte",
     "start_button": "START",
@@ -800,7 +800,18 @@
     "host_wants_start_badge": "CHCE ZAČÍT 🚀",
     "host_waiting_for_you": "Hostitel čeká, až budete připraveni začít! 🚀",
     "start_when_guest_ready": "Spustí se, až bude host připraven ⏳",
-    "guest_is_ready_start": "Host je připraven! Start Duel 🚀"
+    "guest_is_ready_start": "Host je připraven! Start Duel 🚀",
+    "calculating_results": "Určování výsledků...",
+    "feedback_correct": "OPRAVIT! 🔥",
+    "feedback_wrong": "ŠPATNĚ! ❌",
+    "next_question_preparing": "Příprava otázky {}...",
+    "see_results": "Viz Výsledky",
+    "kick_guest": "Kick Guest",
+    "kick_confirm_title": "Kick Player",
+    "kick_confirm_msg": "Opravdu chcete vyhodit uživatele {} z místnosti?",
+    "kicked_from_room": "Hostitel vás vyhodil z místnosti.",
+    "special_bet_badge": "SPECIÁLNÍ 🔥",
+    "fee_info": "Poplatek {} %."
   },
   "errors": {
     "no_internet_ai": "K dosažení naší AI potřebujete aktivní připojení k internetu. 📡",
@@ -882,5 +893,22 @@
     "reward_claimed_toast": "Děkujeme za vaši zpětnou vazbu! Obdrželi jste {} tokenů! ⭐",
     "claimed": "NÁROKOVÁNO",
     "rate_action": "HODNOTIT"
+  },
+  "referral": {
+    "title": "Pozvěte přátele",
+    "desc": "Zadejte zvací kód přítele a získejte 500 tokenů! Sdílejte svůj kód a pozvěte své přátele.",
+    "your_code": "VÁŠ ZVACÍ KÓD",
+    "enter_code": "Zadejte zvací kód (+500 tokenů)",
+    "hint": "ZADEJTE KÓD",
+    "claim_button": "Tvrzení",
+    "claimed_badge": "POUŽITÝ ZVACÍ KÓD",
+    "share_button": "Podíl",
+    "copy_button": "Kopie",
+    "code_copied": "Kód pozvánky zkopírován! 📋",
+    "share_msg": "🏆 Přidejte se ke mně v Quiz Areně! Použijte můj zvací kód a získejte okamžitě 500 tokenů:\n👉 Kód: {}\n📲 Stáhněte si aplikaci: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "success": "Gratuluji! Do vašeho účtu bylo přidáno {} tokenů! 🎉",
+    "already_used": "Zvací kód jste již použili.",
+    "own_code": "Nemůžete použít svůj vlastní zvací kód.",
+    "invalid_code": "Neplatný nebo neexistující zvací kód."
   }
 }

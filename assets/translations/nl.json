@@ -1,5 +1,5 @@
 {
-  "app_title": "Trivia-quiz",
+  "app_title": "Kennisquiz",
   "welcome": {
     "title": "Welkom",
     "start_button": "BEGIN",
@@ -800,7 +800,18 @@
     "host_wants_start_badge": "WIL BEGINNEN 🚀",
     "host_waiting_for_you": "De gastheer wacht tot je klaar bent om te beginnen! 🚀",
     "start_when_guest_ready": "Zal beginnen als de gast klaar is ⏳",
-    "guest_is_ready_start": "Gast is klaar! Start Duel 🚀"
+    "guest_is_ready_start": "Gast is klaar! Start Duel 🚀",
+    "calculating_results": "Resultaten bepalen...",
+    "feedback_correct": "JUIST! 🔥",
+    "feedback_wrong": "FOUT! ❌",
+    "next_question_preparing": "Vraag voorbereiden {}...",
+    "see_results": "Zie Resultaten",
+    "kick_guest": "Schop gast",
+    "kick_confirm_title": "Kick-speler",
+    "kick_confirm_msg": "Weet je zeker dat je {} uit de kamer wilt schoppen?",
+    "kicked_from_room": "Je bent door de gastheer uit de kamer gezet.",
+    "special_bet_badge": "SPECIAAL 🔥",
+    "fee_info": "{}% Tarief"
   },
   "errors": {
     "no_internet_ai": "Je hebt een actieve internetverbinding nodig om onze AI te bereiken. 📡",
@@ -882,5 +893,22 @@
     "reward_claimed_toast": "Bedankt voor uw feedback! Je hebt {} tokens ontvangen! ⭐",
     "claimed": "GECLAIMD",
     "rate_action": "TARIEF"
+  },
+  "referral": {
+    "title": "Nodig vrienden uit",
+    "desc": "Voer de uitnodigingscode van een vriend in om 500 tokens te verdienen! Deel uw code en nodig uw vrienden uit.",
+    "your_code": "UW UITNODIGINGSCODE",
+    "enter_code": "Voer de uitnodigingscode in (+500 tokens)",
+    "hint": "VOER CODE IN",
+    "claim_button": "Claim",
+    "claimed_badge": "UITNODIGINGSCODE GEBRUIKT",
+    "share_button": "Deel",
+    "copy_button": "Kopiëren",
+    "code_copied": "Uitnodigingscode gekopieerd! 📋",
+    "share_msg": "🏆 Doe mee met Quiz Arena! Gebruik mijn uitnodigingscode om direct 500 tokens te ontvangen:\n👉Code: {}\n📲 App downloaden: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "success": "Gefeliciteerd! {} Tokens toegevoegd aan uw account! 🎉",
+    "already_used": "Je hebt al een uitnodigingscode gebruikt.",
+    "own_code": "U kunt uw eigen uitnodigingscode niet gebruiken.",
+    "invalid_code": "Ongeldige of niet-bestaande uitnodigingscode."
   }
 }

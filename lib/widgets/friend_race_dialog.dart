@@ -4,12 +4,14 @@ import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/duel_room_model.dart';
+import '../models/category_model.dart';
 import '../constants/app_categories.dart';
 import '../services/duel_service.dart';
 import '../services/user_service.dart';
 import '../services/token_service.dart';
 import '../services/bot_room_service.dart';
 import '../screens/duel_room_screen.dart';
+import '../utils/app_utils.dart';
 
 class FriendRaceEntryDialog extends StatefulWidget {
   const FriendRaceEntryDialog({super.key});
@@ -505,7 +507,7 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
             final room = openRooms[index];
             final isMyRoom = room.hostUid == myUid;
 
-            final allCats = [...AppCategories.categories, ...AppCategories.bonusPoolCategories];
+            final allCats = [...AppCategories.categories, ...AppCategories.bonusPoolCategories.whereType<CategoryItem>()];
             final cat = allCats.firstWhere(
               (c) => c.name == room.config.category,
               orElse: () => allCats.first,
@@ -549,34 +551,98 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          room.host.username,
+                          AppUtils.localizeUsername(room.host.username),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13.5),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 3),
+                        // Category Name Row
                         Row(
                           children: [
-                            Icon(cat.icon, size: 13, color: cat.color),
+                            Icon(cat.icon, size: 12, color: cat.color),
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
-                                '${cat.key.tr()} • ${room.config.difficulty} • ${room.config.questionCount} ${'duel.questions'.tr()}',
+                                cat.key.tr(),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11),
+                                style: TextStyle(
+                                  color: cat.color,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11.5,
+                                ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        Row(
+                        const SizedBox(height: 5),
+                        // Badges Row (Difficulty + Question Count + Bet Tokens)
+                        Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            const Icon(Icons.monetization_on_rounded, color: Colors.orange, size: 13),
-                            const SizedBox(width: 3),
-                            Text(
-                              '${room.config.betTokens} Token',
-                              style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 11),
+                            // Difficulty Badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                              decoration: BoxDecoration(
+                                color: AppUtils.getDifficultyColor(room.config.difficulty).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: AppUtils.getDifficultyColor(room.config.difficulty).withValues(alpha: 0.45),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: Text(
+                                AppUtils.localizeDifficulty(room.config.difficulty),
+                                style: TextStyle(
+                                  color: AppUtils.getDifficultyColor(room.config.difficulty),
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 9.5,
+                                ),
+                              ),
+                            ),
+                            // Question Count Badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.white12, width: 0.8),
+                              ),
+                              child: Text(
+                                '${room.config.questionCount} ${'duel.questions'.tr()}',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.75),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 9.5,
+                                ),
+                              ),
+                            ),
+                            // Bet Badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.orange.withValues(alpha: 0.4), width: 0.8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.monetization_on_rounded, color: Colors.orange, size: 10),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    '${room.config.betTokens}',
+                                    style: const TextStyle(
+                                      color: Colors.orange,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 9.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -781,42 +847,145 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: [10, 25, 50, 100, 200, 500].map((b) {
+            children: [10, 25, 50, 100, 250, 500, 1000].map((b) {
               final isSel = b == _selectedBet;
+              final isSpecial = DuelRoom.isSpecialHighBet(b);
+              final feePercent = (DuelRoom.getCommissionRate(b) * 100).toInt();
+
               return InkWell(
                 onTap: () => setState(() => _selectedBet = b),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
                     gradient: isSel
-                        ? const LinearGradient(colors: [Color(0xFFFF9F43), Color(0xFFFF5252)])
+                        ? (isSpecial
+                            ? const LinearGradient(colors: [Color(0xFFA855F7), Color(0xFFEC4899)])
+                            : const LinearGradient(colors: [Color(0xFFFF9F43), Color(0xFFFF5252)]))
                         : null,
                     color: isSel ? null : Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: isSel ? Colors.transparent : Colors.white12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSel
+                          ? Colors.transparent
+                          : (isSpecial ? Colors.purpleAccent.withValues(alpha: 0.5) : Colors.white12),
+                      width: isSpecial ? 1.2 : 1,
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.monetization_on_rounded, size: 14, color: isSel ? Colors.white : Colors.orange),
+                      Icon(
+                        isSpecial ? Icons.workspace_premium_rounded : Icons.monetization_on_rounded,
+                        size: 14,
+                        color: isSel
+                            ? Colors.white
+                            : (isSpecial ? const Color(0xFFC084FC) : Colors.orange),
+                      ),
                       const SizedBox(width: 4),
                       Text(
-                        '$b',
+                        b >= 1000 ? '1K' : '$b',
                         style: TextStyle(
                           color: isSel ? Colors.white : Colors.white70,
                           fontWeight: isSel ? FontWeight.w900 : FontWeight.w600,
                           fontSize: 13,
                         ),
                       ),
+                      if (isSpecial) ...[
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: isSel ? Colors.black.withValues(alpha: 0.3) : const Color(0xFFA855F7).withValues(alpha: 0.25),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '%$feePercent',
+                            style: TextStyle(
+                              color: isSel ? Colors.white : const Color(0xFFD8B4FE),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 9,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
               );
             }).toList(),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
+
+          // Prize & Fee Summary Card
+          Builder(
+            builder: (context) {
+              final prize = DuelRoom.calculatePrize(_selectedBet);
+              final feePercent = (DuelRoom.getCommissionRate(_selectedBet) * 100).toInt();
+              final isSpecial = DuelRoom.isSpecialHighBet(_selectedBet);
+
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isSpecial
+                        ? [const Color(0xFFA855F7).withValues(alpha: 0.2), const Color(0xFFEC4899).withValues(alpha: 0.1)]
+                        : [const Color(0xFFFF9F43).withValues(alpha: 0.15), const Color(0xFF6366F1).withValues(alpha: 0.1)],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isSpecial ? const Color(0xFFA855F7).withValues(alpha: 0.4) : const Color(0xFFFF9F43).withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          isSpecial ? Icons.military_tech_rounded : Icons.emoji_events_rounded,
+                          color: isSpecial ? const Color(0xFFD8B4FE) : const Color(0xFFFFD56B),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'duel.pot_prize'.tr(),
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11),
+                            ),
+                            Text(
+                              '$prize Token',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Text(
+                        'duel.fee_info'.tr(args: ['$feePercent']),
+                        style: TextStyle(
+                          color: isSpecial ? const Color(0xFF34D399) : Colors.white70,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
 
           // Submit Button
           SizedBox(

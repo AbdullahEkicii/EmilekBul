@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'dart:io';
 
@@ -37,5 +38,37 @@ class AppUtils {
       return false;
     }
     return false;
+  }
+
+  /// Localizes standard difficulty names into current app language
+  static String localizeDifficulty(String? difficulty) {
+    if (difficulty == null || difficulty.isEmpty) return '';
+    final diffLower = difficulty.toLowerCase().trim();
+    if (diffLower == 'kolay' || diffLower == 'easy') {
+      return 'category_ui.difficulty.easy'.tr();
+    } else if (diffLower == 'orta' || diffLower == 'medium') {
+      return 'category_ui.difficulty.medium'.tr();
+    } else if (diffLower == 'zor' || diffLower == 'hard') {
+      return 'category_ui.difficulty.hard'.tr();
+    } else if (diffLower == 'imkansız' || diffLower == 'imkansiz' || diffLower == 'impossible') {
+      return 'category_ui.difficulty.impossible'.tr();
+    }
+    return difficulty;
+  }
+
+  /// Gets standard color representation for a difficulty level
+  static Color getDifficultyColor(String? difficulty) {
+    if (difficulty == null) return const Color(0xFF10B981);
+    final diffLower = difficulty.toLowerCase().trim();
+    if (diffLower == 'kolay' || diffLower == 'easy') {
+      return const Color(0xFF10B981); // Emerald Green
+    } else if (diffLower == 'orta' || diffLower == 'medium') {
+      return const Color(0xFFFF9F43); // Warm Orange
+    } else if (diffLower == 'zor' || diffLower == 'hard') {
+      return const Color(0xFFEF4444); // Crimson Red
+    } else if (diffLower == 'imkansız' || diffLower == 'imkansiz' || diffLower == 'impossible') {
+      return const Color(0xFFA855F7); // Purple
+    }
+    return const Color(0xFF6366F1);
   }
 }

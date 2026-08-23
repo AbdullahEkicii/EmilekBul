@@ -245,10 +245,30 @@ class DuelRoom {
     };
   }
 
-  /// Hesaplanan Net Ödül: Toplam Havuzdan %20 komisyon kesintisi
+  /// Bahis Havuzu ve Kademeli Komisyon Oranları:
+  /// 10 - 50: %20 Komisyon
+  /// 100: %16 Komisyon
+  /// 250: %14 Komisyon
+  /// 500: %12 Komisyon
+  /// 1000: %10 Komisyon (1K özel yüksek bahis)
+  static double getCommissionRate(int betTokens) {
+    if (betTokens >= 1000) return 0.10; // %10 kesinti
+    if (betTokens >= 500) return 0.12;  // %12 kesinti
+    if (betTokens >= 250) return 0.14;  // %14 kesinti
+    if (betTokens >= 100) return 0.16;  // %16 kesinti
+    return 0.20;                        // %20 kesinti
+  }
+
+  /// Hesaplanan Net Ödül: Toplam Havuzdan kademeli komisyon kesintisi
   static int calculatePrize(int betTokens) {
     final totalPot = betTokens * 2;
-    return (totalPot * 0.8).round();
+    final commission = getCommissionRate(betTokens);
+    return (totalPot * (1.0 - commission)).round();
+  }
+
+  /// Yüksek / Özel Bahis mi? (Botların oynamayacağı özel kademe)
+  static bool isSpecialHighBet(int betTokens) {
+    return betTokens >= 250;
   }
 }
 

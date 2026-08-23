@@ -486,8 +486,8 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: MyNativeAd(
-                height: 120,
-                factoryId: 'adFactoryExample',
+                height: 65,
+                factoryId: 'adFactorySmall',
                 refreshInterval: 30,
               ),
             ),

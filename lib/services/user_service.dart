@@ -308,47 +308,37 @@ class UserService {
       final user = userCredential.user;
 
       if (user != null) {
-        // 2. Misafir Sayısını Al ve Artır
-        final counterRef = _firestore.collection('counters').doc('guest_count');
+        // 2. Benzersiz Misafir Kullanıcı Adı ve Profilini Doğrudan Oluştur (Anlık & Non-blocking)
+        final randomSuffix = Random().nextInt(900000) + 100000;
+        final username = 'Misafir$randomSuffix';
 
-        await _firestore.runTransaction((transaction) async {
-          final snapshot = await transaction.get(counterRef);
+        await _firestore.collection(usersCollection).doc(user.uid).set({
+          'username': username,
+          'username_lower': username.toLowerCase(),
+          'firstName': 'Misafir',
+          'lastName': '',
+          'email': '',
+          'avatarIndex': '0',
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+          'totalPoints': 0,
+          'totalQuizzes': 0,
+          'correctAnswers': 0,
+          'level': 1,
+          'completedQuizzes': 0,
+          'tokens': 50, // Default start token
+          'isGuest': true,
+          'ownedAvatars': <String>[],
+          'ownedFrames': ['0'],
+          'ownedTitles': ['0'],
+          'equippedFrame': '0',
+          'equippedTitle': 'yok',
+        }, SetOptions(merge: true));
 
-          int currentCount = 1;
-          if (snapshot.exists) {
-            currentCount = (snapshot.data()?['count'] ?? 0) + 1;
-            transaction.update(counterRef, {'count': currentCount});
-          } else {
-            transaction.set(counterRef, {'count': currentCount});
-          }
-
-          // 3. Kullanıcı Profilini Oluştur
-          final username = 'Misafir$currentCount';
-
-          transaction
-              .set(_firestore.collection(usersCollection).doc(user.uid), {
-            'username': username,
-            'username_lower': username.toLowerCase(),
-            'firstName': 'Misafir',
-            'lastName': '',
-            'email': '',
-            'avatarIndex': '0',
-            'createdAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-            'totalPoints': 0,
-            'totalQuizzes': 0,
-            'correctAnswers': 0,
-            'level': 1,
-            'completedQuizzes': 0,
-            'tokens': 50, // Default start token
-            'isGuest': true,
-            'ownedAvatars': <String>[],
-            'ownedFrames': ['0'],
-            'ownedTitles': ['0'],
-            'equippedFrame': '0',
-            'equippedTitle': 'yok',
-          });
-        });
+        // Arka planda global sayaç güncellemesi (asenkron, non-blocking)
+        unawaited(_firestore.collection('counters').doc('guest_count').set({
+          'count': FieldValue.increment(1),
+        }, SetOptions(merge: true)));
 
         // HIZLI JETON EŞİTLEMESİ (Misafir için SharedPreferences güncellemesi)
         try {
@@ -835,30 +825,54 @@ class UserService {
   }
 
   /// 3 aydır (90 gün) girilmeyen inaktif misafir hesaplarını temizle
-  static Future<int> cleanupInactiveGuestAccounts({int cutoffDays = 90, int batchLimit = 150}) async {
+  static Future<int> cleanupInactiveGuestAccounts({int cutoffDays = 90, int batchLimit = 300}) async {
     try {
       final currentUid = _auth.currentUser?.uid;
       final cutoffDate = DateTime.now().subtract(Duration(days: cutoffDays));
       debugPrint('🧹 Misafir Hesabı Temizliği Başlatılıyor... (Kriter: $cutoffDays gün öncesi - ${cutoffDate.toIso8601String()})');
 
-      // 1. isGuest == true olan misafir hesaplarını çek (Tek alanlı indeks, kompozit indeks gerektirmez)
-      final querySnapshot = await _firestore
+      // Hem yeni isGuest==true hem de eski email=='' olan tüm misafir profillerini çek
+      final isGuestQuery = await _firestore
           .collection(usersCollection)
           .where('isGuest', isEqualTo: true)
           .limit(batchLimit)
           .get();
 
-      if (querySnapshot.docs.isEmpty) {
+      final emptyEmailQuery = await _firestore
+          .collection(usersCollection)
+          .where('email', isEqualTo: '')
+          .limit(batchLimit)
+          .get();
+
+      // Belgeleri tekil bir kümede birleştir
+      final Map<String, DocumentSnapshot<Map<String, dynamic>>> allCandidateDocs = {};
+      for (final doc in isGuestQuery.docs) {
+        allCandidateDocs[doc.id] = doc;
+      }
+      for (final doc in emptyEmailQuery.docs) {
+        allCandidateDocs[doc.id] = doc;
+      }
+
+      if (allCandidateDocs.isEmpty) {
         debugPrint('🧹 Kontrol edilecek misafir hesabı bulunamadı.');
         return 0;
+      }
+
+      DateTime? parseFlexibleDate(dynamic val) {
+        if (val == null) return null;
+        if (val is Timestamp) return val.toDate();
+        if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
+        if (val is String) return DateTime.tryParse(val);
+        return null;
       }
 
       final batch = _firestore.batch();
       int deletedCount = 0;
 
-      for (final doc in querySnapshot.docs) {
-        final uid = doc.id;
-        final data = doc.data();
+      for (final entry in allCandidateDocs.entries) {
+        final uid = entry.key;
+        final data = entry.value.data();
+        if (data == null) continue;
 
         // 1. Botları asla silme
         if (uid.startsWith('bot_')) continue;
@@ -866,25 +880,23 @@ class UserService {
         // 2. Mevcut oturum açmış kullanıcıyı asla silme
         if (currentUid != null && uid == currentUid) continue;
 
-        // 3. E-postası olan veya kalıcı hesaba dönüşmüş olanları asla silme
-        final email = data['email']?.toString() ?? '';
-        final isGuest = data['isGuest'] == true;
-        if (email.isNotEmpty || !isGuest) continue;
+        // 3. E-postası olan veya kalıcı hesaba dönüşmüş (Google / Play Games) olanları asla silme
+        final email = data['email']?.toString().trim() ?? '';
+        final hasPlayGames = data['playGamesId'] != null && data['playGamesId'].toString().trim().isNotEmpty;
+        final hasGoogle = data['googleId'] != null && data['googleId'].toString().trim().isNotEmpty;
+        if (email.isNotEmpty || hasPlayGames || hasGoogle) continue;
 
         // 4. Son aktiflik tarihini kontrol et (lastLogin -> updatedAt -> createdAt)
-        DateTime? lastActive;
-        if (data['lastLogin'] is Timestamp) {
-          lastActive = (data['lastLogin'] as Timestamp).toDate();
-        } else if (data['updatedAt'] is Timestamp) {
-          lastActive = (data['updatedAt'] as Timestamp).toDate();
-        } else if (data['createdAt'] is Timestamp) {
-          lastActive = (data['createdAt'] as Timestamp).toDate();
-        }
+        final lastActive = parseFlexibleDate(data['lastLogin']) ??
+            parseFlexibleDate(data['updatedAt']) ??
+            parseFlexibleDate(data['createdAt']);
 
-        // Eğer son aktiflik tarihi 90 günden eskiyse (veya hiç tarih yoksa çok eski bir kalıntıysa)
+        // Eğer son aktiflik tarihi 90 günden eskiyse (veya hiç tarih kaydı olmayan eski bir artıksa)
         if (lastActive == null || lastActive.isBefore(cutoffDate)) {
-          batch.delete(doc.reference);
+          batch.delete(entry.value.reference);
           deletedCount++;
+          // Firestore batch sınırı (maksimum 450 işlem)
+          if (deletedCount >= 450) break;
         }
       }
 

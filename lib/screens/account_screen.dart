@@ -7,9 +7,9 @@ import '../services/sound_service.dart';
 import '../services/performance_service.dart';
 import '../services/fullscreen_service.dart';
 import '../services/achievement_service.dart';
-import '../services/review_service.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/navigation_buttons.dart';
+import '../widgets/my_native_ad.dart';
 import 'shop_screen.dart';
 import 'level_progression_screen.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -324,7 +324,7 @@ class _AccountScreenState extends State<AccountScreen>
                         if (!_isGuest) _buildAchievementsShowcase(),
                         if (!_isGuest) const SizedBox(height: 20),
                         _buildMenuSection(),
-                        const SizedBox(height: 40),
+                        const SizedBox(height: 30),
                       ],
                     ),
                   ),
@@ -775,6 +775,13 @@ class _AccountScreenState extends State<AccountScreen>
                         builder: (_) => const EditProfileScreen()))
                 .then((_) => _loadUserProfile()),
           ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+            child: MyNativeAd(
+              height: 70,
+              factoryId: 'adFactorySmall',
+            ),
+          ),
           _buildMenuItem(
             icon: Icons.shopping_bag_rounded,
             title: 'account.shop'.tr(),
@@ -834,20 +841,6 @@ class _AccountScreenState extends State<AccountScreen>
             subtitle: 'settings.language_desc'.tr(),
             color: Colors.indigoAccent,
             onTap: _showLanguageDialog,
-          ),
-          _buildMenuItem(
-            icon: Icons.star_rate_rounded,
-            title: 'review.card_title'.tr(),
-            subtitle: 'review.card_desc'.tr(),
-            color: Colors.amber,
-            onTap: () {
-              ReviewService.showReviewDialog(
-                context,
-                onRewardClaimed: () {
-                  _loadUserProfile();
-                },
-              );
-            },
           ),
           if (!_isGuest) // Only show password change if not guest
             _buildMenuItem(

@@ -7,10 +7,12 @@ import 'package:emilekbul/widgets/token_widget.dart';
 import 'package:emilekbul/services/token_service.dart';
 import 'package:emilekbul/widgets/glass_container.dart';
 import 'package:emilekbul/widgets/navigation_buttons.dart';
+import 'package:emilekbul/widgets/my_native_ad.dart';
 
 import '../models/category_model.dart';
 import '../constants/app_categories.dart';
 import '../screens/token_screen.dart';
+import '../utils/app_utils.dart';
 
 class KategoriScreen extends StatefulWidget {
   final Function(String category, String difficulty, int duration, {bool isDuel}) onStartQuiz;
@@ -54,7 +56,7 @@ class _KategoriScreenState extends State<KategoriScreen>
       const Color(0xFF96CEB4),
       Icons.sentiment_satisfied,
       "category_ui.difficulty_desc.easy",
-      15,
+      25,
       "category_ui.difficulty.easy",
     ),
     DifficultyItem(
@@ -62,7 +64,7 @@ class _KategoriScreenState extends State<KategoriScreen>
       const Color(0xFFFECA57),
       Icons.sentiment_neutral,
       "category_ui.difficulty_desc.medium",
-      25,
+      35,
       "category_ui.difficulty.medium",
     ),
     DifficultyItem(
@@ -70,7 +72,7 @@ class _KategoriScreenState extends State<KategoriScreen>
       const Color(0xFFFF6B6B),
       Icons.sentiment_very_dissatisfied,
       "category_ui.difficulty_desc.hard",
-      30,
+      40,
       "category_ui.difficulty.hard",
     ),
     DifficultyItem(
@@ -78,7 +80,7 @@ class _KategoriScreenState extends State<KategoriScreen>
       const Color(0xFF22223B),
       Icons.warning_amber_rounded,
       "category_ui.difficulty_desc.impossible",
-      35,
+      45,
       "category_ui.difficulty.impossible",
     ),
   ];
@@ -274,7 +276,17 @@ class _KategoriScreenState extends State<KategoriScreen>
                         child: RepaintBoundary(child: _buildCategorySection()),
                       ),
                     ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20.0),
+                        child: MyNativeAd(
+                          height: 70,
+                          factoryId: 'adFactorySmall',
+                        ),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -507,13 +519,17 @@ class _KategoriScreenState extends State<KategoriScreen>
               children: [
                 Row(
                   children: [
-                    Text(
-                      'category_ui.weekly_bonus_title'.tr(),
-                      style: const TextStyle(
-                        color: Color(0xFFFFD56B),
-                        fontWeight: FontWeight.w900,
-                        fontSize: 13,
-                        letterSpacing: 0.5,
+                    Flexible(
+                      child: Text(
+                        'category_ui.weekly_bonus_title'.tr(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFFFFD56B),
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                          letterSpacing: 0.5,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -1133,7 +1149,49 @@ class _KategoriScreenState extends State<KategoriScreen>
                   child: InkWell(
                     onTap: isEnabled
                         ? () async {
-                            // Token kontrolü
+                            HapticFeedback.mediumImpact();
+
+                            // 1. İnternet Bağlantısı Kontrolü
+                            final hasInternet = await AppUtils.hasInternetConnection();
+                            if (!hasInternet) {
+                              if (!context.mounted) return;
+                              showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  backgroundColor: const Color(0xFF1E293B),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                  title: Row(
+                                    children: [
+                                      const Icon(Icons.wifi_off_rounded, color: Colors.orangeAccent, size: 28),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          'errors.no_internet_title'.tr(),
+                                          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  content: Text(
+                                    'errors.no_internet_ai'.tr(),
+                                    style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
+                                  ),
+                                  actions: [
+                                    ElevatedButton(
+                                      onPressed: () => Navigator.pop(ctx),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF6366F1),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      ),
+                                      child: Text('common.ok'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              return;
+                            }
+
+                            // 2. Token kontrolü
                             final hasEnoughTokens =
                                 await TokenService.spendQuizTokens();
                             if (!hasEnoughTokens) {
@@ -1143,7 +1201,7 @@ class _KategoriScreenState extends State<KategoriScreen>
                                   content: Text(
                                       'category_ui.insufficient_tokens'.tr()),
                                   backgroundColor: Colors.red,
-                                  duration: Duration(seconds: 2),
+                                  duration: const Duration(seconds: 2),
                                 ),
                               );
                               return;

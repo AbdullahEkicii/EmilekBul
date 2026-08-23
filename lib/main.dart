@@ -1,13 +1,14 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'screens/animated_splash_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/kategori_screen.dart';
 import 'screens/quiz_screen.dart';
 import 'screens/loading_screen.dart';
 import 'models/question.dart';
-import 'services/ai_api_service.dart';
+import 'services/question_pool_service.dart';
 import 'screens/test_sonucu_screen.dart';
 import 'services/notification_service.dart';
 
@@ -53,7 +54,12 @@ void main() async {
   }
 
   // Arka planda başlasınlar, açılışı geciktirmesinler
-  Future(() {
+  Future(() async {
+    try {
+      await MobileAds.instance.initialize();
+    } catch (e) {
+      debugPrint("MobileAds init error: $e");
+    }
     NotificationService.init().catchError((e) => debugPrint("Notif init error: $e"));
   });
 
@@ -132,7 +138,6 @@ class QuizFlow extends StatefulWidget {
 }
 
 class _QuizFlowState extends State<QuizFlow> {
-  final AiApiService _apiService = AiApiService();
   String? _screenState; // welcome, category, quiz, result
   bool _loading = false;
   bool _isDataReady = false;
@@ -251,7 +256,6 @@ class _QuizFlowState extends State<QuizFlow> {
     AnalyticsService.logQuizStart(
       category: category,
       difficulty: difficulty,
-      isDuel: isDuel,
       questionCount: count,
     );
 
@@ -270,19 +274,17 @@ class _QuizFlowState extends State<QuizFlow> {
     });
 
     try {
-      debugPrint('API çağrısı yapılıyor...');
+      debugPrint('Hibrit soru havuzundan çekiliyor...');
 
-      final results = await Future.wait([
-        _apiService.fetchQuestions(
-          category: category,
-          difficulty: difficulty,
-          languageCode: languageCode,
-          count: count,
-        ),
-      ]);
+      final questions = await QuestionPoolService.getHybridQuestions(
+        category: category,
+        difficulty: difficulty,
+        languageCode: languageCode,
+        count: count,
+        includeSpacedRepetition: true,
+      );
 
-      final questions = results[0];
-      debugPrint('API çağrısı başarılı, ${questions.length} soru alındı');
+      debugPrint('Soru yükleme başarılı, ${questions.length} soru hazır');
 
       if (!mounted) return;
       setState(() {
@@ -427,6 +429,20 @@ class _QuizFlowState extends State<QuizFlow> {
           return LoadingScreen(
             isDataReady: _isDataReady,
             onStart: _onStartQuizTransition,
+            onTimeout: () {
+              if (!mounted) return;
+              setState(() {
+                _loading = false;
+                _screenState = 'category';
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('errors.no_internet_ai'.tr()),
+                  backgroundColor: Colors.redAccent,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            },
           );
         }
         return QuizScreen(

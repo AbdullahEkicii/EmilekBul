@@ -116,8 +116,8 @@ class _TestDetailScreenState extends State<TestDetailScreen>
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 20, vertical: 5),
                   child: MyNativeAd(
-                    height: 120,
-                    factoryId: 'adFactoryExample',
+                    height: 65,
+                    factoryId: 'adFactorySmall',
                     refreshInterval: 30,
                   ),
                 ),

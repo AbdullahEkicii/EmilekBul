@@ -1,5 +1,5 @@
 {
-  "app_title": "Trivia-quiz",
+  "app_title": "Viden Quiz",
   "welcome": {
     "title": "Velkomst",
     "start_button": "STARTE",
@@ -800,7 +800,18 @@
     "host_wants_start_badge": "VIL STARTE 🚀",
     "host_waiting_for_you": "Værten venter på, at du er klar til at starte! 🚀",
     "start_when_guest_ready": "Starter, når gæsten er klar ⏳",
-    "guest_is_ready_start": "Gæst er klar! Start duel 🚀"
+    "guest_is_ready_start": "Gæst er klar! Start duel 🚀",
+    "calculating_results": "Bestemmer resultater...",
+    "feedback_correct": "KORREKT! 🔥",
+    "feedback_wrong": "FORKERT! ❌",
+    "next_question_preparing": "Forbereder spørgsmål {}...",
+    "see_results": "Se resultater",
+    "kick_guest": "Spark gæst",
+    "kick_confirm_title": "Kick Player",
+    "kick_confirm_msg": "Er du sikker på, at du vil sparke {} fra rummet?",
+    "kicked_from_room": "Du blev sparket ud af værelset af værten.",
+    "special_bet_badge": "SPECIAL 🔥",
+    "fee_info": "{} % gebyr"
   },
   "errors": {
     "no_internet_ai": "Du skal have en aktiv internetforbindelse for at nå vores AI. 📡",
@@ -882,5 +893,22 @@
     "reward_claimed_toast": "Tak for din feedback! Du har modtaget {} tokens! ⭐",
     "claimed": "KRÆVET",
     "rate_action": "SATS"
+  },
+  "referral": {
+    "title": "Inviter venner",
+    "desc": "Indtast en vens invitationskode for at tjene 500 tokens! Del din kode og inviter dine venner.",
+    "your_code": "DIN INVITATIONSKODE",
+    "enter_code": "Indtast invitationskode (+500 tokens)",
+    "hint": "INDTAG KODE",
+    "claim_button": "Påstand",
+    "claimed_badge": "INVITATIONSKODE BRUGT",
+    "share_button": "Dele",
+    "copy_button": "Kopi",
+    "code_copied": "Invitationskoden er kopieret! 📋",
+    "share_msg": "🏆 Slut dig til mig i Quiz Arena! Brug min invitationskode til at få 500 tokens med det samme:\n👉 Kode: {}\n📲 Download app: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "success": "Tillykke! {} Tokens føjet til din konto! 🎉",
+    "already_used": "Du har allerede brugt en invitationskode.",
+    "own_code": "Du kan ikke bruge din egen invitationskode.",
+    "invalid_code": "Ugyldig eller ikke-eksisterende invitationskode."
   }
 }

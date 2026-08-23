@@ -9,11 +9,17 @@ import '../widgets/my_native_ad.dart';
 class LoadingScreen extends StatefulWidget {
   final bool isDataReady;
   final VoidCallback? onStart;
+  final VoidCallback? onTimeout;
+  final int minWaitSeconds;
+  final int timeoutSeconds;
 
   const LoadingScreen({
     super.key,
     this.isDataReady = false,
     this.onStart,
+    this.onTimeout,
+    this.minWaitSeconds = 5,
+    this.timeoutSeconds = 14,
   });
 
   @override
@@ -31,6 +37,7 @@ class _LoadingScreenState extends State<LoadingScreen>
   late Animation<double> _progressAnimation;
 
   Timer? _minWaitTimer;
+  Timer? _timeoutTimer;
   bool _minTimeElapsed = false;
   bool _hasStarted = false;
 
@@ -55,19 +62,27 @@ class _LoadingScreenState extends State<LoadingScreen>
           ..repeat();
 
     _progressController =
-        AnimationController(duration: const Duration(seconds: 7), vsync: this);
+        AnimationController(duration: Duration(seconds: widget.minWaitSeconds), vsync: this);
 
     _progressController.forward();
 
-    // Animate smoothly to 99% across 7 seconds
+    // 5 saniyede %99'a kadar akıcı animasyon
     _progressAnimation = Tween<double>(begin: 0.0, end: 0.99).animate(
         CurvedAnimation(parent: _progressController, curve: Curves.easeInOutCubic));
 
-    // Garanti 7 saniye bekleme süresi
-    _minWaitTimer = Timer(const Duration(seconds: 7), () {
+    // Minimum 5 saniye bekleme süresi (reklam ve hazır olma senkronu)
+    _minWaitTimer = Timer(Duration(seconds: widget.minWaitSeconds), () {
       if (!mounted) return;
       _minTimeElapsed = true;
       _checkAndTriggerStart();
+    });
+
+    // 14 saniye zaman aşımı (kullanıcının ekranda asılı kalmasını önler)
+    _timeoutTimer = Timer(Duration(seconds: widget.timeoutSeconds), () {
+      if (!mounted || _hasStarted) return;
+      if (!widget.isDataReady) {
+        widget.onTimeout?.call();
+      }
     });
   }
 
@@ -75,6 +90,7 @@ class _LoadingScreenState extends State<LoadingScreen>
     if (!mounted || _hasStarted) return;
     if (_minTimeElapsed && widget.isDataReady) {
       _hasStarted = true;
+      _timeoutTimer?.cancel();
       widget.onStart?.call();
     }
   }
@@ -90,6 +106,7 @@ class _LoadingScreenState extends State<LoadingScreen>
   @override
   void dispose() {
     _minWaitTimer?.cancel();
+    _timeoutTimer?.cancel();
     _orbController.dispose();
     _pulseController.dispose();
     _shimmerController.dispose();

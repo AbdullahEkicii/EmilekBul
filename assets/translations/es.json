@@ -1,5 +1,5 @@
 {
-  "app_title": "Prueba de trivia",
+  "app_title": "Quiz de Trivia",
   "welcome": {
     "title": "Bienvenido",
     "start_button": "INICIAR",
@@ -800,7 +800,18 @@
     "host_wants_start_badge": "QUIERE EMPEZAR 🚀",
     "host_waiting_for_you": "¡El anfitrión está esperando que estés listo para comenzar! 🚀",
     "start_when_guest_ready": "Comenzará cuando el invitado esté listo ⏳",
-    "guest_is_ready_start": "¡El invitado está listo! Inicia duelo 🚀"
+    "guest_is_ready_start": "¡El invitado está listo! Inicia duelo 🚀",
+    "calculating_results": "Determinando resultados...",
+    "feedback_correct": "¡CORRECTO! 🔥",
+    "feedback_wrong": "¡EQUIVOCADO! ❌",
+    "next_question_preparing": "Preparando la pregunta {}....",
+    "see_results": "Ver resultados",
+    "kick_guest": "Invitado de patada",
+    "kick_confirm_title": "Jugador de patada",
+    "kick_confirm_msg": "¿Estás seguro de que quieres expulsar a {} de la sala?",
+    "kicked_from_room": "El anfitrión te echó de la habitación.",
+    "special_bet_badge": "ESPECIAL 🔥",
+    "fee_info": "{}% Tarifa"
   },
   "errors": {
     "no_internet_ai": "Necesitas una conexión a internet activa para contactar a nuestra IA. 📡",
@@ -882,5 +893,22 @@
     "reward_claimed_toast": "¡Gracias por tus comentarios! ¡Recibiste {} tokens! ⭐",
     "claimed": "RECLAMADO",
     "rate_action": "TASA"
+  },
+  "referral": {
+    "title": "invitar amigos",
+    "desc": "¡Ingresa el código de invitación de un amigo para ganar 500 tokens! Comparte tu código e invita a tus amigos.",
+    "your_code": "TU CÓDIGO DE INVITACIÓN",
+    "enter_code": "Ingrese el código de invitación (+500 tokens)",
+    "hint": "INTRODUCIR CÓDIGO",
+    "claim_button": "Afirmar",
+    "claimed_badge": "CÓDIGO DE INVITACIÓN UTILIZADO",
+    "share_button": "Compartir",
+    "copy_button": "Copiar",
+    "code_copied": "¡Código de invitación copiado! 📋",
+    "share_msg": "🏆 ¡Únete a mí en Quiz Arena! Utilice mi código de invitación para obtener 500 tokens al instante:\n👉 Código: {}\n📲 Descargar la aplicación: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "success": "¡Felicidades! {} ¡Tokens agregados a tu cuenta! 🎉",
+    "already_used": "Ya has utilizado un código de invitación.",
+    "own_code": "No puede utilizar su propio código de invitación.",
+    "invalid_code": "Código de invitación no válido o inexistente."
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:emilekbul/models/test_result.dart';
 import 'package:emilekbul/models/question.dart';
@@ -23,7 +24,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -65,6 +66,26 @@ CREATE TABLE quests (
 CREATE TABLE achievements (
   id TEXT PRIMARY KEY,
   unlocked_at TEXT NOT NULL
+)
+''');
+    }
+    if (oldVersion < 5) {
+      await db.execute('''
+CREATE TABLE IF NOT EXISTS cached_questions (
+  id TEXT PRIMARY KEY,
+  category TEXT NOT NULL,
+  difficulty TEXT NOT NULL,
+  language_code TEXT NOT NULL,
+  question_root TEXT NOT NULL,
+  question_json TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+)
+''');
+      await db.execute('''
+CREATE TABLE IF NOT EXISTS seen_questions (
+  question_id TEXT PRIMARY KEY,
+  category TEXT NOT NULL,
+  answered_at INTEGER NOT NULL
 )
 ''');
     }
@@ -130,6 +151,26 @@ CREATE TABLE quests (
 CREATE TABLE achievements (
   id TEXT PRIMARY KEY,
   unlocked_at TEXT NOT NULL
+)
+''');
+
+    await db.execute('''
+CREATE TABLE cached_questions (
+  id TEXT PRIMARY KEY,
+  category TEXT NOT NULL,
+  difficulty TEXT NOT NULL,
+  language_code TEXT NOT NULL,
+  question_root TEXT NOT NULL,
+  question_json TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+)
+''');
+
+    await db.execute('''
+CREATE TABLE seen_questions (
+  question_id TEXT PRIMARY KEY,
+  category TEXT NOT NULL,
+  answered_at INTEGER NOT NULL
 )
 ''');
   }
@@ -362,6 +403,216 @@ CREATE TABLE achievements (
     );
     if (result.isEmpty) return 0;
     return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  // ==========================================
+  // HİBRİT SORU HAVUZU & ÖNBELLEK YÖNETİMİ
+  // ==========================================
+
+  /// Soruları yerel SQLite havuzuna kaydeder
+  Future<void> saveCachedQuestions(
+    List<Question> questions, {
+    required String category,
+    required String difficulty,
+    required String languageCode,
+  }) async {
+    final db = await instance.database;
+    final batch = db.batch();
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    for (final q in questions) {
+      final qRoot = q.question.toLowerCase().replaceAll(RegExp(r'[^\w\sğüşıöçĞÜŞİÖÇ]'), '').trim();
+      final qId = 'q_${category.hashCode.abs()}_${qRoot.hashCode.abs()}';
+
+      batch.insert(
+        'cached_questions',
+        {
+          'id': qId,
+          'category': category,
+          'difficulty': difficulty,
+          'language_code': languageCode,
+          'question_root': qRoot,
+          'question_json': jsonEncode(q.toJson()),
+          'created_at': now,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    await batch.commit(noResult: true);
+  }
+
+  /// Kullanıcının daha önce görmediği havuz sorularını getirir
+  Future<List<Question>> getUnseenCachedQuestions({
+    required String category,
+    required String difficulty,
+    required String languageCode,
+    required int count,
+  }) async {
+    final db = await instance.database;
+    final query = '''
+      SELECT cq.id, cq.question_json
+      FROM cached_questions cq
+      LEFT JOIN seen_questions sq ON cq.id = sq.question_id
+      WHERE cq.category = ? AND cq.difficulty = ? AND cq.language_code = ? AND sq.question_id IS NULL
+      ORDER BY RANDOM()
+      LIMIT ?
+    ''';
+
+    final rows = await db.rawQuery(query, [category, difficulty, languageCode, count]);
+    if (rows.isEmpty) return [];
+
+    List<Question> questions = [];
+    List<String> seenIds = [];
+
+    for (final row in rows) {
+      final jsonStr = row['question_json'] as String;
+      final qId = row['id'] as String;
+      try {
+        final qMap = jsonDecode(jsonStr);
+        questions.add(Question.fromJson(qMap));
+        seenIds.add(qId);
+      } catch (_) {}
+    }
+
+    if (seenIds.isNotEmpty) {
+      await markQuestionsAsSeen(seenIds, category: category);
+    }
+
+    return questions;
+  }
+
+  /// Görülmemiş kalmadığında ve AI ulaşılamadığında tüm önbellekteki soruları döner
+  Future<List<Question>> getRecycledCachedQuestions({
+    required String category,
+    required String difficulty,
+    required String languageCode,
+    required int count,
+  }) async {
+    final db = await instance.database;
+    final query = '''
+      SELECT id, question_json
+      FROM cached_questions
+      WHERE category = ? AND difficulty = ? AND language_code = ?
+      ORDER BY RANDOM()
+      LIMIT ?
+    ''';
+    final rows = await db.rawQuery(query, [category, difficulty, languageCode, count]);
+    if (rows.isEmpty) return [];
+
+    List<Question> questions = [];
+    for (final row in rows) {
+      try {
+        questions.add(Question.fromJson(jsonDecode(row['question_json'] as String)));
+      } catch (_) {}
+    }
+    return questions;
+  }
+
+  /// Soruları kullanıcının gördüğü olarak işaretler
+  Future<void> markQuestionsAsSeen(List<String> questionIds, {String category = ''}) async {
+    final db = await instance.database;
+    final batch = db.batch();
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    for (final id in questionIds) {
+      batch.insert(
+        'seen_questions',
+        {
+          'question_id': id,
+          'category': category,
+          'answered_at': now,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    await batch.commit(noResult: true);
+  }
+
+  /// Belirli bir kategori için görülmemiş havuz soru sayısını döner
+  Future<int> getUnseenCachedQuestionsCount(String category, String difficulty, String languageCode) async {
+    final db = await instance.database;
+    final query = '''
+      SELECT COUNT(*) as count
+      FROM cached_questions cq
+      LEFT JOIN seen_questions sq ON cq.id = sq.question_id
+      WHERE cq.category = ? AND cq.difficulty = ? AND cq.language_code = ? AND sq.question_id IS NULL
+    ''';
+    final result = await db.rawQuery(query, [category, difficulty, languageCode]);
+    if (result.isEmpty) return 0;
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  // ==========================================
+  // ARALIKLI TEKRAR (SPACED REPETITION)
+  // ==========================================
+
+  /// Kullanıcının en az 4-5 test önce yanlış cevapladığı soruları çeker ve şıklarını karıştırarak döner
+  Future<List<Question>> getSpacedRepetitionQuestions(String category, {int limit = 1, int minTestsAgo = 4}) async {
+    final db = await instance.database;
+
+    // En son çözülen testleri hariç tut (aradan en az 4-5 test geçmiş olsun)
+    final recentTests = await db.query(
+      'tests',
+      columns: ['id'],
+      where: 'category = ?',
+      whereArgs: [category],
+      orderBy: 'id DESC',
+      limit: minTestsAgo,
+    );
+    final excludedTestIds = recentTests.map((t) => t['id'] as int).toList();
+
+    String whereClause = 't.category = ? AND tq.user_answer != tq.correct_answer';
+    List<dynamic> whereArgs = [category];
+
+    if (excludedTestIds.isNotEmpty) {
+      whereClause += ' AND t.id NOT IN (${List.filled(excludedTestIds.length, '?').join(',')})';
+      whereArgs.addAll(excludedTestIds);
+    }
+
+    final query = '''
+      SELECT tq.question, tq.correct_answer, tq.options
+      FROM test_questions tq
+      INNER JOIN tests t ON t.id = tq.test_id
+      WHERE $whereClause
+      ORDER BY tq.id DESC
+      LIMIT 25
+    ''';
+
+    final rows = await db.rawQuery(query, whereArgs);
+    if (rows.isEmpty) return [];
+
+    final random = Random();
+    final shuffledRows = List<Map<String, dynamic>>.from(rows)..shuffle(random);
+    final selectedRows = shuffledRows.take(limit);
+
+    List<Question> spacedQuestions = [];
+    for (final row in selectedRows) {
+      final questionText = row['question'] as String;
+      final correctAnswer = row['correct_answer'] as String;
+      final optionsRaw = row['options'];
+      List<String> options = [];
+      if (optionsRaw is String) {
+        try {
+          final decoded = jsonDecode(optionsRaw);
+          if (decoded is List) {
+            options = decoded.map((e) => e.toString()).toList();
+          }
+        } catch (_) {
+          options = optionsRaw.split('||').map((e) => e.trim()).toList();
+        }
+      }
+
+      if (options.length >= 4 && options.contains(correctAnswer)) {
+        options.shuffle(random);
+        final newCorrectIndex = options.indexOf(correctAnswer);
+        spacedQuestions.add(Question(
+          question: questionText,
+          options: options,
+          correctIndex: newCorrectIndex,
+        ));
+      }
+    }
+    return spacedQuestions;
   }
 
   Future close() async {

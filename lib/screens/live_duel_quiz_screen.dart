@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../models/duel_room_model.dart';
 import '../models/question.dart';
@@ -11,6 +13,7 @@ import '../services/bot_quiz_simulator.dart';
 import '../services/bot_room_service.dart';
 import '../utils/app_utils.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/my_native_ad.dart';
 import 'live_duel_result_screen.dart';
 
 class LiveDuelQuizScreen extends StatefulWidget {
@@ -28,7 +31,7 @@ class LiveDuelQuizScreen extends StatefulWidget {
 }
 
 class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
-    with TickerProviderStateMixin {
+  with TickerProviderStateMixin {
   late StreamSubscription<DuelRoom?> _roomSubscription;
   DuelRoom? _liveRoom;
 
@@ -39,6 +42,9 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
   int _combo = 0;
   bool _isShowingAnswer = false;
   bool _localFinished = false;
+  bool _isTransitioning = false;
+  bool _showFeedbackBadge = false;
+  bool _lastAnswerCorrect = false;
 
   // Joker States
   final List<int> _eliminatedOptions = [];
@@ -54,12 +60,16 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
   bool _showComboPopup = false;
   int _comboTriggerValue = 0;
 
+  // Feedback Popup
+  late AnimationController _feedbackController;
+  late Animation<double> _feedbackScaleAnimation;
+
   BotQuizSimulator? _botSimulator;
 
   late Stopwatch _stopwatch;
   late ValueNotifier<int> _remainingSeconds;
   Timer? _questionTimer;
-  static const int _questionDuration = 25;
+  static const int _questionDuration = 35;
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -91,6 +101,15 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
       TweenSequenceItem(tween: ConstantTween(1.0), weight: 70),
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 15),
     ]).animate(_comboController);
+
+    _feedbackController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _feedbackScaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.25).chain(CurveTween(curve: Curves.elasticOut)), weight: 60),
+      TweenSequenceItem(tween: Tween(begin: 1.25, end: 1.0).chain(CurveTween(curve: Curves.easeIn)), weight: 40),
+    ]).animate(_feedbackController);
 
     _loadUserTokens();
     _startQuestionTimer();
@@ -127,8 +146,8 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
 
       // Her iki oyuncu da bittiyse veya soru sayısına ulaştıysa sonuç ekranına geç
       final totalQ = room.questions.length;
-      final hostFinished = room.host.finished || (totalQ > 0 && room.host.progress >= totalQ);
-      final guestFinished = (room.guest?.finished ?? false) || (totalQ > 0 && (room.guest?.progress ?? 0) >= totalQ);
+      final hostFinished = room.host.finished || (totalQ > 0 && room.host.progress >= totalQ) || (widget.isHost && _localFinished);
+      final guestFinished = (room.guest?.finished ?? false) || (totalQ > 0 && (room.guest?.progress ?? 0) >= totalQ) || (!widget.isHost && _localFinished);
 
       if ((hostFinished && guestFinished) || room.status == 'finished') {
         _navigateToResults();
@@ -136,23 +155,31 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
     });
   }
 
+  bool _hasNavigatedToResults = false;
+
   void _navigateToResults() {
+    if (_hasNavigatedToResults) return;
+    _hasNavigatedToResults = true;
     _questionTimer?.cancel();
     _roomSubscription.cancel();
+    _botSimulator?.cancel();
 
     // Trigger resolution in background
     DuelService.resolveDuelResult(widget.room.roomCode);
 
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => LiveDuelResultScreen(
-          roomCode: widget.room.roomCode,
-          isHost: widget.isHost,
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => LiveDuelResultScreen(
+            roomCode: widget.room.roomCode,
+            isHost: widget.isHost,
+            initialRoom: _liveRoom ?? widget.room,
+          ),
         ),
-      ),
-    );
+        (route) => route.isFirst,
+      );
+    });
   }
 
   void _startQuestionTimer() {
@@ -257,7 +284,7 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
   }
 
   void _handleAnswer(int selectedIndex) {
-    if (_isShowingAnswer || _localFinished) return;
+    if (_isShowingAnswer || _localFinished || _isTransitioning) return;
 
     final questions = widget.room.questions;
     if (_currentIndex >= questions.length) return;
@@ -287,6 +314,8 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
       _selectedIndex = selectedIndex;
       _isShowingAnswer = true;
       _userAnswers[_currentIndex] = selectedIndex;
+      _lastAnswerCorrect = isCorrect;
+      _showFeedbackBadge = true;
 
       if (isCorrect) {
         _combo++;
@@ -297,13 +326,19 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
             if (mounted) setState(() => _showComboPopup = false);
           });
         }
-        _localScore += 10 + (_combo > 1 ? (_combo * 2) : 0);
+        final remaining = _remainingSeconds.value.clamp(0, _questionDuration);
+        final speedBonus = remaining * 4;
+        final comboBonus = (_combo > 1 ? (_combo * 10) : 0);
+        _localScore += 50 + speedBonus + comboBonus;
         SoundService.playCorrect();
       } else {
         _combo = 0;
         SoundService.playWrong();
       }
     });
+
+    HapticFeedback.mediumImpact();
+    _feedbackController.forward(from: 0.0);
 
     // Update progress in Firestore
     final nextProgress = _currentIndex + 1;
@@ -319,11 +354,13 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
       userAnswers: _userAnswers,
     );
 
-    Future.delayed(const Duration(milliseconds: 800), () {
+    // Soru doğru/yanlış geri bildirimini kullanıcının net görmesi için 1400ms bekle
+    Future.delayed(const Duration(milliseconds: 1400), () {
       if (!mounted) return;
 
       if (isLastQuestion) {
         setState(() {
+          _showFeedbackBadge = false;
           _localFinished = true;
         });
 
@@ -335,7 +372,10 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
           _navigateToResults();
         }
       } else {
+        // Step 1: Diğer soru hazırlanıyor geçişini başlat
         setState(() {
+          _showFeedbackBadge = false;
+          _isTransitioning = true;
           _currentIndex++;
           _selectedIndex = null;
           _isShowingAnswer = false;
@@ -344,8 +384,18 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
           _isDoubleAnswerUsedInCurrentQuestion = false;
           _isFiftyFiftyUsedInCurrentQuestion = false;
         });
-        _fadeController.forward(from: 0.0);
-        _startQuestionTimer();
+
+        // Step 2: 1300ms'lik rahat geçiş beklemesi
+        Future.delayed(const Duration(milliseconds: 1300), () {
+          if (!mounted) return;
+
+          setState(() {
+            _isTransitioning = false;
+          });
+
+          _fadeController.forward(from: 0.0);
+          _startQuestionTimer();
+        });
       }
     });
   }
@@ -357,6 +407,7 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
     _roomSubscription.cancel();
     _fadeController.dispose();
     _comboController.dispose();
+    _feedbackController.dispose();
     _remainingSeconds.dispose();
     super.dispose();
   }
@@ -402,13 +453,22 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
                                 _buildQuickJokersRow(),
                                 const SizedBox(height: 14),
                                 _buildOptionsList(questions[_currentIndex]),
-                                const SizedBox(height: 30),
+                                const SizedBox(height: 16),
                               ],
                             ),
                           ),
                         ),
                         if (_showComboPopup) _buildComboPopup(),
+                        if (_showFeedbackBadge) _buildFeedbackBanner(),
+                        if (_isTransitioning) _buildTransitionOverlay(),
                       ],
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    child: MyNativeAd(
+                      height: 65,
+                      factoryId: 'adFactorySmall',
                     ),
                   ),
                 ] else ...[
@@ -422,136 +482,388 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
     );
   }
 
+  Widget _buildFeedbackBanner() {
+    final isCorrect = _lastAnswerCorrect;
+    final Color bannerColor = isCorrect ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+    final String text = isCorrect ? 'duel.feedback_correct'.tr() : 'duel.feedback_wrong'.tr();
+    final IconData icon = isCorrect ? Icons.check_circle_rounded : Icons.cancel_rounded;
+
+    return Center(
+      child: ScaleTransition(
+        scale: _feedbackScaleAnimation,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.95),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: bannerColor, width: 2.5),
+            boxShadow: [
+              BoxShadow(
+                color: bannerColor.withValues(alpha: 0.45),
+                blurRadius: 24,
+                spreadRadius: 6,
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: bannerColor, size: 32),
+              const SizedBox(width: 12),
+              Text(
+                text,
+                style: TextStyle(
+                  color: bannerColor,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.0,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTransitionOverlay() {
+    return Positioned.fill(
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.8),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                      border: Border.all(
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.4),
+                        width: 2,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.psychology_rounded,
+                      color: Color(0xFF818CF8),
+                      size: 38,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'duel.next_question_preparing'.tr(args: [(_currentIndex + 1).toString()]),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'quiz.preparing_${((_currentIndex) % 5) + 1}'.tr(),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 14,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTopRaceTrack(DuelRoom room) {
     final myPlayer = widget.isHost ? room.host : (room.guest ?? room.host);
     final opponentPlayer = widget.isHost ? (room.guest ?? room.host) : room.host;
     final totalQ = room.questions.length;
 
-    final myProgress = (myPlayer.progress / (totalQ > 0 ? totalQ : 1)).clamp(0.0, 1.0);
-    final oppProgress = (opponentPlayer.progress / (totalQ > 0 ? totalQ : 1)).clamp(0.0, 1.0);
+    // Calculate correct answers for me (using LOCAL state _userAnswers prioritized over Firestore stream)
+    int myCorrect = 0;
+    for (int i = 0; i < totalQ; i++) {
+      final ans = (i < _userAnswers.length && _userAnswers[i] != null)
+          ? _userAnswers[i]
+          : (i < myPlayer.userAnswers.length ? myPlayer.userAnswers[i] : null);
+      if (ans != null && ans == room.questions[i].correctIndex) {
+        myCorrect++;
+      }
+    }
 
-    String statusText = 'duel.status_equal'.tr();
-    Color statusColor = Colors.amber;
-    if (myPlayer.score > opponentPlayer.score) {
+    // Calculate correct answers for opponent (from remote stream)
+    int oppCorrect = 0;
+    for (int i = 0; i < opponentPlayer.userAnswers.length && i < totalQ; i++) {
+      if (opponentPlayer.userAnswers[i] == room.questions[i].correctIndex) {
+        oppCorrect++;
+      }
+    }
+
+    final int myScore = _localScore;
+    final int oppScore = opponentPlayer.score;
+
+    String statusText;
+    Color statusColor;
+    if (myCorrect > oppCorrect) {
       statusText = 'duel.status_player_leading'.tr();
       statusColor = const Color(0xFF10B981);
-    } else if (opponentPlayer.score > myPlayer.score) {
+    } else if (oppCorrect > myCorrect) {
       statusText = 'duel.status_bot_leading'.tr();
       statusColor = const Color(0xFFEF4444);
+    } else {
+      if (myScore > oppScore) {
+        statusText = 'duel.status_player_leading'.tr();
+        statusColor = const Color(0xFF10B981);
+      } else if (oppScore > myScore) {
+        statusText = 'duel.status_bot_leading'.tr();
+        statusColor = const Color(0xFFEF4444);
+      } else {
+        statusText = 'duel.status_equal'.tr();
+        statusColor = const Color(0xFFFFB020);
+      }
     }
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B).withValues(alpha: 0.8),
+        color: const Color(0xFF1E293B).withValues(alpha: 0.9),
         border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
       ),
       child: Column(
         children: [
-          // Status indicator
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: statusColor.withValues(alpha: 0.4)),
-            ),
-            child: Text(
-              statusText,
-              style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 11),
-            ),
+          // Status pill & Timer
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: statusColor.withValues(alpha: 0.5)),
+                ),
+                child: Text(
+                  statusText,
+                  style: TextStyle(color: statusColor, fontWeight: FontWeight.w900, fontSize: 11),
+                ),
+              ),
+              ValueListenableBuilder<int>(
+                valueListenable: _remainingSeconds,
+                builder: (context, seconds, _) {
+                  final isLow = seconds <= 7;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isLow
+                          ? const Color(0xFFEF4444).withValues(alpha: 0.25)
+                          : const Color(0xFFFFD56B).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isLow ? const Color(0xFFEF4444) : const Color(0xFFFFD56B).withValues(alpha: 0.5),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.timer_rounded,
+                          color: isLow ? const Color(0xFFEF4444) : const Color(0xFFFFD56B),
+                          size: 16,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${seconds}sn',
+                          style: TextStyle(
+                            color: isLow ? const Color(0xFFEF4444) : Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
           const SizedBox(height: 10),
 
-          // Race Track
-          Row(
-            children: [
-              // You
-              _buildRaceUserPill(myPlayer, isMe: true),
-              const SizedBox(width: 8),
+          // Player 1 (You) Row
+          _buildPlayerTrackRow(
+            player: myPlayer,
+            isMe: true,
+            totalQ: totalQ,
+            correctCount: myCorrect,
+            displayScore: myScore,
+            room: room,
+          ),
+          const SizedBox(height: 8),
 
-              // Track Bars
-              Expanded(
-                child: Column(
-                  children: [
-                    // My Bar
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: LinearProgressIndicator(
-                        value: myProgress,
-                        minHeight: 8,
-                        backgroundColor: Colors.white10,
-                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    // Opponent Bar
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: LinearProgressIndicator(
-                        value: oppProgress,
-                        minHeight: 8,
-                        backgroundColor: Colors.white10,
-                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF5252)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              // Opponent
-              _buildRaceUserPill(opponentPlayer, isMe: false),
-            ],
+          // Player 2 (Opponent) Row
+          _buildPlayerTrackRow(
+            player: opponentPlayer,
+            isMe: false,
+            totalQ: totalQ,
+            correctCount: oppCorrect,
+            displayScore: oppScore,
+            room: room,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildRaceUserPill(DuelPlayer player, {required bool isMe}) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Builder(
-          builder: (context) {
-            final hasAvatar = UserService.hasAvatar(player.avatarIndex);
-            return CircleAvatar(
-              radius: 14,
-              backgroundColor: isMe ? const Color(0xFF10B981) : const Color(0xFFFF5252),
-              backgroundImage: hasAvatar
-                  ? ResizeImage(
-                      AssetImage(UserService.getAvatarPath(player.avatarIndex)),
-                      width: 56,
-                      height: 56,
-                    )
-                  : null,
-              child: hasAvatar
-                  ? null
-                  : const Icon(Icons.person_rounded, size: 14, color: Colors.white),
-            );
-          },
-        ),
-        const SizedBox(width: 6),
-        Column(
-          crossAxisAlignment: isMe ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+  Widget _buildPlayerTrackRow({
+    required DuelPlayer player,
+    required bool isMe,
+    required int totalQ,
+    required int correctCount,
+    required int displayScore,
+    required DuelRoom room,
+  }) {
+    final hasAvatar = UserService.hasAvatar(player.avatarIndex);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = constraints.maxWidth < 360;
+        final profileWidth = isSmallScreen ? 76.0 : 88.0;
+
+        return Row(
           children: [
-            Text(
-              isMe ? 'duel.you'.tr() : AppUtils.localizeUsername(player.username),
-              maxLines: 1,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11),
+            // Avatar + Name + Correct Count
+            SizedBox(
+              width: profileWidth,
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: isSmallScreen ? 11 : 13,
+                    backgroundColor: isMe ? const Color(0xFF10B981) : const Color(0xFFFF5252),
+                    backgroundImage: hasAvatar
+                        ? ResizeImage(
+                            AssetImage(UserService.getAvatarPath(player.avatarIndex)),
+                            width: 48,
+                            height: 48,
+                          )
+                        : null,
+                    child: hasAvatar ? null : const Icon(Icons.person_rounded, size: 12, color: Colors.white),
+                  ),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          isMe ? 'duel.you'.tr() : AppUtils.localizeUsername(player.username),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: isSmallScreen ? 10 : 11,
+                          ),
+                        ),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '$correctCount D • ${displayScore}p',
+                            style: TextStyle(
+                              color: isMe ? const Color(0xFF34D399) : const Color(0xFFF87171),
+                              fontWeight: FontWeight.bold,
+                              fontSize: isSmallScreen ? 8.5 : 9.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-            Text(
-              '${player.score} ${'welcome_screen.points'.tr()}',
-              style: TextStyle(
-                color: isMe ? const Color(0xFF34D399) : const Color(0xFFF87171),
-                fontWeight: FontWeight.bold,
-                fontSize: 10,
+            const SizedBox(width: 6),
+
+            // Segmented Question Steps
+            Expanded(
+              child: Row(
+                children: List.generate(totalQ, (qIndex) {
+                  final localAnswer = (isMe && qIndex < _userAnswers.length) ? _userAnswers[qIndex] : null;
+                  final remoteAnswer = (qIndex < player.userAnswers.length) ? player.userAnswers[qIndex] : null;
+                  final answer = isMe ? (localAnswer ?? remoteAnswer) : remoteAnswer;
+                  final isAnswered = answer != null;
+                  final bool? isCorrect = isAnswered
+                      ? (answer == room.questions[qIndex].correctIndex)
+                      : null;
+                  final isCurrent = isMe
+                      ? (_currentIndex == qIndex && !_localFinished)
+                      : (player.progress == qIndex && !player.finished);
+
+                  Color bgColor;
+                  Color borderColor;
+                  Widget child;
+
+                  if (isAnswered) {
+                    if (isCorrect == true) {
+                      bgColor = const Color(0xFF10B981);
+                      borderColor = const Color(0xFF34D399);
+                      child = const Icon(Icons.check_rounded, size: 13, color: Colors.white);
+                    } else {
+                      bgColor = const Color(0xFFEF4444);
+                      borderColor = const Color(0xFFF87171);
+                      child = const Icon(Icons.close_rounded, size: 13, color: Colors.white);
+                    }
+                  } else if (isCurrent) {
+                    bgColor = isMe
+                        ? const Color(0xFF6366F1).withValues(alpha: 0.35)
+                        : const Color(0xFFFF9F43).withValues(alpha: 0.35);
+                    borderColor = isMe ? const Color(0xFF818CF8) : const Color(0xFFFFB020);
+                    child = Text(
+                      '${qIndex + 1}',
+                      style: TextStyle(
+                        color: isMe ? const Color(0xFFA5B4FC) : const Color(0xFFFFD56B),
+                        fontWeight: FontWeight.w900,
+                        fontSize: 10,
+                      ),
+                    );
+                  } else {
+                    bgColor = Colors.white.withValues(alpha: 0.05);
+                    borderColor = Colors.white.withValues(alpha: 0.1);
+                    child = Text(
+                      '${qIndex + 1}',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.3),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 9,
+                      ),
+                    );
+                  }
+
+                  return Expanded(
+                    child: Container(
+                      height: isSmallScreen ? 20 : 22,
+                      margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                      decoration: BoxDecoration(
+                        color: bgColor,
+                        borderRadius: BorderRadius.circular(5),
+                        border: Border.all(color: borderColor, width: isCurrent ? 1.5 : 1),
+                      ),
+                      child: Center(child: child),
+                    ),
+                  );
+                }),
               ),
             ),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -764,24 +1076,49 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
               ValueListenableBuilder<int>(
                 valueListenable: _remainingSeconds,
                 builder: (context, seconds, child) {
-                  final isLow = seconds <= 5;
-                  return Row(
-                    children: [
-                      Icon(
-                        Icons.timer_outlined,
-                        color: isLow ? Colors.redAccent : Colors.white70,
-                        size: 18,
+                  final isLow = seconds <= 7;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: isLow
+                          ? const Color(0xFFEF4444).withValues(alpha: 0.3)
+                          : Colors.amber.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isLow ? Colors.redAccent : Colors.amber.withValues(alpha: 0.6),
+                        width: isLow ? 1.5 : 1.0,
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '$seconds',
-                        style: TextStyle(
-                          color: isLow ? Colors.redAccent : Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 14,
+                      boxShadow: isLow
+                          ? [
+                              BoxShadow(
+                                color: Colors.redAccent.withValues(alpha: 0.4),
+                                blurRadius: 10,
+                                spreadRadius: 1,
+                              ),
+                            ]
+                          : [],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.alarm_on_rounded,
+                          color: isLow ? Colors.white : Colors.amber,
+                          size: 18,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 6),
+                        Text(
+                          '${seconds}s',
+                          style: TextStyle(
+                            color: isLow ? Colors.white : const Color(0xFFFFD56B),
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 },
               ),

@@ -1,5 +1,5 @@
 {
-  "app_title": "Quiz",
+  "app_title": "Quiz Culture",
   "welcome": {
     "title": "Bienvenue",
     "start_button": "COMMENCER",
@@ -800,7 +800,18 @@
     "host_wants_start_badge": "VEUT COMMENCER 🚀",
     "host_waiting_for_you": "L'hôte vous attend pour être prêt à commencer ! 🚀",
     "start_when_guest_ready": "Commencera lorsque l'invité sera prêt ⏳",
-    "guest_is_ready_start": "L'invité est prêt ! Commencez le duel 🚀"
+    "guest_is_ready_start": "L'invité est prêt ! Commencez le duel 🚀",
+    "calculating_results": "Détermination des résultats...",
+    "feedback_correct": "CORRECT! 🔥",
+    "feedback_wrong": "FAUX! ❌",
+    "next_question_preparing": "Préparation de la question {}...",
+    "see_results": "Voir les résultats",
+    "kick_guest": "Kick Invité",
+    "kick_confirm_title": "Joueur de coup de pied",
+    "kick_confirm_msg": "Êtes-vous sûr de vouloir expulser {} de la pièce ?",
+    "kicked_from_room": "Vous avez été expulsé de la pièce par l'hôte.",
+    "special_bet_badge": "SPÉCIAL 🔥",
+    "fee_info": "{}% Frais"
   },
   "errors": {
     "no_internet_ai": "Vous avez besoin d'une connexion Internet active pour atteindre notre IA. 📡",
@@ -882,5 +893,22 @@
     "reward_claimed_toast": "Merci pour votre retour ! Vous avez reçu {} jetons ! ⭐",
     "claimed": "RÉCLAMÉ",
     "rate_action": "TAUX"
+  },
+  "referral": {
+    "title": "Inviter des amis",
+    "desc": "Entrez le code d'invitation d'un ami pour gagner 500 jetons ! Partagez votre code et invitez vos amis.",
+    "your_code": "VOTRE CODE D'INVITATION",
+    "enter_code": "Entrez le code d'invitation (+500 jetons)",
+    "hint": "ENTRER LE CODE",
+    "claim_button": "Réclamer",
+    "claimed_badge": "CODE D'INVITATION UTILISÉ",
+    "share_button": "Partager",
+    "copy_button": "Copie",
+    "code_copied": "Code d'invitation copié! 📋",
+    "share_msg": "🏆 Rejoignez-moi dans Quiz Arena ! Utilisez mon code d'invitation pour obtenir 500 jetons instantanément :\n👉Code : {}\n📲 Télécharger l'application : https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "success": "Félicitations! {} Jetons ajoutés à votre compte ! 🎉",
+    "already_used": "Vous avez déjà utilisé un code d'invitation.",
+    "own_code": "Vous ne pouvez pas utiliser votre propre code d'invitation.",
+    "invalid_code": "Code d'invitation invalide ou inexistant."
   }
 }

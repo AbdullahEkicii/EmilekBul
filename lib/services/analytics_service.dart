@@ -12,11 +12,10 @@ class AnalyticsService {
   static FirebaseAnalyticsObserver get observer =>
       FirebaseAnalyticsObserver(analytics: _analytics);
 
-  /// Başlangıç ayarları ve ilk açılış logu
+  /// Başlangıç ayarları
   static Future<void> init() async {
     try {
       await _analytics.setAnalyticsCollectionEnabled(true);
-      await logAppOpen();
     } catch (e) {
       debugPrint('Analytics init error: $e');
     }
@@ -43,15 +42,6 @@ class AnalyticsService {
     }
   }
 
-  /// Uygulama açılış eventi
-  static Future<void> logAppOpen() async {
-    try {
-      await _analytics.logAppOpen();
-    } catch (e) {
-      debugPrint('Analytics logAppOpen error: $e');
-    }
-  }
-
   /// Giriş eventi (Guest, Google, Play Games, Email)
   static Future<void> logLogin({required String loginMethod}) async {
     try {
@@ -72,11 +62,10 @@ class AnalyticsService {
     }
   }
 
-  /// Quiz Başlatma Eventi
+  /// Tekli Quiz Başlatma Eventi
   static Future<void> logQuizStart({
     required String category,
     required String difficulty,
-    bool isDuel = false,
     int questionCount = 5,
   }) async {
     try {
@@ -85,12 +74,37 @@ class AnalyticsService {
         parameters: {
           'category': category,
           'difficulty': difficulty,
-          'is_duel': isDuel ? 1 : 0,
           'question_count': questionCount,
         },
       );
     } catch (e) {
       debugPrint('Analytics logQuizStart error: $e');
+    }
+  }
+
+  /// 1v1 Düello Maçı Başlatma Eventi
+  static Future<void> logDuelMatchStart({
+    required String category,
+    required String difficulty,
+    required int betTokens,
+    required int questionCount,
+    required bool isHost,
+    required bool isWithBot,
+  }) async {
+    try {
+      await _analytics.logEvent(
+        name: 'duel_match_start',
+        parameters: {
+          'category': category,
+          'difficulty': difficulty,
+          'bet_tokens': betTokens,
+          'question_count': questionCount,
+          'is_host': isHost ? 1 : 0,
+          'is_with_bot': isWithBot ? 1 : 0,
+        },
+      );
+    } catch (e) {
+      debugPrint('Analytics logDuelMatchStart error: $e');
     }
   }
 

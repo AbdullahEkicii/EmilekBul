@@ -7,11 +7,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'basari_hesapla_screen.dart';
 import 'kategori_screen.dart';
 import 'account_screen.dart';
+import 'token_screen.dart';
 import '../main.dart';
 import '../services/update_control.dart';
 import '../services/user_service.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/background_orbs.dart';
+import '../widgets/my_native_ad.dart';
 import 'tier_list_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_utils.dart';
@@ -31,6 +33,8 @@ import '../widgets/friends_dialog.dart';
 import '../models/friend_model.dart';
 import '../services/friend_service.dart';
 import '../services/presence_service.dart';
+import '../models/category_model.dart';
+import '../constants/app_categories.dart';
 import '../services/duel_invite_service.dart';
 import 'duel_room_screen.dart';
 
@@ -442,14 +446,21 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     children: [
                       Text('duel.category'.tr(), style: const TextStyle(color: Colors.white60, fontSize: 11)),
                       const SizedBox(height: 4),
-                      Text(invite.category, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                      Builder(builder: (context) {
+                        final allCats = [...AppCategories.categories, ...AppCategories.bonusPoolCategories.whereType<CategoryItem>()];
+                        final cat = allCats.firstWhere(
+                          (c) => c.name == invite.category,
+                          orElse: () => allCats.first,
+                        );
+                        return Text(cat.key.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13));
+                      }),
                     ],
                   ),
                   Column(
                     children: [
                       Text('duel.difficulty'.tr(), style: const TextStyle(color: Colors.white60, fontSize: 11)),
                       const SizedBox(height: 4),
-                      Text(invite.difficulty, style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+                      Text(AppUtils.localizeDifficulty(invite.difficulty), style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 13)),
                     ],
                   ),
                   Column(
@@ -733,6 +744,78 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTokenChip() {
+    final uid = currentUser?.uid;
+    return GestureDetector(
+      onTap: () async {
+        HapticFeedback.lightImpact();
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const TokenScreen(),
+          ),
+        );
+        if (mounted) {
+          _loadUserData();
+        }
+      },
+      child: StreamBuilder<DocumentSnapshot>(
+        stream: uid != null ? UserService.getUserProfileStream(uid) : null,
+        builder: (context, snapshot) {
+          int tokens = 50;
+          if (snapshot.hasData && snapshot.data != null && snapshot.data!.exists) {
+            final data = snapshot.data!.data() as Map<String, dynamic>?;
+            tokens = (data?['tokens'] as num?)?.toInt() ?? 50;
+          }
+
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.amber.shade900.withValues(alpha: 0.4),
+                  Colors.orange.shade800.withValues(alpha: 0.3),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.amber.withValues(alpha: 0.6)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.amber.withValues(alpha: 0.15),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('🪙', style: TextStyle(fontSize: 14)),
+                const SizedBox(width: 5),
+                Text(
+                  '$tokens',
+                  style: const TextStyle(
+                    color: Colors.amberAccent,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(width: 3),
+                Icon(
+                  Icons.add_circle_outline_rounded,
+                  color: Colors.amber.shade200,
+                  size: 13,
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -1133,7 +1216,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         children: [
                           _buildAuthButton(),
                           const SizedBox(height: 8),
-                          _buildWheelChip(),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildTokenChip(),
+                              const SizedBox(width: 8),
+                              _buildWheelChip(),
+                            ],
+                          ),
                         ],
                       ),
                     ],
@@ -1362,6 +1452,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   _buildFeaturedDailyCard(),
                                   const SizedBox(height: 12),
                                   _buildShopButton(),
+                                  const SizedBox(height: 16),
+                                  const MyNativeAd(
+                                    height: 70,
+                                    factoryId: 'adFactorySmall',
+                                  ),
                                   const SizedBox(height: 16),
                                   QuestsPanel(),
                                 ],

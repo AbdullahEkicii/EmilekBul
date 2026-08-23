@@ -1,12 +1,16 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/token_service.dart';
 import '../services/review_service.dart';
+import '../services/referral_service.dart';
 import '../widgets/rewarded_ad_manager.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/navigation_buttons.dart';
+import '../widgets/my_native_ad.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:share_plus/share_plus.dart';
 
 class TokenScreen extends StatefulWidget {
   const TokenScreen({super.key});
@@ -20,8 +24,14 @@ class _TokenScreenState extends State<TokenScreen>
   int _tokenAmount = 0;
   bool _canClaimDaily = false;
   bool _hasClaimedReview = false;
+  String _myInviteCode = '';
+  bool _hasUsedReferral = false;
   bool _isLoading = true;
   bool _isAdLoading = false;
+  bool _isSubmittingReferral = false;
+  Duration _adCooldown = Duration.zero;
+  Timer? _cooldownTimer;
+  final TextEditingController _referralController = TextEditingController();
   final RewardedAdManager _rewardedAdManager = RewardedAdManager();
 
   late AnimationController _orbController;
@@ -35,6 +45,39 @@ class _TokenScreenState extends State<TokenScreen>
     _initAnimations();
     _loadTokenData();
     _loadRewardedAd();
+    _checkAdCooldown();
+  }
+
+  void _checkAdCooldown() async {
+    final remaining = await RewardedAdManager.getRemainingCooldown();
+    if (mounted) {
+      setState(() {
+        _adCooldown = remaining;
+      });
+    }
+    _cooldownTimer?.cancel();
+    if (remaining > Duration.zero) {
+      _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+        final rem = await RewardedAdManager.getRemainingCooldown();
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
+        setState(() {
+          _adCooldown = rem;
+        });
+        if (rem == Duration.zero) {
+          timer.cancel();
+        }
+      });
+    }
+  }
+
+  String _formatCooldown(Duration d) {
+    if (d.inHours > 0) {
+      return '${d.inHours}:${d.inMinutes.remainder(60).toString().padLeft(2, '0')}:${d.inSeconds.remainder(60).toString().padLeft(2, '0')}';
+    }
+    return '${d.inMinutes.remainder(60).toString().padLeft(2, '0')}:${d.inSeconds.remainder(60).toString().padLeft(2, '0')}';
   }
 
   void _loadRewardedAd() {
@@ -71,12 +114,16 @@ class _TokenScreenState extends State<TokenScreen>
     final tokenAmount = await TokenService.getTokenAmount();
     final canClaimDaily = await TokenService.canClaimDailyReward();
     final hasClaimedReview = await ReviewService.hasClaimedReward();
+    final myInviteCode = await ReferralService.getUserInviteCode();
+    final hasUsedReferral = await ReferralService.hasUsedReferral();
 
     if (mounted) {
       setState(() {
         _tokenAmount = tokenAmount;
         _canClaimDaily = canClaimDaily;
         _hasClaimedReview = hasClaimedReview;
+        _myInviteCode = myInviteCode;
+        _hasUsedReferral = hasUsedReferral;
         _isLoading = false;
       });
     }
@@ -116,14 +163,34 @@ class _TokenScreenState extends State<TokenScreen>
     }
   }
 
-  void _showRewardedAd() {
+  void _showRewardedAd() async {
+    final cooldown = await RewardedAdManager.getRemainingCooldown();
+    if (cooldown > Duration.zero) {
+      final formattedTime = _formatCooldown(cooldown);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('token.reward_ad_cooldown'.tr(args: [formattedTime])),
+          backgroundColor: Colors.orangeAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+
     _rewardedAdManager.showAd(onRewarded: () async {
+      await RewardedAdManager.recordAdWatched();
       await TokenService.addTokens(50);
       final newTokenAmount = await TokenService.getTokenAmount();
 
-      setState(() {
-        _tokenAmount = newTokenAmount;
-      });
+      if (mounted) {
+        setState(() {
+          _tokenAmount = newTokenAmount;
+        });
+      }
+
+      _checkAdCooldown();
 
       HapticFeedback.mediumImpact();
       if (!mounted) return;
@@ -138,16 +205,105 @@ class _TokenScreenState extends State<TokenScreen>
           ),
           backgroundColor: Colors.indigo,
           behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
       _loadRewardedAd();
     });
   }
 
+  void _copyInviteCode() {
+    Clipboard.setData(ClipboardData(text: _myInviteCode));
+    HapticFeedback.lightImpact();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('referral.code_copied'.tr()),
+        backgroundColor: const Color(0xFF8B5CF6),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  void _shareInviteCode() async {
+    final shareText = 'referral.share_msg'.tr(args: [_myInviteCode]);
+    HapticFeedback.mediumImpact();
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          text: shareText,
+          subject: 'referral.title'.tr(),
+        ),
+      );
+    } catch (e) {
+      // Fallback: Pano kopyalama
+      Clipboard.setData(ClipboardData(text: shareText));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('referral.code_copied'.tr()),
+            backgroundColor: const Color(0xFF8B5CF6),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _submitReferralCode() async {
+    final code = _referralController.text.trim();
+    if (code.isEmpty) return;
+
+    setState(() {
+      _isSubmittingReferral = true;
+    });
+
+    final result = await ReferralService.redeemReferralCode(code, context);
+
+    if (mounted) {
+      setState(() {
+        _isSubmittingReferral = false;
+      });
+
+      if (result == ReferralResult.success) {
+        _referralController.clear();
+        await _loadTokenData();
+      } else if (result == ReferralResult.alreadyUsed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('referral.already_used'.tr()),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      } else if (result == ReferralResult.ownCode) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('referral.own_code'.tr()),
+            backgroundColor: Colors.orangeAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      } else if (result == ReferralResult.invalidCode) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('referral.invalid_code'.tr()),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
+    _cooldownTimer?.cancel();
+    _referralController.dispose();
     _orbController.dispose();
     _pulseController.dispose();
     super.dispose();
@@ -247,6 +403,13 @@ class _TokenScreenState extends State<TokenScreen>
                         _buildDailyRewardCard(),
                         const SizedBox(height: 16),
                         _buildWatchAdCard(),
+                        const SizedBox(height: 16),
+                        _buildReferralCard(),
+                        const SizedBox(height: 16),
+                        const MyNativeAd(
+                          height: 70,
+                          factoryId: 'adFactorySmall',
+                        ),
                         const SizedBox(height: 16),
                         _buildReviewRewardCard(),
                         const SizedBox(height: 32),
@@ -448,15 +611,13 @@ class _TokenScreenState extends State<TokenScreen>
             ),
           ),
           ElevatedButton(
-            onPressed: _isAdLoading
+            onPressed: (_isAdLoading || _adCooldown > Duration.zero)
                 ? null
                 : () {
-                    if (!_isAdLoading) {
-                      _showRewardedAd();
-                    }
+                    _showRewardedAd();
                   },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.indigoAccent,
+              backgroundColor: _adCooldown > Duration.zero ? Colors.white10 : Colors.indigoAccent,
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -472,8 +633,283 @@ class _TokenScreenState extends State<TokenScreen>
                       color: Colors.white,
                     ),
                   )
-                : Text('token.watch'.tr()),
+                : _adCooldown > Duration.zero
+                    ? Text(
+                        _formatCooldown(_adCooldown),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.amberAccent,
+                        ),
+                      )
+                    : Text('token.watch'.tr()),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReferralCard() {
+    final hasUsed = _hasUsedReferral;
+
+    return GlassContainer(
+      borderRadius: 20,
+      padding: const EdgeInsets.all(20),
+      opacity: 0.15,
+      border: Border.all(
+        color: const Color(0xFF8B5CF6).withValues(alpha: 0.4),
+        width: 1.2,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8B5CF6).withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.card_giftcard_rounded,
+                  color: Color(0xFFA78BFA),
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            'referral.title'.tr(),
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                                color: Colors.amber.withValues(alpha: 0.5)),
+                          ),
+                          child: const Text(
+                            '+500',
+                            style: TextStyle(
+                              color: Colors.amber,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'referral.desc'.tr(),
+                      style: GoogleFonts.poppins(
+                        fontSize: 12.5,
+                        color: Colors.white70,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // 1. Kendi Davet Kodun
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'referral.your_code'.tr(),
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white54,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: const Color(0xFF8B5CF6).withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Text(
+                          _myInviteCode.isEmpty ? '...' : _myInviteCode,
+                          style: GoogleFonts.firaCode(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: _myInviteCode.isEmpty ? null : _copyInviteCode,
+                      icon: const Icon(Icons.copy_rounded, size: 18),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.white.withValues(alpha: 0.1),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    ElevatedButton.icon(
+                      onPressed: _myInviteCode.isEmpty ? null : _shareInviteCode,
+                      icon: const Icon(Icons.share_rounded, size: 16),
+                      label: Text('referral.share_button'.tr()),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF8B5CF6),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        textStyle: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // 2. Davet Kodu Girme
+          if (hasUsed)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.check_circle_rounded,
+                      color: Colors.greenAccent, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    'referral.claimed_badge'.tr(),
+                    style: const TextStyle(
+                      color: Colors.greenAccent,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: TextField(
+                      controller: _referralController,
+                      textCapitalization: TextCapitalization.characters,
+                      style: GoogleFonts.firaCode(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'referral.hint'.tr(),
+                        hintStyle: GoogleFonts.poppins(
+                          fontSize: 11,
+                          color: Colors.white38,
+                        ),
+                        contentPadding:
+                            const EdgeInsets.symmetric(horizontal: 12),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  height: 44,
+                  child: ElevatedButton(
+                    onPressed: _isSubmittingReferral ? null : _submitReferralCode,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber.shade700,
+                      foregroundColor: Colors.white,
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                    ),
+                    child: _isSubmittingReferral
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            'referral.claim_button'.tr(),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );

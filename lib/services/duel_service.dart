@@ -464,23 +464,26 @@ class DuelService {
       final data = doc.data()!;
       final currentStatus = data['status']?.toString();
 
-      if (currentStatus == 'finished' || currentStatus == 'in_game') {
+      if (currentStatus == 'finished' || currentStatus == 'in_game' || currentStatus == 'starting') {
         final guestData = data['guest'];
         await docRef.update({
-          'status': guestData != null ? 'ready' : 'waiting',
+          'status': 'waiting',
           'questions': [],
           'winnerUid': null,
+          'hostWantsToStart': false,
           'host.progress': 0,
           'host.score': 0,
           'host.finished': false,
           'host.finishTime': 0,
           'host.userAnswers': [],
+          'host.isReady': false,
           if (guestData != null) ...{
             'guest.progress': 0,
             'guest.score': 0,
             'guest.finished': false,
             'guest.finishTime': 0,
             'guest.userAnswers': [],
+            'guest.isReady': false,
           },
           'lastActivity': FieldValue.serverTimestamp(),
         });
@@ -565,6 +568,67 @@ class DuelService {
           .add(message.toMap());
     } catch (e) {
       debugPrint('Error sending room message: $e');
+    }
+  }
+
+  /// Oda Sahibi Tarafından Misafiri Odadan Atma (Kick)
+  static Future<void> kickGuest(String roomCode) async {
+    final normalizedCode = roomCode.trim().toUpperCase();
+    try {
+      await _firestore.collection(_collectionName).doc(normalizedCode).update({
+        'guest': null,
+        'pendingGuest': null,
+        'joinRequestStatus': 'none',
+        'hostWantsToStart': false,
+        'status': 'waiting',
+        'lastActivity': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error kicking guest: $e');
+    }
+  }
+
+  /// Odayı Lobiye Dönüş / Yeniden Oynama İçin Sıfırlama (Hazır durumlarını sıfırlar)
+  static Future<void> resetRoomForLobby(String roomCode) async {
+    final normalizedCode = roomCode.trim().toUpperCase();
+    try {
+      final docRef = _firestore.collection(_collectionName).doc(normalizedCode);
+      final doc = await docRef.get();
+      if (!doc.exists || doc.data() == null) return;
+
+      final data = doc.data()!;
+      final host = data['host'] is Map ? Map<String, dynamic>.from(data['host'] as Map) : null;
+      final guest = data['guest'] is Map ? Map<String, dynamic>.from(data['guest'] as Map) : null;
+
+      if (host != null) {
+        host['isReady'] = false;
+        host['finished'] = false;
+        host['score'] = 0;
+        host['progress'] = 0;
+        host['finishTime'] = 0;
+        host['userAnswers'] = [];
+      }
+
+      if (guest != null) {
+        guest['isReady'] = false;
+        guest['finished'] = false;
+        guest['score'] = 0;
+        guest['progress'] = 0;
+        guest['finishTime'] = 0;
+        guest['userAnswers'] = [];
+      }
+
+      await docRef.update({
+        'host': host,
+        'guest': guest,
+        'hostWantsToStart': false,
+        'status': 'waiting',
+        'questions': [],
+        'winnerUid': null,
+        'lastActivity': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error resetting room for lobby: $e');
     }
   }
 

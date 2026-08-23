@@ -1,5 +1,5 @@
 {
-  "app_title": "Quiz",
+  "app_title": "Quiz di Cultura",
   "welcome": {
     "title": "Benvenuto",
     "start_button": "INIZIO",
@@ -800,7 +800,18 @@
     "host_wants_start_badge": "VOGLIA DI INIZIARE 🚀",
     "host_waiting_for_you": "L'host ti aspetta per essere pronto per iniziare! 🚀",
     "start_when_guest_ready": "Inizierà quando l'ospite sarà pronto ⏳",
-    "guest_is_ready_start": "L'ospite è pronto! Inizia il duello 🚀"
+    "guest_is_ready_start": "L'ospite è pronto! Inizia il duello 🚀",
+    "calculating_results": "Determinazione dei risultati...",
+    "feedback_correct": "CORRETTO! 🔥",
+    "feedback_wrong": "SBAGLIATO! ❌",
+    "next_question_preparing": "Preparazione della domanda {}...",
+    "see_results": "Vedi Risultati",
+    "kick_guest": "Calcia l'ospite",
+    "kick_confirm_title": "Calciatore",
+    "kick_confirm_msg": "Sei sicuro di voler cacciare {} dalla stanza?",
+    "kicked_from_room": "Sei stato cacciato dalla stanza dall'ospite.",
+    "special_bet_badge": "SPECIALE 🔥",
+    "fee_info": "{}% Tassa"
   },
   "errors": {
     "no_internet_ai": "Hai bisogno di una connessione Internet attiva per raggiungere la nostra IA. 📡",
@@ -882,5 +893,22 @@
     "reward_claimed_toast": "Grazie per il tuo feedback! Hai ricevuto {} gettoni! ⭐",
     "claimed": "RECLAMATO",
     "rate_action": "VALUTARE"
+  },
+  "referral": {
+    "title": "Invita amici",
+    "desc": "Inserisci il codice di invito di un amico per guadagnare 500 gettoni! Condividi il tuo codice e invita i tuoi amici.",
+    "your_code": "IL TUO CODICE INVITO",
+    "enter_code": "Inserisci il codice di invito (+500 token)",
+    "hint": "INSERIRE IL CODICE",
+    "claim_button": "Reclamo",
+    "claimed_badge": "CODICE INVITO UTILIZZATO",
+    "share_button": "Condividere",
+    "copy_button": "Copia",
+    "code_copied": "Codice invito copiato! 📋",
+    "share_msg": "🏆 Unisciti a me nell'arena dei quiz! Usa il mio codice di invito per ottenere immediatamente 500 token:\n👉 Codice: {}\n📲 Scarica l'app: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "success": "Congratulazioni! {} Gettoni aggiunti al tuo account! 🎉",
+    "already_used": "Hai già utilizzato un codice di invito.",
+    "own_code": "Non puoi utilizzare il tuo codice di invito.",
+    "invalid_code": "Codice invito non valido o inesistente."
   }
 }

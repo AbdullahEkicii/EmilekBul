@@ -1,5 +1,5 @@
 {
-  "app_title": "Kuis Trivia",
+  "app_title": "Kuis Pengetahuan",
   "welcome": {
     "title": "Selamat datang",
     "start_button": "AWAL",
@@ -800,7 +800,18 @@
     "host_wants_start_badge": "INGIN MEMULAI 🚀",
     "host_waiting_for_you": "Tuan rumah sedang menunggu Anda siap untuk memulai! 🚀",
     "start_when_guest_ready": "Akan dimulai ketika tamu sudah siap ⏳",
-    "guest_is_ready_start": "Tamu Sudah Siap! Mulai Duel 🚀"
+    "guest_is_ready_start": "Tamu Sudah Siap! Mulai Duel 🚀",
+    "calculating_results": "Menentukan Hasil...",
+    "feedback_correct": "BENAR! 🔥",
+    "feedback_wrong": "SALAH! ❌",
+    "next_question_preparing": "Mempersiapkan Pertanyaan {}...",
+    "see_results": "Lihat Hasil",
+    "kick_guest": "Tendangan Tamu",
+    "kick_confirm_title": "Pemain Tendangan",
+    "kick_confirm_msg": "Apakah Anda yakin ingin mengeluarkan {} dari ruangan?",
+    "kicked_from_room": "Anda diusir dari kamar oleh tuan rumah.",
+    "special_bet_badge": "KHUSUS 🔥",
+    "fee_info": "{}% Biaya"
   },
   "errors": {
     "no_internet_ai": "Anda memerlukan koneksi internet aktif untuk menghubungi AI kami. 📡",
@@ -882,5 +893,22 @@
     "reward_claimed_toast": "Terima kasih atas tanggapan Anda! Anda menerima {} Token! ⭐",
     "claimed": "DIKLAIM",
     "rate_action": "KECEPATAN"
+  },
+  "referral": {
+    "title": "Undang Teman",
+    "desc": "Masukkan kode undangan teman untuk mendapatkan 500 Token! Bagikan kode Anda dan undang teman Anda.",
+    "your_code": "KODE UNDANGAN ANDA",
+    "enter_code": "Masukkan Kode Undangan (+500 Token)",
+    "hint": "MASUKKAN KODE",
+    "claim_button": "Mengeklaim",
+    "claimed_badge": "KODE UNDANGAN YANG DIGUNAKAN",
+    "share_button": "Membagikan",
+    "copy_button": "Menyalin",
+    "code_copied": "Kode undangan disalin! 📋",
+    "share_msg": "🏆 Bergabunglah dengan saya di Arena Kuis! Gunakan kode undangan saya untuk mendapatkan 500 Token secara instan:\n👉 Kode: {}\n📲 Unduh Aplikasi: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "success": "Selamat! {} Token ditambahkan ke akun Anda! 🎉",
+    "already_used": "Anda telah menggunakan kode undangan.",
+    "own_code": "Anda tidak dapat menggunakan kode undangan Anda sendiri.",
+    "invalid_code": "Kode undangan tidak valid atau tidak ada."
   }
 }

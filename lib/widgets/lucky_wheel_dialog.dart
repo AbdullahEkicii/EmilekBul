@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/token_service.dart';
 import '../services/sound_service.dart';
+import '../widgets/rewarded_ad_manager.dart';
 import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 
 class LuckyWheelDialog extends StatefulWidget {
@@ -14,6 +15,7 @@ class LuckyWheelDialog extends StatefulWidget {
   });
 
   static const String _lastWheelSpinKey = 'last_wheel_spin_date';
+  static const String _lastAdWheelSpinKey = 'last_wheel_ad_spin_date';
 
   static Future<bool> canSpinToday() async {
     final prefs = await SharedPreferences.getInstance();
@@ -24,6 +26,25 @@ class LuckyWheelDialog extends StatefulWidget {
     final todayStr =
         "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
     return lastSpin != todayStr;
+  }
+
+  static Future<bool> hasUsedAdSpinToday() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastAdSpin = prefs.getString(_lastAdWheelSpinKey);
+    if (lastAdSpin == null) return false;
+
+    final now = DateTime.now();
+    final todayStr =
+        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+    return lastAdSpin == todayStr;
+  }
+
+  static Future<void> markAdSpinUsedToday() async {
+    final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.now();
+    final todayStr =
+        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+    await prefs.setString(_lastAdWheelSpinKey, todayStr);
   }
 
   static Future<void> show(
@@ -88,6 +109,9 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
 
   bool _isSpinning = false;
   bool _hasSpun = false;
+  bool _hasUsedAdSpinToday = false;
+  bool _isAdLoading = false;
+  final RewardedAdManager _rewardedAdManager = RewardedAdManager();
   int _selectedPrizeIndex = 0;
   double _startAngle = 0.0;
   double _targetAngle = 0.0;
@@ -120,11 +144,44 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
 
   Future<void> _checkSpinAvailability() async {
     final available = await LuckyWheelDialog.canSpinToday();
+    final adSpinUsed = await LuckyWheelDialog.hasUsedAdSpinToday();
     if (mounted) {
       setState(() {
         _canSpin = available;
+        _hasUsedAdSpinToday = adSpinUsed;
       });
     }
+  }
+
+  void _watchAdForExtraSpin() {
+    if (_isAdLoading || _isSpinning || _hasUsedAdSpinToday) return;
+    setState(() {
+      _isAdLoading = true;
+    });
+    _rewardedAdManager.loadAd(onAdLoaded: () {
+      if (!mounted) return;
+      setState(() {
+        _isAdLoading = false;
+      });
+      _rewardedAdManager.showAd(onRewarded: () async {
+        await LuckyWheelDialog.markAdSpinUsedToday();
+        if (mounted) {
+          setState(() {
+            _canSpin = true;
+            _hasSpun = false;
+            _hasUsedAdSpinToday = true;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('new_features.wheel_extra_spin_earned'.tr()),
+              backgroundColor: Colors.indigo,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+        }
+      });
+    });
   }
 
   @override
@@ -495,60 +552,118 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
 
   Widget _buildSpinButton() {
     final bool isReadyToSpin = _canSpin && !_hasSpun && !_isSpinning;
+    final bool canWatchAdForExtra = !_canSpin && !_hasUsedAdSpinToday && !_isSpinning;
+    final bool hasSpunDailyCanWatchAd = _hasSpun && !_hasUsedAdSpinToday && !_isSpinning;
 
-    return SizedBox(
-      width: double.infinity,
-      height: 54,
-      child: ElevatedButton(
-        onPressed: _isSpinning
-            ? null
-            : (_hasSpun
-                ? () => Navigator.of(context).pop()
-                : (_canSpin ? _spinWheel : null)),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isReadyToSpin
-              ? const Color(0xFFFF9F43)
-              : (_hasSpun ? const Color(0xFF10B981) : Colors.white12),
-          foregroundColor: Colors.black,
-          disabledBackgroundColor: Colors.white12,
-          disabledForegroundColor: Colors.white38,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          elevation: isReadyToSpin ? 8 : 0,
-          shadowColor: const Color(0xFFFF9F43).withValues(alpha: 0.6),
-        ),
-        child: _isSpinning
-            ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 3, color: Colors.black),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    _hasSpun
-                        ? Icons.check_circle_rounded
-                        : (_canSpin ? Icons.play_arrow_rounded : Icons.lock_clock_rounded),
-                    color: isReadyToSpin || _hasSpun ? Colors.black : Colors.white38,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _hasSpun
-                        ? 'new_features.wheel_awesome'.tr()
-                        : (_canSpin
-                            ? 'new_features.wheel_spin_button'.tr()
-                            : 'new_features.wheel_done_today'.tr()),
-                    style: TextStyle(
-                      color: isReadyToSpin || _hasSpun ? Colors.black : Colors.white38,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.5,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: ElevatedButton(
+            onPressed: _isSpinning
+                ? null
+                : (_hasSpun
+                    ? () => Navigator.of(context).pop()
+                    : (_canSpin ? _spinWheel : (canWatchAdForExtra ? _watchAdForExtraSpin : null))),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isReadyToSpin
+                  ? const Color(0xFFFF9F43)
+                  : (_hasSpun
+                      ? const Color(0xFF10B981)
+                      : (canWatchAdForExtra ? const Color(0xFF6366F1) : Colors.white12)),
+              foregroundColor: canWatchAdForExtra ? Colors.white : Colors.black,
+              disabledBackgroundColor: Colors.white12,
+              disabledForegroundColor: Colors.white38,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              elevation: (isReadyToSpin || canWatchAdForExtra) ? 8 : 0,
+              shadowColor: canWatchAdForExtra
+                  ? const Color(0xFF6366F1).withValues(alpha: 0.6)
+                  : const Color(0xFFFF9F43).withValues(alpha: 0.6),
+            ),
+            child: (_isSpinning || _isAdLoading)
+                ? SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      color: canWatchAdForExtra ? Colors.white : Colors.black,
                     ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _hasSpun
+                            ? Icons.check_circle_rounded
+                            : (_canSpin
+                                ? Icons.play_arrow_rounded
+                                : (canWatchAdForExtra ? Icons.play_circle_fill_rounded : Icons.lock_clock_rounded)),
+                        color: canWatchAdForExtra
+                            ? Colors.white
+                            : (isReadyToSpin || _hasSpun ? Colors.black : Colors.white38),
+                        size: 24,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _hasSpun
+                            ? 'new_features.wheel_awesome'.tr()
+                            : (_canSpin
+                                ? 'new_features.wheel_spin_button'.tr()
+                                : (canWatchAdForExtra
+                                    ? 'new_features.wheel_ad_spin'.tr()
+                                    : 'new_features.wheel_spun_today'.tr())),
+                        style: TextStyle(
+                          color: canWatchAdForExtra
+                              ? Colors.white
+                              : (isReadyToSpin || _hasSpun ? Colors.black : Colors.white38),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+          ),
+        ),
+        if (hasSpunDailyCanWatchAd) ...[
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton(
+              onPressed: _isAdLoading ? null : _watchAdForExtraSpin,
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFF818CF8), width: 1.5),
+                backgroundColor: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
-      ),
+              child: _isAdLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.play_circle_fill_rounded, color: Color(0xFFA5B4FC), size: 22),
+                        const SizedBox(width: 8),
+                        Text(
+                          'new_features.wheel_ad_spin'.tr(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
