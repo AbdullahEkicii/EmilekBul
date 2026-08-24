@@ -39,37 +39,40 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
     _avatars = List.generate(52, (index) {
       final avatarIdx = index + 1; // 1 to 52 (avatar_1.jpg to avatar_52.jpg)
       
-      // Fiyatlandırma:
-      // İlk 10 avatar (1-10) -> Daha ulaşılabilir ve uygun (500 - 800)
-      // Diğerleri (11-52) -> Kademeli ve karma fiyatlar (1200 - 3500)
+      // Zorlaştırılmış Prestij Fiyatlandırması:
+      // 1-5: 1500 (Temel başlangıç avatarları)
+      // 6-10: 2500 - 3000
+      // 11-20: 4500 - 6500 (Orta seviye)
+      // 21-35: 8000 - 12000 (Yüksek seviye)
+      // 36-52: 15000 - 25000 (Nadir / Prestij)
       int originalCost;
       if (index < 5) {
-        originalCost = 500;
+        originalCost = 1500;
       } else if (index < 10) {
-        originalCost = 800;
+        originalCost = 2500 + ((index * 97) % 500); // 2500 - 3000
       } else if (index < 20) {
-        originalCost = 1200 + ((index * 73) % 400); // 1200 - 1500 karma
+        originalCost = 4500 + ((index * 131) % 2000); // 4500 - 6500
       } else if (index < 35) {
-        originalCost = 1800 + ((index * 97) % 600); // 1800 - 2300 karma
+        originalCost = 8000 + ((index * 173) % 4000); // 8000 - 12000
       } else {
-        originalCost = 2500 + ((index * 131) % 1000); // 2500 - 3500 prestij
+        originalCost = 15000 + ((index * 211) % 10000); // 15000 - 25000
       }
 
-      // 50'nin katına yuvarlayalım
-      originalCost = (originalCost ~/ 50) * 50;
+      // 100'ün katına yuvarlayalım
+      originalCost = (originalCost ~/ 100) * 100;
 
       final bool isOnSale = discountedIndices.contains(index);
       int finalCost = originalCost;
       int discountPercent = 0;
 
       if (isOnSale) {
-        // %25 - %40 indirim
-        discountPercent = (index % 2 == 0) ? 30 : 25;
+        // %20 - %30 indirim
+        discountPercent = (index % 2 == 0) ? 30 : 20;
         finalCost = ((originalCost * (100 - discountPercent)) ~/ 100 ~/ 50) * 50;
       }
 
       return {
-        'id': '$avatarIdx', // 1 to 52 (avatar_1.jpg to avatar_52.jpg)
+        'id': '$avatarIdx',
         'name': 'Avatar $avatarIdx',
         'cost': finalCost,
         'originalCost': originalCost,
@@ -82,72 +85,84 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
   }
 
   final List<Map<String, dynamic>> _frames = [
-    {'id': '1', 'name': 'shop.frame_gold', 'cost': 3000, 'color': Colors.amber},
+    {
+      'id': '4',
+      'name': 'shop.frame_silver',
+      'cost': 3500,
+      'color': Colors.grey.shade300
+    },
+    {
+      'id': '8',
+      'name': 'shop.frame_midnight',
+      'cost': 4500,
+      'color': Colors.indigo
+    },
     {
       'id': '2',
       'name': 'shop.frame_neon_blue',
-      'cost': 1500,
+      'cost': 6500,
       'color': Colors.cyanAccent
     },
     {
       'id': '3',
       'name': 'shop.frame_fiery',
-      'cost': 2000,
+      'cost': 8500,
       'color': Colors.redAccent
-    },
-    {
-      'id': '4',
-      'name': 'shop.frame_silver',
-      'cost': 1000,
-      'color': Colors.grey.shade300
-    },
-    {
-      'id': '5',
-      'name': 'shop.frame_emerald',
-      'cost': 2500,
-      'color': Colors.greenAccent
-    },
-    {
-      'id': '6',
-      'name': 'shop.frame_diamond',
-      'cost': 3000,
-      'color': Colors.blue.shade200
     },
     {
       'id': '7',
       'name': 'shop.frame_cyber',
-      'cost': 2000,
+      'cost': 10000,
       'color': Colors.purpleAccent
     },
     {
-      'id': '8',
-      'name': 'shop.frame_midnight',
-      'cost': 1000,
-      'color': Colors.indigo
+      'id': '5',
+      'name': 'shop.frame_emerald',
+      'cost': 12500,
+      'color': Colors.greenAccent
+    },
+    {
+      'id': '1',
+      'name': 'shop.frame_gold',
+      'cost': 15000,
+      'color': Colors.amber
+    },
+    {
+      'id': '6',
+      'name': 'shop.frame_diamond',
+      'cost': 20000,
+      'color': Colors.blue.shade200
     },
   ];
 
   final List<Map<String, dynamic>> _titles = [
-    {'id': 'Çaylak', 'name': 'shop.title_novice', 'cost': 500},
-    {'id': 'Bilge', 'name': 'shop.title_sage', 'cost': 1000},
-    {'id': 'Uzman', 'name': 'shop.title_expert', 'cost': 1500},
-    {'id': 'Efsane', 'name': 'shop.title_legend', 'cost': 2000},
-    {'id': 'Dahi', 'name': 'shop.title_genius', 'cost': 2500},
-    {'id': 'Üstad', 'name': 'shop.title_master', 'cost': 3000},
-    {'id': 'Melek', 'name': 'shop.title_angel', 'cost': 3500},
-    {'id': 'Prenses', 'name': 'shop.title_princess', 'cost': 4000},
-    {'id': 'Leydi', 'name': 'shop.title_lady', 'cost': 4200},
-    {'id': 'Büyücü', 'name': 'shop.title_sorceress', 'cost': 4500},
-    {'id': 'Yıldız', 'name': 'shop.title_star', 'cost': 4500},
-    {'id': 'Kraliçe', 'name': 'shop.title_queen', 'cost': 5000},
-    {'id': 'Kral', 'name': 'shop.title_king', 'cost': 5000},
-    {'id': 'Sultan', 'name': 'shop.title_sultan', 'cost': 5500},
-    {'id': 'Savaşçı Prenses', 'name': 'shop.title_warrior_princess', 'cost': 6000},
-    {'id': 'İmparatoriçe', 'name': 'shop.title_empress', 'cost': 6500},
-    {'id': 'Tanrıça', 'name': 'shop.title_goddess', 'cost': 7000},
-    {'id': 'Şampiyon', 'name': 'shop.title_champion', 'cost': 7500},
-    {'id': 'Hükümdar', 'name': 'shop.title_sovereign', 'cost': 8000},
-    {'id': 'Yenilmez', 'name': 'shop.title_invincible', 'cost': 8500},
+    // Başlangıç Seviyesi Ünvanlar (2,500 - 6,000 Token)
+    {'id': 'Çaylak', 'name': 'shop.title_novice', 'cost': 2500},
+    {'id': 'Bilge', 'name': 'shop.title_sage', 'cost': 4000},
+    {'id': 'Uzman', 'name': 'shop.title_expert', 'cost': 6000},
+
+    // Orta Seviye Prestij Ünvanlar (8,500 - 16,000 Token)
+    {'id': 'Efsane', 'name': 'shop.title_legend', 'cost': 8500},
+    {'id': 'Dahi', 'name': 'shop.title_genius', 'cost': 10000},
+    {'id': 'Üstad', 'name': 'shop.title_master', 'cost': 12000},
+    {'id': 'Melek', 'name': 'shop.title_angel', 'cost': 13500},
+    {'id': 'Prenses', 'name': 'shop.title_princess', 'cost': 15000},
+    {'id': 'Leydi', 'name': 'shop.title_lady', 'cost': 16000},
+
+    // Üst Seviye Nadir Ünvanlar (18,000 - 36,000 Token)
+    {'id': 'Büyücü', 'name': 'shop.title_sorceress', 'cost': 18000},
+    {'id': 'Yıldız', 'name': 'shop.title_star', 'cost': 20000},
+    {'id': 'Kraliçe', 'name': 'shop.title_queen', 'cost': 24000},
+    {'id': 'Kral', 'name': 'shop.title_king', 'cost': 24000},
+    {'id': 'Sultan', 'name': 'shop.title_sultan', 'cost': 28000},
+    {'id': 'Savaşçı Prenses', 'name': 'shop.title_warrior_princess', 'cost': 32000},
+    {'id': 'İmparatoriçe', 'name': 'shop.title_empress', 'cost': 36000},
+
+    // Efsanevi / Zirve Prestij Ünvanlar (42,000 - 75,000 Token)
+    {'id': 'Tanrıça', 'name': 'shop.title_goddess', 'cost': 42000},
+    {'id': 'Şampiyon', 'name': 'shop.title_champion', 'cost': 50000},
+    {'id': 'Hükümdar', 'name': 'shop.title_sovereign', 'cost': 62000},
+    {'id': 'Yenilmez', 'name': 'shop.title_invincible', 'cost': 75000},
   ];
 
   @override

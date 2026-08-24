@@ -298,17 +298,13 @@ class BotRoomService {
 
   static const List<String> _titles = [
     'yok',
+    'yok',
+    'yok',
+    'Çaylak',
+    'Bilge',
+    'Uzman',
     'Bilgi Avcısı',
-    'Usta Yarışmacı',
-    'Zeka Küpü',
-    'Efsane',
-    'Düellocu',
-    'Şampiyon',
     'Hızlı Düşünür',
-    'Quiz Ustası',
-    'Yenilmez',
-    'Bilgin',
-    'Büyük Usta',
   ];
 
   static const List<int> _bets = [10, 25, 50, 100];
@@ -335,15 +331,22 @@ class BotRoomService {
 
     final profile = pool[_random.nextInt(pool.length)];
     final botId = 'bot_${_random.nextInt(900000) + 100000}';
-    final avatarNum = _random.nextInt(20) + 1;
-    final frame = _random.nextInt(6).toString(); // 0 ile 5
+    
+    // %40 ihtimalle varsayılan avatarsız ('0')
+    final bool hasAvatar = _random.nextDouble() > 0.40;
+    final String avatarNum = hasAvatar ? (_random.nextInt(8) + 1).toString() : '0';
+
+    // %65 ihtimalle çerçevesiz ('0')
+    final bool hasFrame = _random.nextDouble() > 0.65;
+    final String frame = hasFrame ? (_random.nextBool() ? '4' : '8') : '0';
+
     final title = _titles[_random.nextInt(_titles.length)];
-    final tokens = (_random.nextInt(40) + 10) * 100; // 1000 - 5000 Token
+    final tokens = (_random.nextInt(25) + 5) * 100; // 500 - 3000 Token
 
     return DuelPlayer(
       uid: botId,
       username: profile['name'] ?? 'Player',
-      avatarIndex: avatarNum.toString(),
+      avatarIndex: avatarNum,
       equippedFrame: frame,
       equippedTitle: title,
       tokens: tokens,

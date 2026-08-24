@@ -96,6 +96,12 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   bool _duelBannerVisible = false;
   late AnimationController _bannerController;
 
+  // Answer feedback badge states
+  bool _showFeedbackBadge = false;
+  bool _lastAnswerCorrect = false;
+  late AnimationController _feedbackController;
+  late Animation<double> _feedbackScaleAnimation;
+
   @override
   void initState() {
     super.initState();
@@ -103,6 +109,15 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
+    );
+
+    _feedbackController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _feedbackScaleAnimation = CurvedAnimation(
+      parent: _feedbackController,
+      curve: Curves.elasticOut,
     );
 
     _orbController = AnimationController(
@@ -206,6 +221,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     _animationController.dispose();
+    _feedbackController.dispose();
     _orbController.dispose();
     _comboController.dispose();
     _bannerController.dispose();
@@ -221,13 +237,17 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     if (!widget.isDuel) return;
 
     final botAvatars = [
-      'avatars/avatar_1.jpg', 'avatars/avatar_2.jpg',
-      'avatars/avatar_3.jpg', 'avatars/avatar_4.jpg', 'avatars/avatar_5.jpg'
+      'avatars/avatar_1.jpg',
+      'avatars/avatar_2.jpg',
+      'avatars/avatar_3.jpg',
+      'avatars/avatar_4.jpg',
+      'avatars/avatar_5.jpg',
     ];
     final random = math.Random();
 
     _botName = BotRoomService.getRandomBotName(context.locale.languageCode);
-    _botAvatar = botAvatars[random.nextInt(botAvatars.length)];
+    final bool hasAvatar = random.nextDouble() > 0.40;
+    _botAvatar = hasAvatar ? botAvatars[random.nextInt(botAvatars.length)] : '0';
 
     // Mark bot as thinking immediately
     if (mounted) setState(() => _botIsThinking = true);
@@ -431,6 +451,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   }
 
   void _onOptionSelected(int index) {
+    if (_isShowingAnswer || _isTransitioning) return;
     if (_eliminatedOptions.contains(index)) return;
 
     // If double answer is active and user picks wrong option
@@ -453,6 +474,8 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     setState(() {
       _selectedIndex = index;
     });
+
+    _goNext();
   }
 
   void _goNext() {
@@ -466,7 +489,10 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
 
     setState(() {
       _isShowingAnswer = true;
+      _lastAnswerCorrect = isCorrect;
+      _showFeedbackBadge = true;
     });
+    _feedbackController.forward(from: 0.0);
 
     if (isCorrect) {
       SoundService.playCorrect();
@@ -496,8 +522,8 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
 
     _userAnswers[_currentIndex] = _selectedIndex;
 
-    // Sonucu göstermek için 1.5 saniye bekle
-    Future.delayed(const Duration(milliseconds: 1500), () {
+    // Sonucu ve geribildirimi göstermek için 1.8 saniye bekle (Reklam görünürlük süresini artırır)
+    Future.delayed(const Duration(milliseconds: 1800), () {
       if (!mounted) return;
       if (_currentIndex < widget.questions.length - 1) {
         // Step 1: Start transition and increment index IMMEDIATELY
@@ -507,11 +533,13 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
           _currentIndex++;
           _selectedIndex = null;
           _isShowingAnswer = false;
+          _showFeedbackBadge = false;
           _eliminatedOptions.clear();
           _isDoubleAnswerActive = false;
           _isDoubleAnswerUsedInCurrentQuestion = false;
           _isFiftyFiftyUsedInCurrentQuestion = false;
         });
+        _feedbackController.reset();
 
         // Step 2: Wait for transition duration
         Future.delayed(const Duration(milliseconds: 2500), () {
@@ -819,16 +847,14 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                     ],
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  child: const MyNativeAd(
-                    height: 65,
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(12, 4, 12, 8),
+                  child: MyNativeAd(
+                    height: 70,
                     factoryId: 'adFactorySmall',
                     refreshInterval: 30,
                   ),
                 ),
-                _buildBottomAction(),
-                const SizedBox(height: 4),
               ],
             ),
           ),
@@ -895,6 +921,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                 ),
               ),
             ),
+          if (_showFeedbackBadge) _buildFeedbackBanner(),
         ],
       ),
     );
@@ -1757,59 +1784,44 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildBottomAction() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-      child: Container(
-        width: double.infinity,
-        height: 56,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            if (_selectedIndex != null)
+  Widget _buildFeedbackBanner() {
+    final isCorrect = _lastAnswerCorrect;
+    final Color bannerColor = isCorrect ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+    final String text = isCorrect ? 'DOĞRU!' : 'YANLIŞ!';
+    final IconData icon = isCorrect ? Icons.check_circle_rounded : Icons.cancel_rounded;
+
+    return Center(
+      child: ScaleTransition(
+        scale: _feedbackScaleAnimation,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.95),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: bannerColor, width: 2.5),
+            boxShadow: [
               BoxShadow(
-                color: const Color(0xFF6366F1).withValues(alpha: 0.4),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
+                color: bannerColor.withValues(alpha: 0.45),
+                blurRadius: 24,
+                spreadRadius: 6,
               ),
-          ],
-        ),
-        child: ElevatedButton(
-          onPressed: _selectedIndex != null ? _goNext : null,
-          style: ElevatedButton.styleFrom(
-            padding: EdgeInsets.zero, // Important for Ink or Container children
-            backgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            ],
           ),
-          child: Ink(
-            decoration: BoxDecoration(
-              gradient: _selectedIndex != null
-                  ? const LinearGradient(
-                      colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    )
-                  : null,
-              color: _selectedIndex == null
-                  ? Colors.white.withValues(alpha: 0.05)
-                  : null,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Center(
-              child: Text(
-                _currentIndex == widget.questions.length - 1
-                    ? 'quiz.finish_test'.tr()
-                    : 'quiz.next_question'.tr(),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: bannerColor, size: 32),
+              const SizedBox(width: 12),
+              Text(
+                text,
                 style: TextStyle(
-                  color: _selectedIndex != null ? Colors.white : Colors.white24,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.2,
+                  color: bannerColor,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.0,
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),

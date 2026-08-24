@@ -189,11 +189,11 @@ class _LoadingScreenState extends State<LoadingScreen>
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const SizedBox(height: 40),
+                          const SizedBox(height: 12),
 
                           // Logo with continuously pulsing glow and rotating scanning rings
                           RepaintBoundary(
@@ -204,20 +204,20 @@ class _LoadingScreenState extends State<LoadingScreen>
                                 children: [
                                   // Inner pulse glow
                                   Container(
-                                    width: 120,
-                                    height: 120,
+                                    width: 65,
+                                    height: 65,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       boxShadow: [
                                         BoxShadow(
                                           color: const Color(0xFF6366F1).withValues(alpha: _pulseAnimation.value),
-                                          blurRadius: 60,
-                                          spreadRadius: 10,
+                                          blurRadius: 30,
+                                          spreadRadius: 4,
                                         ),
                                         BoxShadow(
                                           color: const Color(0xFFA855F7).withValues(alpha: _pulseAnimation.value * 0.7),
-                                          blurRadius: 30,
-                                          spreadRadius: 5,
+                                          blurRadius: 15,
+                                          spreadRadius: 2,
                                         ),
                                       ],
                                     ),
@@ -226,8 +226,8 @@ class _LoadingScreenState extends State<LoadingScreen>
                                   Transform.rotate(
                                     angle: _shimmerController.value * 2 * pi,
                                     child: Container(
-                                      width: 140,
-                                      height: 140,
+                                      width: 78,
+                                      height: 78,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
                                         border: Border.all(
@@ -241,8 +241,8 @@ class _LoadingScreenState extends State<LoadingScreen>
                                   Transform.rotate(
                                     angle: -_shimmerController.value * 4 * pi,
                                     child: Container(
-                                      width: 160,
-                                      height: 160,
+                                      width: 90,
+                                      height: 90,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
                                         border: Border.all(
@@ -253,12 +253,12 @@ class _LoadingScreenState extends State<LoadingScreen>
                                       child: Align(
                                         alignment: Alignment.topCenter,
                                         child: Container(
-                                          width: 8,
-                                          height: 8,
+                                          width: 5,
+                                          height: 5,
                                           decoration: const BoxDecoration(
                                             color: Color(0xFFEC4899),
                                             shape: BoxShape.circle,
-                                            boxShadow: [BoxShadow(color: Color(0xFFEC4899), blurRadius: 10, spreadRadius: 2)],
+                                            boxShadow: [BoxShadow(color: Color(0xFFEC4899), blurRadius: 6, spreadRadius: 1)],
                                           ),
                                         ),
                                       ),
@@ -268,52 +268,55 @@ class _LoadingScreenState extends State<LoadingScreen>
                                   ClipOval(
                                     child: Image.asset(
                                       'lib/assets/emilekbul2.png',
-                                      width: 100,
-                                      height: 100,
+                                      width: 55,
+                                      height: 55,
                                       fit: BoxFit.cover,
-                                      cacheWidth: 200,
-                                      cacheHeight: 200,
+                                      cacheWidth: 110,
+                                      cacheHeight: 110,
                                       errorBuilder: (context, error, stackTrace) =>
-                                          const Icon(Icons.psychology_rounded, size: 100, color: Colors.white),
+                                          const Icon(Icons.psychology_rounded, size: 55, color: Colors.white),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 8),
 
                           // App Title
                           Text(
                             'app_title'.tr(),
                             style: const TextStyle(
-                              fontSize: 28,
+                              fontSize: 22,
                               fontWeight: FontWeight.w900,
                               color: Colors.white,
-                              letterSpacing: -1,
+                              letterSpacing: -0.5,
                             ),
                           ),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 10),
 
                           // Progress Section
                           _buildProgressSection(),
-                          const SizedBox(height: 28),
+                          const SizedBox(height: 10),
 
                           // Feature Highlights
                           _buildFeatureHighlights(),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 8),
 
                           // Fun fact / tip card
                           _FunFactCard(),
-                          const SizedBox(height: 20),
-                          const MyNativeAd(
-                            height: 120,
-                            factoryId: 'adFactoryExample',
-                          ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 8),
                         ],
                       ),
                     ),
+                  ),
+                ),
+                // Sabit Alt Reklam (Tüm telefonlarda %100 ekranda görünür)
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 4, 16, 6),
+                  child: MyNativeAd(
+                    height: 75,
+                    factoryId: 'adFactorySmall',
                   ),
                 ),
               ],
@@ -326,8 +329,8 @@ class _LoadingScreenState extends State<LoadingScreen>
 
   Widget _buildProgressSection() {
     return GlassContainer(
-      borderRadius: 24,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+      borderRadius: 20,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       opacity: 0.12,
       child: Column(
         mainAxisSize: MainAxisSize.min,

@@ -308,9 +308,26 @@ class UserService {
       final user = userCredential.user;
 
       if (user != null) {
-        // 2. Benzersiz Misafir Kullanıcı Adı ve Profilini Doğrudan Oluştur (Anlık & Non-blocking)
-        final randomSuffix = Random().nextInt(900000) + 100000;
-        final username = 'Misafir$randomSuffix';
+        // 2. Benzersiz Misafir Kullanıcı Adı ve Profilini Oluştur (Firestore guest_count sayacından sıralı numara)
+        int guestNumber = 0;
+        try {
+          final counterRef = _firestore.collection('counters').doc('guest_count');
+          guestNumber = await _firestore.runTransaction((transaction) async {
+            final snapshot = await transaction.get(counterRef);
+            int currentCount = 0;
+            if (snapshot.exists && snapshot.data() != null) {
+              currentCount = (snapshot.data()!['count'] as num?)?.toInt() ?? 0;
+            }
+            final nextCount = currentCount + 1;
+            transaction.set(counterRef, {'count': nextCount}, SetOptions(merge: true));
+            return nextCount;
+          }).timeout(const Duration(seconds: 3));
+        } catch (e) {
+          debugPrint('Guest count transaction error, using fallback random: $e');
+          guestNumber = Random().nextInt(900000) + 100000;
+        }
+
+        final username = 'Misafir$guestNumber';
 
         await _firestore.collection(usersCollection).doc(user.uid).set({
           'username': username,
@@ -334,11 +351,6 @@ class UserService {
           'equippedFrame': '0',
           'equippedTitle': 'yok',
         }, SetOptions(merge: true));
-
-        // Arka planda global sayaç güncellemesi (asenkron, non-blocking)
-        unawaited(_firestore.collection('counters').doc('guest_count').set({
-          'count': FieldValue.increment(1),
-        }, SetOptions(merge: true)));
 
         // HIZLI JETON EŞİTLEMESİ (Misafir için SharedPreferences güncellemesi)
         try {

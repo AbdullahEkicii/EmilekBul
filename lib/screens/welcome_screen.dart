@@ -1367,6 +1367,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                       onPressedd:
                                           (category, difficulty, duration,
                                               {bool isDuel = false}) async {
+                                        final navigator = Navigator.of(context);
+                                        final messenger = ScaffoldMessenger.of(context);
                                         final prefs = await SharedPreferences
                                             .getInstance();
                                         final offlineTaken = prefs.getInt(
@@ -1377,43 +1379,38 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                           final hasInternet = await AppUtils
                                               .hasInternetConnection();
                                           if (!hasInternet) {
-                                            if (context.mounted) {
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(
-                                                SnackBar(
-                                                  content: Text(
-                                                      'errors.no_internet_ai'
-                                                          .tr()),
-                                                  backgroundColor:
-                                                      Colors.redAccent,
-                                                  duration: const Duration(
-                                                      seconds: 3),
-                                                ),
-                                              );
-                                            }
+                                            messenger.showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                    'errors.no_internet_ai'
+                                                        .tr()),
+                                                backgroundColor:
+                                                    Colors.redAccent,
+                                                duration: const Duration(
+                                                    seconds: 3),
+                                              ),
+                                            );
                                             return;
                                           }
                                         }
 
                                         if (_showOnboardingGuide) {
-                                          setState(() =>
-                                              _showOnboardingGuide = false);
+                                          if (mounted) {
+                                            setState(() =>
+                                                _showOnboardingGuide = false);
+                                          }
                                           await prefs.setBool(
                                               'has_seen_onboarding_v2', true);
                                         }
-                                        WidgetsBinding.instance
-                                            .addPostFrameCallback((_) {
-                                          Navigator.pushReplacement(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) => QuizFlow(
-                                                initialCategory: category,
-                                                initialDifficulty: difficulty,
-                                                initialDuration: duration,
-                                              ),
+                                        navigator.pushReplacement(
+                                          MaterialPageRoute(
+                                            builder: (context) => QuizFlow(
+                                              initialCategory: category,
+                                              initialDifficulty: difficulty,
+                                              initialDuration: duration,
                                             ),
-                                          );
-                                        });
+                                          ),
+                                        );
                                       },
                                       text: 'welcome.start_button'.tr(),
                                     ),

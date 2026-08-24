@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../constants/ad_constants.dart';
 
 class RewardedAdManager {
   RewardedAd? _rewardedAd;
@@ -75,9 +76,7 @@ class RewardedAdManager {
     }
     _isLoading = true;
 
-    final String adUnitId = defaultTargetPlatform == TargetPlatform.android
-        ? 'ca-app-pub-3940256099942544/5224354917' // Android Test Rewarded Ad ID
-        : 'ca-app-pub-3940256099942544/1712485313'; // iOS Test Rewarded Ad ID
+    final String adUnitId = AdConstants.rewardedAdUnitId;
 
     RewardedAd.load(
       adUnitId: adUnitId,

@@ -2,13 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import '../constants/ad_constants.dart';
+
 class MyNativeAd extends StatefulWidget {
   final double height;
   final double width;
   final String factoryId;
   final int? refreshInterval; // seconds
 
-  static const bool adsEnabled = true;
+  static bool get adsEnabled => AdConstants.adsEnabled;
 
   const MyNativeAd({
     super.key,
@@ -38,9 +40,7 @@ class _MyNativeAdState extends State<MyNativeAd> {
       return;
     }
 
-    final String adUnitId = defaultTargetPlatform == TargetPlatform.android
-        ? 'ca-app-pub-3940256099942544/2247696110' // Android Test Native Ad ID
-        : 'ca-app-pub-3940256099942544/3986624511'; // iOS Test Native Ad ID
+    final String adUnitId = AdConstants.nativeAdUnitId;
 
     _nativeAd = NativeAd(
       adUnitId: adUnitId,
