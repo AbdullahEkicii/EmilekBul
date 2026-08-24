@@ -48,6 +48,7 @@ void main() async {
 
     await FirebaseAppCheck.instance.activate(
       providerAndroid: const AndroidPlayIntegrityProvider(), // Production provider
+      providerApple: const AppleDeviceCheckProvider(),
     );
   } catch (e) {
     debugPrint("Kritik başlatma hatası: $e");
