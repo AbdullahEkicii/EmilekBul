@@ -10,18 +10,46 @@ import '../services/duel_service.dart';
 import '../services/user_service.dart';
 import '../services/token_service.dart';
 import '../services/bot_room_service.dart';
+import '../services/duel_invite_service.dart';
+import '../services/duel_ticket_service.dart';
+import '../services/analytics_service.dart';
 import '../screens/duel_room_screen.dart';
 import '../utils/app_utils.dart';
 
 class FriendRaceEntryDialog extends StatefulWidget {
-  const FriendRaceEntryDialog({super.key});
+  final String? inviteFriendUid;
+  final String? inviteFriendName;
+  final String? joinRoomCode;
+  final String? presetCategory;
 
-  static void show(BuildContext context) {
+  const FriendRaceEntryDialog({
+    super.key,
+    this.inviteFriendUid,
+    this.inviteFriendName,
+    this.joinRoomCode,
+    this.presetCategory,
+  });
+
+  /// [inviteFriendUid] verilirse doğrudan oda oluşturma açılır ve oda kurulunca arkadaşa davet gider.
+  /// [joinRoomCode] verilirse o odaya otomatik katılma isteği gönderilir (davet kabulü).
+  /// [presetCategory] verilirse oda oluşturma sekmesi o kategoriyle açılır.
+  static void show(
+    BuildContext context, {
+    String? inviteFriendUid,
+    String? inviteFriendName,
+    String? joinRoomCode,
+    String? presetCategory,
+  }) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => const FriendRaceEntryDialog(),
+      builder: (context) => FriendRaceEntryDialog(
+        inviteFriendUid: inviteFriendUid,
+        inviteFriendName: inviteFriendName,
+        joinRoomCode: joinRoomCode,
+        presetCategory: presetCategory,
+      ),
     );
   }
 
@@ -40,11 +68,53 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
   String _selectedCategory = 'Genel Kültür';
   String _selectedDifficulty = 'Orta';
   int _selectedQuestionCount = 5;
-  int _selectedBet = 50;
+  int _selectedBet = DuelTicketService.defaultBet;
+  int _myTokens = 0;
+  int _ticketsLeft = DuelTicketService.ticketsPerDay;
+
+  static const List<int> _betOptions = [0, 10, 25, 50, 100, 250, 500, 1000];
+
+  bool _canCoverBet(int bet) => DuelTicketService.canCover(
+      bet: bet, tokens: _myTokens, tickets: _ticketsLeft);
+
+  Future<void> _loadWallet() async {
+    final tokens = await TokenService.getTokenAmount();
+    final tickets = await DuelTicketService.ticketsLeft();
+    if (!mounted) return;
+    setState(() {
+      _myTokens = tokens;
+      _ticketsLeft = tickets;
+      if (!_canCoverBet(_selectedBet)) _selectedBet = 0;
+    });
+  }
+
+  bool get _isFriendInvite => widget.inviteFriendUid != null;
 
   @override
   void initState() {
     super.initState();
+    AnalyticsService.logDuelFunnel('dialog_open', parameters: {
+      'entry': widget.presetCategory != null
+          ? 'result_cta'
+          : (_isFriendInvite
+              ? 'friend_invite'
+              : (widget.joinRoomCode != null ? 'invite_accept' : 'home')),
+    });
+    _loadWallet();
+    if (_isFriendInvite) _selectedTab = 1;
+    final preset = widget.presetCategory;
+    if (preset != null) {
+      _selectedTab = 1;
+      _selectedCategory = preset;
+    }
+    final joinCode = widget.joinRoomCode;
+    if (joinCode != null) {
+      _selectedTab = 2;
+      _codeController.text = joinCode;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _handleJoinRoomWithCode(joinCode);
+      });
+    }
     // Açık bot odası sayısını kontrol et
     BotRoomService.ensureMinimumBotRooms();
 
@@ -83,6 +153,16 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
   }
 
   Future<void> _handleCreateRoom() async {
+    if (!_canCoverBet(_selectedBet)) {
+      setState(() => _errorMessage =
+          'duel.you_need_tokens'.tr(args: [_selectedBet.toString()]));
+      return;
+    }
+    AnalyticsService.logDuelFunnel('room_create', parameters: {
+      'bet': _selectedBet,
+      'category': _selectedCategory,
+      'is_friend_invite': _isFriendInvite ? 1 : 0,
+    });
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -106,6 +186,28 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
         config: config,
       );
 
+      final inviteUid = widget.inviteFriendUid;
+      if (inviteUid != null) {
+        final sent = await DuelInviteService.sendDuelInvite(
+          toUid: inviteUid,
+          roomCode: roomCode,
+          config: config,
+        );
+        if (sent) AnalyticsService.logDuelChallengeSent();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(sent
+                  ? 'duel.challenge_sent'.tr(args: [
+                      AppUtils.localizeUsername(widget.inviteFriendName ?? '')
+                    ])
+                  : 'duel.challenge_failed'.tr()),
+              backgroundColor: sent ? Colors.green : Colors.orange,
+            ),
+          );
+        }
+      }
+
       if (!mounted) return;
       Navigator.pop(context); // Close dialog
 
@@ -115,6 +217,7 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
           builder: (context) => DuelRoomScreen(
             roomCode: roomCode,
             isHost: true,
+            invitedFriendUid: inviteUid,
           ),
         ),
       );
@@ -130,6 +233,7 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
 
   Future<void> _handleJoinRoomWithCode(String code) async {
     final cleanCode = code.trim().toUpperCase();
+    AnalyticsService.logDuelFunnel('join_tap');
     if (cleanCode.length < 4) {
       setState(() => _errorMessage = 'duel.enter_valid_code'.tr());
       return;
@@ -190,21 +294,40 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
     StreamSubscription<DuelRoom?>? sub;
     bool isClosed = false;
 
+    // Host 60 sn içinde yanıt vermezse isteği iptal et
+    Timer(const Duration(seconds: 60), () {
+      if (isClosed || !mounted) return;
+      isClosed = true;
+      sub?.cancel();
+      DuelService.cancelJoinRequest(cleanCode, myUid);
+      AnalyticsService.logDuelFunnel('join_timeout');
+      Navigator.of(context, rootNavigator: true).pop();
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'duel.host_no_response'.tr();
+      });
+    });
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (dialogCtx) {
         return AlertDialog(
           backgroundColor: const Color(0xFF1E293B),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Row(
             children: [
-              const Icon(Icons.hourglass_top_rounded, color: Color(0xFFFF9F43), size: 24),
+              const Icon(Icons.hourglass_top_rounded,
+                  color: Color(0xFFFF9F43), size: 24),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   'duel.join_request_sent'.tr(),
-                  style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -218,7 +341,8 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
               Text(
                 'duel.waiting_host_approval'.tr(),
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13.5),
+                style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.8), fontSize: 13.5),
               ),
             ],
           ),
@@ -228,12 +352,14 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
                 isClosed = true;
                 sub?.cancel();
                 DuelService.cancelJoinRequest(cleanCode, myUid);
+                AnalyticsService.logDuelFunnel('join_cancel');
                 Navigator.of(dialogCtx).pop();
                 if (mounted) setState(() => _isLoading = false);
               },
               child: Text(
                 'duel.cancel_request'.tr(),
-                style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                    color: Colors.redAccent, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -259,7 +385,8 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
       if (room.guest?.uid == myUid || room.joinRequestStatus == 'approved') {
         isClosed = true;
         sub?.cancel();
-        Navigator.of(context, rootNavigator: true).pop(); // close waiting dialog
+        Navigator.of(context, rootNavigator: true)
+            .pop(); // close waiting dialog
         Navigator.pop(context); // close race dialog
         Navigator.push(
           context,
@@ -274,10 +401,12 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
       }
 
       // If rejected
-      if (room.joinRequestStatus == 'rejected' || (room.pendingGuest == null && room.guest?.uid != myUid)) {
+      if (room.joinRequestStatus == 'rejected' ||
+          (room.pendingGuest == null && room.guest?.uid != myUid)) {
         isClosed = true;
         sub?.cancel();
-        Navigator.of(context, rootNavigator: true).pop(); // close waiting dialog
+        Navigator.of(context, rootNavigator: true)
+            .pop(); // close waiting dialog
         setState(() {
           _isLoading = false;
           _errorMessage = 'duel.join_request_rejected'.tr();
@@ -318,28 +447,41 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF818CF8), Color(0xFF4F46E5)]),
+                  gradient: const LinearGradient(
+                      colors: [Color(0xFF818CF8), Color(0xFF4F46E5)]),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.bolt_rounded, color: Colors.white, size: 22),
+                child: const Icon(Icons.bolt_rounded,
+                    color: Colors.white, size: 22),
               ),
               const SizedBox(width: 10),
-              Text(
-                'duel.friend_race'.tr(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 19,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.5,
+              Flexible(
+                child: Text(
+                  _isFriendInvite
+                      ? 'duel.challenge_friend_title'.tr(args: [
+                          AppUtils.localizeUsername(
+                              widget.inviteFriendName ?? '')
+                        ])
+                      : 'duel.friend_race'.tr(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 14),
 
-          // 3 Tabs Switcher
-          _buildTabsHeader(),
-          const SizedBox(height: 14),
+          // 3 Tabs Switcher (arkadaş davetinde sadece oda oluşturma gösterilir)
+          if (!_isFriendInvite) ...[
+            _buildTabsHeader(),
+            const SizedBox(height: 14),
+          ],
 
           if (_errorMessage != null) ...[
             Container(
@@ -347,16 +489,21 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
               decoration: BoxDecoration(
                 color: Colors.redAccent.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+                border:
+                    Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 18),
+                  const Icon(Icons.error_outline_rounded,
+                      color: Colors.redAccent, size: 18),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _errorMessage!,
-                      style: const TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -389,7 +536,8 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
       child: Row(
         children: [
           _buildTabItem(0, 'duel.tab_open_rooms'.tr(), Icons.public_rounded),
-          _buildTabItem(1, 'duel.tab_create_room'.tr(), Icons.add_circle_outline_rounded),
+          _buildTabItem(
+              1, 'duel.tab_create_room'.tr(), Icons.add_circle_outline_rounded),
           _buildTabItem(2, 'duel.tab_enter_code'.tr(), Icons.pin_rounded),
         ],
       ),
@@ -424,7 +572,8 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: isSelected ? Colors.white : Colors.white60, size: 16),
+              Icon(icon,
+                  color: isSelected ? Colors.white : Colors.white60, size: 16),
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
@@ -451,7 +600,8 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
       stream: DuelService.streamOpenRooms(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: Color(0xFFFF9F43)));
+          return const Center(
+              child: CircularProgressIndicator(color: Color(0xFFFF9F43)));
         }
 
         final rooms = snapshot.data ?? [];
@@ -470,18 +620,23 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
                     color: Colors.white.withValues(alpha: 0.05),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.meeting_room_outlined, color: Colors.white38, size: 40),
+                  child: const Icon(Icons.meeting_room_outlined,
+                      color: Colors.white38, size: 40),
                 ),
                 const SizedBox(height: 14),
                 Text(
                   'duel.no_open_rooms'.tr(),
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   'duel.no_open_rooms_desc'.tr(),
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
@@ -491,7 +646,8 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6366F1),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
               ],
@@ -507,7 +663,10 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
             final room = openRooms[index];
             final isMyRoom = room.hostUid == myUid;
 
-            final allCats = [...AppCategories.categories, ...AppCategories.bonusPoolCategories.whereType<CategoryItem>()];
+            final allCats = [
+              ...AppCategories.categories,
+              ...AppCategories.bonusPoolCategories.whereType<CategoryItem>()
+            ];
             final cat = allCats.firstWhere(
               (c) => c.name == room.config.category,
               orElse: () => allCats.first,
@@ -525,13 +684,15 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
                   // Host Avatar
                   Builder(
                     builder: (context) {
-                      final hasAvatar = UserService.hasAvatar(room.host.avatarIndex);
+                      final hasAvatar =
+                          UserService.hasAvatar(room.host.avatarIndex);
                       return CircleAvatar(
                         radius: 22,
                         backgroundColor: const Color(0xFF1E293B),
                         backgroundImage: hasAvatar
                             ? ResizeImage(
-                                AssetImage(UserService.getAvatarPath(room.host.avatarIndex)),
+                                AssetImage(UserService.getAvatarPath(
+                                    room.host.avatarIndex)),
                                 width: 88,
                                 height: 88,
                               )
@@ -554,7 +715,10 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
                           AppUtils.localizeUsername(room.host.username),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13.5),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13.5),
                         ),
                         const SizedBox(height: 3),
                         // Category Name Row
@@ -585,19 +749,26 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
                           children: [
                             // Difficulty Badge
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 5, vertical: 1.5),
                               decoration: BoxDecoration(
-                                color: AppUtils.getDifficultyColor(room.config.difficulty).withValues(alpha: 0.15),
+                                color: AppUtils.getDifficultyColor(
+                                        room.config.difficulty)
+                                    .withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(6),
                                 border: Border.all(
-                                  color: AppUtils.getDifficultyColor(room.config.difficulty).withValues(alpha: 0.45),
+                                  color: AppUtils.getDifficultyColor(
+                                          room.config.difficulty)
+                                      .withValues(alpha: 0.45),
                                   width: 0.8,
                                 ),
                               ),
                               child: Text(
-                                AppUtils.localizeDifficulty(room.config.difficulty),
+                                AppUtils.localizeDifficulty(
+                                    room.config.difficulty),
                                 style: TextStyle(
-                                  color: AppUtils.getDifficultyColor(room.config.difficulty),
+                                  color: AppUtils.getDifficultyColor(
+                                      room.config.difficulty),
                                   fontWeight: FontWeight.w800,
                                   fontSize: 9.5,
                                 ),
@@ -605,11 +776,13 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
                             ),
                             // Question Count Badge
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 5, vertical: 1.5),
                               decoration: BoxDecoration(
                                 color: Colors.white.withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: Colors.white12, width: 0.8),
+                                border: Border.all(
+                                    color: Colors.white12, width: 0.8),
                               ),
                               child: Text(
                                 '${room.config.questionCount} ${'duel.questions'.tr()}',
@@ -622,16 +795,20 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
                             ),
                             // Bet Badge
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 5, vertical: 1.5),
                               decoration: BoxDecoration(
                                 color: Colors.orange.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: Colors.orange.withValues(alpha: 0.4), width: 0.8),
+                                border: Border.all(
+                                    color: Colors.orange.withValues(alpha: 0.4),
+                                    width: 0.8),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.monetization_on_rounded, color: Colors.orange, size: 10),
+                                  const Icon(Icons.monetization_on_rounded,
+                                      color: Colors.orange, size: 10),
                                   const SizedBox(width: 2),
                                   Text(
                                     '${room.config.betTokens}',
@@ -652,16 +829,25 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
 
                   // Join / Re-enter Button
                   ElevatedButton(
-                    onPressed: _isLoading ? null : () => _handleJoinRoomWithCode(room.roomCode),
+                    onPressed: _isLoading
+                        ? null
+                        : () => _handleJoinRoomWithCode(room.roomCode),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isMyRoom ? const Color(0xFF6366F1) : const Color(0xFFFF9F43),
+                      backgroundColor: isMyRoom
+                          ? const Color(0xFF6366F1)
+                          : const Color(0xFFFF9F43),
                       foregroundColor: isMyRoom ? Colors.white : Colors.black,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
                     ),
                     child: Text(
-                      isMyRoom ? 'duel.my_room'.tr() : 'duel.join_room_btn'.tr(),
-                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
+                      isMyRoom
+                          ? 'duel.my_room'.tr()
+                          : 'duel.join_room_btn'.tr(),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w900, fontSize: 12),
                     ),
                   ),
 
@@ -670,10 +856,12 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
                     const SizedBox(width: 6),
                     IconButton(
                       tooltip: 'duel.leave'.tr(),
-                      icon: const Icon(Icons.close_rounded, color: Colors.redAccent, size: 20),
+                      icon: const Icon(Icons.close_rounded,
+                          color: Colors.redAccent, size: 20),
                       onPressed: () async {
                         HapticFeedback.lightImpact();
-                        await DuelService.leaveRoom(room.roomCode, isHost: true, uid: myUid ?? '');
+                        await DuelService.leaveRoom(room.roomCode,
+                            isHost: true, uid: myUid ?? '');
                       },
                     ),
                   ],
@@ -687,18 +875,73 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
   }
 
   // TAB 2: Oda Oluştur (İlk Özellikleri Seçerek)
+  Widget _buildTicketBadge() {
+    final hasTickets = _ticketsLeft > 0;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: (hasTickets ? const Color(0xFFFFD56B) : Colors.white)
+            .withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+            color: (hasTickets ? const Color(0xFFFFD56B) : Colors.white24)
+                .withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('🎟️', style: TextStyle(fontSize: 13)),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              'duel.free_tickets'.tr(args: [
+                _ticketsLeft.toString(),
+                DuelTicketService.ticketsPerDay.toString(),
+                DuelTicketService.maxTicketBet.toString(),
+              ]),
+              style: TextStyle(
+                color: hasTickets ? const Color(0xFFFFE08A) : Colors.white54,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCreateRoomTab() {
-    final allCats = [...AppCategories.categories, ...AppCategories.bonusPoolCategories];
+    final allCats = [
+      ...AppCategories.categories,
+      ...AppCategories.bonusPoolCategories
+    ];
     final currentCat = allCats.firstWhere(
       (c) => c.name == _selectedCategory,
       orElse: () => allCats.first,
     );
 
     final difficulties = [
-      {'name': 'Kolay', 'key': 'category_ui.difficulty.easy', 'color': const Color(0xFF4CAF50)},
-      {'name': 'Orta', 'key': 'category_ui.difficulty.medium', 'color': const Color(0xFFFF9800)},
-      {'name': 'Zor', 'key': 'category_ui.difficulty.hard', 'color': const Color(0xFFE91E63)},
-      {'name': 'Imkansız', 'key': 'category_ui.difficulty.impossible', 'color': const Color(0xFF9C27B0)},
+      {
+        'name': 'Kolay',
+        'key': 'category_ui.difficulty.easy',
+        'color': const Color(0xFF4CAF50)
+      },
+      {
+        'name': 'Orta',
+        'key': 'category_ui.difficulty.medium',
+        'color': const Color(0xFFFF9800)
+      },
+      {
+        'name': 'Zor',
+        'key': 'category_ui.difficulty.hard',
+        'color': const Color(0xFFE91E63)
+      },
+      {
+        'name': 'Imkansız',
+        'key': 'category_ui.difficulty.impossible',
+        'color': const Color(0xFF9C27B0)
+      },
     ];
 
     return SingleChildScrollView(
@@ -709,7 +952,8 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
           // 1. Kategori
           Text(
             'category_ui.preview_category'.tr(),
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
+            style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
           ),
           const SizedBox(height: 6),
           InkWell(
@@ -717,7 +961,9 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
               showModalBottomSheet(
                 context: context,
                 backgroundColor: const Color(0xFF1E293B),
-                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+                shape: const RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(24))),
                 builder: (context) {
                   return ListView.separated(
                     padding: const EdgeInsets.all(16),
@@ -731,7 +977,8 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
                           Navigator.pop(context);
                         },
                         leading: Icon(c.icon, color: c.color),
-                        title: Text(c.key.tr(), style: const TextStyle(color: Colors.white)),
+                        title: Text(c.key.tr(),
+                            style: const TextStyle(color: Colors.white)),
                       );
                     },
                   );
@@ -753,10 +1000,14 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
                   Expanded(
                     child: Text(
                       currentCat.key.tr(),
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13.5),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13.5),
                     ),
                   ),
-                  const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70),
+                  const Icon(Icons.keyboard_arrow_down_rounded,
+                      color: Colors.white70),
                 ],
               ),
             ),
@@ -766,7 +1017,8 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
           // 2. Zorluk Seviyesi
           Text(
             'category_ui.preview_difficulty'.tr(),
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
+            style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
           ),
           const SizedBox(height: 6),
           Row(
@@ -781,7 +1033,8 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
                 borderRadius: BorderRadius.circular(10),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: isSel ? color : Colors.white.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(10),
@@ -804,7 +1057,8 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
           // 3. Soru Sayısı
           Text(
             'duel.question_count'.tr(),
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
+            style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
           ),
           const SizedBox(height: 6),
           Row(
@@ -817,11 +1071,16 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
                   borderRadius: BorderRadius.circular(10),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     decoration: BoxDecoration(
-                      color: isSel ? const Color(0xFFFF9F43) : Colors.white.withValues(alpha: 0.05),
+                      color: isSel
+                          ? const Color(0xFFFF9F43)
+                          : Colors.white.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: isSel ? const Color(0xFFFF9F43) : Colors.white12),
+                      border: Border.all(
+                          color:
+                              isSel ? const Color(0xFFFF9F43) : Colors.white12),
                     ),
                     child: Text(
                       '$c',
@@ -841,76 +1100,114 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
           // 3. Bahis Miktarı
           Text(
             'duel.bet_amount'.tr(),
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
+            style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
           ),
           const SizedBox(height: 6),
+          _buildTicketBadge(),
+          const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: [10, 25, 50, 100, 250, 500, 1000].map((b) {
+            children: _betOptions.map((b) {
               final isSel = b == _selectedBet;
               final isSpecial = DuelRoom.isSpecialHighBet(b);
               final feePercent = (DuelRoom.getCommissionRate(b) * 100).toInt();
+              final affordable = _canCoverBet(b);
+              final isFriendly = b == 0;
 
-              return InkWell(
-                onTap: () => setState(() => _selectedBet = b),
-                borderRadius: BorderRadius.circular(12),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    gradient: isSel
-                        ? (isSpecial
-                            ? const LinearGradient(colors: [Color(0xFFA855F7), Color(0xFFEC4899)])
-                            : const LinearGradient(colors: [Color(0xFFFF9F43), Color(0xFFFF5252)]))
-                        : null,
-                    color: isSel ? null : Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isSel
-                          ? Colors.transparent
-                          : (isSpecial ? Colors.purpleAccent.withValues(alpha: 0.5) : Colors.white12),
-                      width: isSpecial ? 1.2 : 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isSpecial ? Icons.workspace_premium_rounded : Icons.monetization_on_rounded,
-                        size: 14,
+              return Opacity(
+                opacity: affordable ? 1 : 0.35,
+                child: InkWell(
+                  onTap: affordable
+                      ? () => setState(() => _selectedBet = b)
+                      : () => setState(() => _errorMessage =
+                          'duel.you_need_tokens'.tr(args: [b.toString()])),
+                  borderRadius: BorderRadius.circular(12),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: isSel
+                          ? (isSpecial
+                              ? const LinearGradient(colors: [
+                                  Color(0xFFA855F7),
+                                  Color(0xFFEC4899)
+                                ])
+                              : const LinearGradient(colors: [
+                                  Color(0xFFFF9F43),
+                                  Color(0xFFFF5252)
+                                ]))
+                          : null,
+                      color:
+                          isSel ? null : Colors.white.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
                         color: isSel
-                            ? Colors.white
-                            : (isSpecial ? const Color(0xFFC084FC) : Colors.orange),
+                            ? Colors.transparent
+                            : (isSpecial
+                                ? Colors.purpleAccent.withValues(alpha: 0.5)
+                                : Colors.white12),
+                        width: isSpecial ? 1.2 : 1,
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        b >= 1000 ? '1K' : '$b',
-                        style: TextStyle(
-                          color: isSel ? Colors.white : Colors.white70,
-                          fontWeight: isSel ? FontWeight.w900 : FontWeight.w600,
-                          fontSize: 13,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isFriendly
+                              ? Icons.handshake_rounded
+                              : (isSpecial
+                                  ? Icons.workspace_premium_rounded
+                                  : Icons.monetization_on_rounded),
+                          size: 14,
+                          color: isSel
+                              ? Colors.white
+                              : (isFriendly
+                                  ? const Color(0xFF34D399)
+                                  : (isSpecial
+                                      ? const Color(0xFFC084FC)
+                                      : Colors.orange)),
                         ),
-                      ),
-                      if (isSpecial) ...[
                         const SizedBox(width: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: isSel ? Colors.black.withValues(alpha: 0.3) : const Color(0xFFA855F7).withValues(alpha: 0.25),
-                            borderRadius: BorderRadius.circular(4),
+                        Text(
+                          isFriendly
+                              ? 'duel.friendly'.tr()
+                              : (b >= 1000 ? '1K' : '$b'),
+                          style: TextStyle(
+                            color: isSel ? Colors.white : Colors.white70,
+                            fontWeight:
+                                isSel ? FontWeight.w900 : FontWeight.w600,
+                            fontSize: 13,
                           ),
-                          child: Text(
-                            '%$feePercent',
-                            style: TextStyle(
-                              color: isSel ? Colors.white : const Color(0xFFD8B4FE),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 9,
+                        ),
+                        if (isSpecial) ...[
+                          const SizedBox(width: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: isSel
+                                  ? Colors.black.withValues(alpha: 0.3)
+                                  : const Color(0xFFA855F7)
+                                      .withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '%$feePercent',
+                              style: TextStyle(
+                                color: isSel
+                                    ? Colors.white
+                                    : const Color(0xFFD8B4FE),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 9,
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               );
@@ -921,21 +1218,60 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
           // Prize & Fee Summary Card
           Builder(
             builder: (context) {
+              if (_selectedBet == 0) {
+                return Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                        color: const Color(0xFF34D399).withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.handshake_rounded,
+                          color: Color(0xFF34D399), size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'duel.friendly_desc'.tr(),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12.5,
+                              height: 1.35),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
               final prize = DuelRoom.calculatePrize(_selectedBet);
-              final feePercent = (DuelRoom.getCommissionRate(_selectedBet) * 100).toInt();
+              final feePercent =
+                  (DuelRoom.getCommissionRate(_selectedBet) * 100).toInt();
               final isSpecial = DuelRoom.isSpecialHighBet(_selectedBet);
 
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: isSpecial
-                        ? [const Color(0xFFA855F7).withValues(alpha: 0.2), const Color(0xFFEC4899).withValues(alpha: 0.1)]
-                        : [const Color(0xFFFF9F43).withValues(alpha: 0.15), const Color(0xFF6366F1).withValues(alpha: 0.1)],
+                        ? [
+                            const Color(0xFFA855F7).withValues(alpha: 0.2),
+                            const Color(0xFFEC4899).withValues(alpha: 0.1)
+                          ]
+                        : [
+                            const Color(0xFFFF9F43).withValues(alpha: 0.15),
+                            const Color(0xFF6366F1).withValues(alpha: 0.1)
+                          ],
                   ),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: isSpecial ? const Color(0xFFA855F7).withValues(alpha: 0.4) : const Color(0xFFFF9F43).withValues(alpha: 0.3),
+                    color: isSpecial
+                        ? const Color(0xFFA855F7).withValues(alpha: 0.4)
+                        : const Color(0xFFFF9F43).withValues(alpha: 0.3),
                   ),
                 ),
                 child: Row(
@@ -944,8 +1280,12 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
                     Row(
                       children: [
                         Icon(
-                          isSpecial ? Icons.military_tech_rounded : Icons.emoji_events_rounded,
-                          color: isSpecial ? const Color(0xFFD8B4FE) : const Color(0xFFFFD56B),
+                          isSpecial
+                              ? Icons.military_tech_rounded
+                              : Icons.emoji_events_rounded,
+                          color: isSpecial
+                              ? const Color(0xFFD8B4FE)
+                              : const Color(0xFFFFD56B),
                           size: 20,
                         ),
                         const SizedBox(width: 8),
@@ -954,18 +1294,24 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
                           children: [
                             Text(
                               'duel.pot_prize'.tr(),
-                              style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11),
+                              style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.7),
+                                  fontSize: 11),
                             ),
                             Text(
                               '$prize Token',
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 14),
                             ),
                           ],
                         ),
                       ],
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(8),
@@ -974,7 +1320,9 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
                       child: Text(
                         'duel.fee_info'.tr(args: ['$feePercent']),
                         style: TextStyle(
-                          color: isSpecial ? const Color(0xFF34D399) : Colors.white70,
+                          color: isSpecial
+                              ? const Color(0xFF34D399)
+                              : Colors.white70,
                           fontWeight: FontWeight.bold,
                           fontSize: 11,
                         ),
@@ -995,7 +1343,8 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
               onPressed: _isLoading ? null : _handleCreateRoom,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF6366F1),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
                 elevation: 4,
               ),
               child: _isLoading
@@ -1003,11 +1352,15 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
                   : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.rocket_launch_rounded, color: Colors.white, size: 20),
+                        const Icon(Icons.rocket_launch_rounded,
+                            color: Colors.white, size: 20),
                         const SizedBox(width: 8),
                         Text(
                           'duel.create_room_btn'.tr(),
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 15),
                         ),
                       ],
                     ),
@@ -1026,7 +1379,8 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
         const SizedBox(height: 10),
         Text(
           'duel.enter_code_desc'.tr(),
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
+          style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
         ),
         const SizedBox(height: 16),
         Container(
@@ -1086,18 +1440,22 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
           width: double.infinity,
           height: 52,
           child: ElevatedButton(
-            onPressed: _isLoading ? null : () => _handleJoinRoomWithCode(_codeController.text),
+            onPressed: _isLoading
+                ? null
+                : () => _handleJoinRoomWithCode(_codeController.text),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFF9F43),
               foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
               elevation: 4,
             ),
             child: _isLoading
                 ? const CircularProgressIndicator(color: Colors.black)
                 : Text(
                     'duel.join_room_btn'.tr(),
-                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900, fontSize: 15),
                   ),
           ),
         ),

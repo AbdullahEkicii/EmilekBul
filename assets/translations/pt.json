@@ -222,7 +222,8 @@
     "guest_user": "Usuário convidado",
     "more": "Mais",
     "new": "NOVO",
-    "see_all": "Ver tudo"
+    "see_all": "Ver tudo",
+    "ad_not_ready": "O anúncio ainda não está pronto. Tente novamente em instantes."
   },
   "account": {
     "title": "Meu perfil",
@@ -255,7 +256,9 @@
     "full_screen": "Tela cheia",
     "full_screen_desc": "Inicia o aplicativo em modo de tela inteira (oculta a barra de navegação)",
     "language": "Linguagem",
-    "language_desc": "Alterar o idioma do aplicativo"
+    "language_desc": "Alterar o idioma do aplicativo",
+    "privacy_options": "Opções de privacidade",
+    "privacy_options_desc": "Gerencie seu consentimento de anúncios"
   },
   "quiz": {
     "question_progress": "Pergunta {}/{}",
@@ -311,7 +314,10 @@
     "msg_poor": "Você pode fazer melhor! 🤔",
     "msg_fail": "Tente novamente! 😅",
     "won_by_speed": "Venceu pela velocidade! 🏎️",
-    "lost_by_speed": "O adversário foi mais rápido! ⚠️"
+    "lost_by_speed": "O adversário foi mais rápido! ⚠️",
+    "double_reward_desc": "Assista a um vídeo curto e ganhe +{} fichas extras!",
+    "double_reward_done": "Recompensa dobrada! +{} fichas adicionadas.",
+    "double_reward_button": "2x"
   },
   "edit_profile": {
     "title": "Editar perfil",
@@ -436,7 +442,19 @@
     "tap_to_preview": "Toque para visualizar",
     "Avatar 10": "Avatar 10",
     "mystery_avatar": "Avatar Misterioso",
-    "title_none": "Nenhum"
+    "title_none": "Nenhum",
+    "powerups": "Power-ups",
+    "streak_freeze_title": "Congelar sequência",
+    "streak_freeze_desc": "Perdeu um dia? Um congelamento é usado automaticamente e sua sequência continua. Você pode ter até {}.",
+    "streak_freeze_owned": "Você tem: {}/{}",
+    "streak_freeze_max": "Limite atingido ({})",
+    "frame_mint": "Menta",
+    "frame_coral": "Coral",
+    "booster_title": "Impulso de fichas",
+    "booster_desc": "Dobra as fichas ganhas nos seus próximos {} quizzes.",
+    "booster_active": "Ativo: faltam {} quizzes",
+    "booster_inactive": "Inativo",
+    "booster_applied": "⚡ Impulso: +{} fichas extras!"
   },
   "past_tests": {
     "title": "Histórico de testes",
@@ -546,7 +564,13 @@
     "reengage_3d_title": "🔥 Não quebre sua seqüência!",
     "reengage_3d_body": "Volte e descubra novas perguntas!",
     "reengage_7d_title": "💎 Estamos com saudades de você!",
-    "reengage_7d_body": "Surpresas especiais aguardam o retorno dos jogadores!"
+    "reengage_7d_body": "Surpresas especiais aguardam o retorno dos jogadores!",
+    "league_ending_title": "⏳ A liga semanal termina hoje à noite",
+    "league_ending_body": "Alguns quizzes podem te fazer subir de liga. Não perca a promoção!",
+    "streak_risk_title": "🔥 Sua sequência está prestes a acabar!",
+    "streak_risk_body": "Resolva um quiz hoje para manter sua sequência de {} dias!",
+    "social_channel_name": "Amigos e duelos",
+    "social_channel_desc": "Pedidos de amizade, convites para duelos e cutucadas"
   },
   "level_system": {
     "level": "Nível",
@@ -614,7 +638,16 @@
     "quizzes_to_next": "{} testes para o próximo nível",
     "category_mastery": "Domínio da categoria",
     "your_rank": "Sua classificação",
-    "climb_higher": "Suba mais alto!"
+    "climb_higher": "Suba mais alto!",
+    "day1_body": "Sua recompensa diária de sequência de {} tokens está esperando. Jogue um quiz e resgate!",
+    "teaser_title": "🎁 Volte amanhã!",
+    "teaser_body": "Mantenha sua sequência: resgate {} tokens, gire a roleta da sorte e conclua as missões diárias.",
+    "winback_3d_title": "🔥 Não perca o ritmo!",
+    "winback_3d_body": "Já faz alguns dias. Volte, jogue um quiz e reinicie sua sequência!",
+    "winback_7d_title": "🏆 Seus amigos estão subindo na liga!",
+    "winback_7d_body": "Seus amigos continuam jogando. Volte e suba na liga também!",
+    "winback_14d_title": "💎 Sentimos sua falta!",
+    "winback_14d_body": "Novas perguntas e recompensas esperam por você. Volte e veja as novidades!"
   },
   "quests": {
     "title": "Missões e recompensas",
@@ -669,7 +702,27 @@
     "quiz_category": "Testes",
     "duel_category": "Duelos",
     "social_category": "Social",
-    "total_unlocked": "{}/{} desbloqueado"
+    "total_unlocked": "{}/{} desbloqueado",
+    "platinum_scholar_title": "Estudioso de platina",
+    "platinum_scholar_desc": "Complete 500 quizzes no total",
+    "duel_champion_title": "Campeão de duelos",
+    "duel_champion_desc": "Vença 50 duelos no total",
+    "duel_legend_title": "Lenda dos duelos",
+    "duel_legend_desc": "Vença 100 duelos no total",
+    "level_ten_title": "Especialista nível 10",
+    "level_ten_desc": "Alcance o nível 10",
+    "level_twenty_title": "Mestre nível 20",
+    "level_twenty_desc": "Alcance o nível 20",
+    "streak_week_title": "Pegando fogo",
+    "streak_week_desc": "Alcance uma sequência de 7 dias",
+    "streak_month_title": "Imparável",
+    "streak_month_desc": "Alcance uma sequência de 30 dias",
+    "recruiter_title": "Recrutador",
+    "recruiter_desc": "Traga um amigo com seu código",
+    "ambassador_title": "Embaixador",
+    "ambassador_desc": "Traga 5 amigos com seu código",
+    "collector_title": "Grande colecionador",
+    "collector_desc": "Colecione 10 itens da loja"
   },
   "duel": {
     "race_track": "CORRIDA DE DUELO",
@@ -811,7 +864,26 @@
     "kick_confirm_msg": "Tem certeza de que deseja expulsar {} da sala?",
     "kicked_from_room": "Você foi expulso da sala pelo anfitrião.",
     "special_bet_badge": "ESPECIAL 🔥",
-    "fee_info": "{}% Taxa"
+    "fee_info": "{}% Taxa",
+    "category": "Categoria",
+    "difficulty": "Dificuldade",
+    "challenge_friend_title": "Desafiar {}",
+    "challenge_sent": "Desafio enviado para {}!",
+    "challenge_failed": "Não foi possível enviar o desafio, mas sua sala está pronta. Compartilhe o código.",
+    "free_tickets": "{}/{} ingressos de duelo grátis hoje · para apostas até {}",
+    "friendly": "Amistoso",
+    "friendly_desc": "Partida amistosa: sem fichas em jogo. Você ainda ganha pontos de ranking e de liga.",
+    "high_bet_real_only": "Só jogadores reais entram em salas de aposta alta — compartilhe seu código!",
+    "host_no_response": "O anfitrião não respondeu. Tente outra sala.",
+    "result_cta_title": "Pronto para um rival de verdade?",
+    "result_cta_desc": "Você fez {}% em {}. Experimente um duelo 1v1 nesta categoria!",
+    "result_cta_button": "Duelo",
+    "share_room_text": "⚡ Entre no meu duelo de quiz 1v1! Código da sala: {}",
+    "ticket_used": "Ingresso grátis usado",
+    "quick_match": "Partida rápida",
+    "quick_match_sub": "Um toque · adversário em segundos",
+    "quick_match_searching": "Procurando adversário…",
+    "quick_match_hint": "Com ingresso grátis se tiver, senão partida amistosa."
   },
   "errors": {
     "no_internet_ai": "Você precisa de uma conexão ativa com a Internet para acessar nossa IA. 📡",
@@ -836,10 +908,16 @@
     "wheel_spin_button": "Roda giratória 🔥",
     "wheel_done_today": "Feito por hoje",
     "streak_claim_today": "Reivindique a recompensa de hoje 🎉",
-    "streak_ok": "OK"
+    "streak_ok": "OK",
+    "wheel_freeze_prize": "Congelar sequência ❄️",
+    "wheel_freeze_short": "Congelar"
   },
   "daily_streak": {
-    "day_num": "Dia {}"
+    "day_num": "Dia {}",
+    "freeze_used": "Sua sequência foi salva! {} congelamento(s) usado(s).",
+    "freezes_owned": "Congelamentos: {}/{}",
+    "play_to_claim": "Resolva 1 quiz hoje para resgatar a recompensa e manter a sequência!",
+    "play_now": "Jogar um quiz"
   },
   "friends": {
     "title": "Amigos",
@@ -879,7 +957,8 @@
     "friend_req_received_title": "Novo pedido de amizade! 👥",
     "friend_req_received_body": "{} enviou um pedido de amizade para você!",
     "request_received": "Solicitação recebida! ⚡",
-    "accept_request": "Aceitar"
+    "accept_request": "Aceitar",
+    "accept": "Aceitar"
   },
   "review": {
     "card_title": "Avalie no Google Play",
@@ -896,7 +975,7 @@
   },
   "referral": {
     "title": "Convide amigos",
-    "desc": "Digite o código de convite de um amigo para ganhar 500 Tokens! Compartilhe seu código e convide seus amigos.",
+    "desc": "Digite o código de convite de um amigo e ganhe 500 tokens depois do seu primeiro quiz! Compartilhe seu código e convide seus amigos.",
     "your_code": "SEU CÓDIGO DE CONVITE",
     "enter_code": "Digite o código de convite (+500 tokens)",
     "hint": "DIGITE O CÓDIGO",
@@ -905,10 +984,64 @@
     "share_button": "Compartilhar",
     "copy_button": "Cópia",
     "code_copied": "Código de convite copiado! 📋",
-    "share_msg": "🏆 Junte-se a mim no Quiz Arena! Use meu código de convite para obter 500 tokens instantaneamente:\n👉 Código: {}\n📲 Baixe o aplicativo: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "share_msg": "🏆 Junte-se a mim no Quiz Arena! Use meu código de convite para ganhar 500 tokens depois do seu primeiro quiz:\n👉 Código: {}\n📲 Baixe o aplicativo: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
     "success": "Parabéns! {} Tokens adicionados à sua conta! 🎉",
     "already_used": "Você já usou um código de convite.",
     "own_code": "Você não pode usar seu próprio código de convite.",
-    "invalid_code": "Código de convite inválido ou inexistente."
+    "invalid_code": "Código de convite inválido ou inexistente.",
+    "pending": "Código de convite salvo! Você e seu amigo recebem seus tokens ao terminar o primeiro quiz."
+  },
+  "share": {
+    "button": "Compartilhar",
+    "copied": "Copiado para a área de transferência",
+    "quiz_result": "Fiz {}/{} no quiz de {} no {}! 🧠 Consegue me vencer?",
+    "duel_win": "Venci {} por {}-{} em um duelo de quiz 1v1 no {}! ⚔️ Encara o desafio?",
+    "duel_played": "Acabei de jogar um duelo de quiz 1v1 contra {} no {}! ⚔️ Me desafie!",
+    "achievement": "Desbloqueei a insígnia \"{}\" no {}! 🏅"
+  },
+  "league": {
+    "title": "Liga semanal",
+    "bronze": "Liga bronze",
+    "silver": "Liga prata",
+    "gold": "Liga ouro",
+    "platinum": "Liga platina",
+    "diamond": "Liga diamante",
+    "ends_in": "Termina em {}d {}h",
+    "how_it_works": "Ganhe pontos em quizzes e duelos. No fim da semana, os {}% melhores sobem de liga e os últimos descem.",
+    "empty": "Ninguém pontuou nesta liga esta semana. Jogue um quiz e assuma a liderança!",
+    "points": "pts",
+    "promoted_title": "Promovido!",
+    "promoted_desc": "Ótima semana! Você subiu para a {} e ganhou {} fichas.",
+    "demoted_title": "Mudança de liga",
+    "demoted_desc": "Esta semana você está na {}. Jogue alguns quizzes para subir de novo!",
+    "view": "Ver liga",
+    "result_promoted_sub": "Seu esforço valeu a pena. Mantenha o ritmo na sua nova liga!",
+    "result_demoted_sub": "Todo campeão já teve uma semana difícil. Alguns quizzes e você volta ao topo!",
+    "result_rank": "Posição da semana passada: #{}",
+    "result_reward": "+{} tokens",
+    "share": "Compartilhar",
+    "continue": "Continuar",
+    "share_text": "Agora estou na {} do Quiz Arena! Consegue me vencer?"
+  },
+  "daily_challenge": {
+    "title": "Desafio diário",
+    "badge": "NOVO",
+    "card_sub": "As mesmas 5 perguntas para todos · ranking diário",
+    "rules": "Hoje todos recebem as mesmas {} perguntas. Só uma tentativa — cada acerto vale {} fichas. Seja rápido: o tempo desempata!",
+    "start": "Começar o desafio de hoje",
+    "leaderboard": "Ranking de hoje",
+    "empty": "Ninguém jogou ainda hoje — seja o primeiro!",
+    "rank": "Posição #{} de {} · {} s",
+    "come_back": "Amanhã há um novo desafio. Compartilhe seu resultado e desafie seus amigos!",
+    "reward": "Desafio diário concluído! +{} fichas",
+    "share_text": "{} · Desafio diário {}\n{}/{} {}\n🏆 {}"
+  },
+  "streak_rescue": {
+    "title": "Sua sequência está prestes a acabar!",
+    "body": "Você perdeu um dia e sua sequência de {} dias acabou. Ainda dá para salvá-la hoje!",
+    "watch_ad": "Assista a um anúncio para salvar",
+    "pay_tokens": "Salvar com {} tokens",
+    "no_thanks": "Não, obrigado, recomeçar",
+    "not_enough_tokens": "Tokens insuficientes."
   }
 }

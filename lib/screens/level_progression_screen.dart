@@ -67,7 +67,6 @@ class _LevelProgressionScreenState extends State<LevelProgressionScreen> {
                       sliver: SliverToBoxAdapter(
                         child: MyNativeAd(
                           height: 70,
-                          factoryId: 'adFactorySmall',
                         ),
                       ),
                     ),

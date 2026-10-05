@@ -1,0 +1,169 @@
+rules_version = '2';
+
+// NOT: Jeton/ilerleme alanları hâlâ istemciden yazılıyor. Bu kurallar başka kullanıcıların
+// verisini korur ve tek seferde yapılabilecek jeton artışını sınırlar; tam hile koruması için
+// ödül dağıtımının Cloud Functions'a taşınması gerekir.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isUser(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAnonymous() {
+      return request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+
+    function changedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    function num(data, field) {
+      return data.get(field, 0);
+    }
+
+    function delta(field) {
+      return num(request.resource.data, field) - num(resource.data, field);
+    }
+
+    // Misafir benzeri hesap: e-posta / Google / Play Games bağlantısı yok
+    function isGuestLike(data) {
+      return data.get('email', '') == ''
+          && data.get('playGamesId', '') == ''
+          && data.get('googleId', '') == '';
+    }
+
+    function inactiveFor90Days(data) {
+      return !('updatedAt' in data)
+          || (data.updatedAt is timestamp && data.updatedAt < request.time - duration.value(90, 'd'));
+    }
+
+    // ---------------------------------------------------------------- users
+    match /users/{uid} {
+      // Kayıt ekranındaki kullanıcı adı kontrolü oturum açılmadan da çalışabiliyor.
+      allow get: if signedIn();
+      allow list: if signedIn() || request.query.limit <= 1;
+
+      allow create: if isUser(uid) && num(request.resource.data, 'tokens') <= 100;
+
+      // Sahibi: tek yazmada en fazla 10.000 jeton artışı (misafir taşıma hariç)
+      allow update: if isUser(uid)
+          && (delta('tokens') <= 10000 || changedKeys().hasAll(['migratedAt']));
+
+      // Başka kullanıcı: referans (+250) veya aylık şampiyon ödülü (+500)
+      allow update: if signedIn() && !isUser(uid)
+          && changedKeys().hasOnly(['tokens', 'referralCount'])
+          && delta('tokens') > 0 && delta('tokens') <= 500
+          && delta('referralCount') >= 0 && delta('referralCount') <= 1;
+
+      // Başka kullanıcı: arkadaşlık kabulünde sayaç + 'friendly' rozeti
+      allow update: if signedIn() && !isUser(uid)
+          && changedKeys().hasOnly(['friendsCount', 'unlockedBadges'])
+          && delta('friendsCount') >= -1 && delta('friendsCount') <= 1
+          && request.resource.data.get('unlockedBadges', []).toSet()
+               .difference(resource.data.get('unlockedBadges', []).toSet())
+               .hasOnly(['friendly']);
+
+      // Başka kullanıcı: arama sırasında username_lower geri doldurma
+      allow update: if signedIn() && !isUser(uid)
+          && changedKeys().hasOnly(['username_lower'])
+          && request.resource.data.username_lower == resource.data.get('username', '').lower();
+
+      // Kendi hesabını silme; 90 gün inaktif misafir temizliği; misafir → kalıcı hesap taşıma
+      allow delete: if isUser(uid)
+          || (signedIn() && isGuestLike(resource.data)
+              && (inactiveFor90Days(resource.data) || !isAnonymous()));
+
+      match /friends/{friendUid} {
+        allow read: if signedIn();
+        allow create, update: if isUser(uid) || isUser(friendUid);
+        allow delete: if isUser(uid) || isUser(friendUid) || (signedIn() && !isAnonymous());
+      }
+
+      match /duel_invites/{inviteId} {
+        allow read, update, delete: if isUser(uid);
+        allow create: if signedIn() && request.resource.data.fromUid == request.auth.uid;
+      }
+
+      match /pokes/{pokeId} {
+        allow read, delete: if isUser(uid);
+        allow create: if signedIn() && request.resource.data.fromUid == request.auth.uid;
+      }
+    }
+
+    // ------------------------------------------------------ friend requests
+    match /friend_requests/{requestId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.fromUid == request.auth.uid;
+      allow update: if signedIn()
+          && request.auth.uid in [resource.data.fromUid, resource.data.toUid];
+      // Kabul batch'i var olmayan ters yönlü dokümanı da siler
+      allow delete: if signedIn()
+          && (resource == null || request.auth.uid in [resource.data.fromUid, resource.data.toUid]);
+    }
+
+    // ----------------------------------------------------------- duels
+    // Oda üyeliği akışkan (katılma isteği, bot odaları, host devri); oturum açmış herkes yazabilir.
+    match /duel_rooms/{roomCode} {
+      allow read, create, update: if signedIn();
+
+      match /messages/{messageId} {
+        allow read, create: if signedIn();
+      }
+    }
+
+    match /duel_match_logs/{logId} {
+      allow create: if signedIn();
+    }
+
+    // ----------------------------------------------------- leaderboards
+    match /monthly_scores/{yearMonth}/scores/{uid} {
+      allow read: if signedIn();
+      allow write: if isUser(uid);
+    }
+
+    match /weekly_leagues/{weekLeague}/scores/{uid} {
+      allow read: if signedIn();
+      allow write: if isUser(uid);
+    }
+
+    // Günün Testi: sorular günde bir kez yazılır, her oyuncu tek skor girer
+    match /daily_challenge/{dayLang} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+
+      match /scores/{uid} {
+        allow read: if signedIn();
+        allow create: if isUser(uid);
+      }
+    }
+
+    match /monthly_winners/{yearMonth} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update: if signedIn() && request.resource.data.uid == resource.data.uid;
+    }
+
+    // ---------------------------------------------------------- misc
+    match /counters/guest_count {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.keys().hasOnly(['count']);
+      allow update: if signedIn()
+          && request.resource.data.keys().hasOnly(['count'])
+          && request.resource.data.count == resource.data.count + 1;
+    }
+
+    // Yapay zekâ ile üretilen ortak soru havuzu
+    match /question_bank/{bankId} {
+      allow read, write: if signedIn();
+
+      match /questions/{questionId} {
+        allow read, create, update: if signedIn();
+      }
+    }
+  }
+}

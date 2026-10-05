@@ -12,6 +12,8 @@ import '../constants/app_constants.dart';
 import '../services/duel_service.dart';
 import '../services/user_service.dart';
 import '../services/token_service.dart';
+import '../services/duel_ticket_service.dart';
+import '../services/share_service.dart';
 import '../services/question_pool_service.dart';
 import '../services/bot_room_service.dart';
 import '../services/friend_service.dart';
@@ -27,11 +29,17 @@ import 'loading_screen.dart';
 class DuelRoomScreen extends StatefulWidget {
   final String roomCode;
   final bool isHost;
+  final String? invitedFriendUid;
+
+  /// Hızlı Maç: istekler otomatik onaylanır, bot hızlı gelir, iki taraf hazır olunca maç kendiliğinden başlar.
+  final bool quickMatch;
 
   const DuelRoomScreen({
     super.key,
     required this.roomCode,
     required this.isHost,
+    this.invitedFriendUid,
+    this.quickMatch = false,
   });
 
   @override
@@ -45,11 +53,15 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
   Timer? _botChatTimer;
   Timer? _botNudgeTimer;
   Timer? _botApplicantTimer;
+  Timer? _botFirstTimer;
+  Timer? _backgroundLeaveTimer;
+  static const Duration _backgroundGrace = Duration(seconds: 75);
   StreamSubscription<List<DuelChatMessage>>? _botChatReactionSub;
   final Set<String> _botHandledMessageIds = {};
   bool _botAutomationTriggered = false;
   bool _guestBotFlowTriggered = false;
   bool _botStartTriggered = false;
+  bool _quickReadySent = false;
   DuelRoom? _currentRoom;
   bool _isStarting = false;
   bool _hasNavigatedToQuiz = false;
@@ -84,15 +96,32 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
     // Eğer kullanıcı oda sahibiyse ve oda boş kalırsa 10 sn sonra botlar katılma isteği atsın
     if (widget.isHost) {
       _startBotApplicantTimer();
+      if (widget.quickMatch) {
+        DuelService.setHostWantsToStart(widget.roomCode, wantsToStart: true);
+      }
     }
   }
 
+  // Hızlı Maç'ta bot gecikmeleri kısaltılır
+  Duration _botDelay(int ms) => Duration(milliseconds: widget.quickMatch ? (ms * 0.45).round() : ms);
+
   void _startBotApplicantTimer() {
     _botApplicantTimer?.cancel();
-    _botApplicantTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
+    if (widget.quickMatch) {
+      // Tutarlı ama sabit olmayan bekleme: 4-7 sn aralığında rastgele
+      final firstDelay = Duration(milliseconds: 4000 + Random().nextInt(3001));
+      _botFirstTimer?.cancel();
+      _botFirstTimer = Timer(firstDelay, _botApplicantTick);
+    }
+    _botApplicantTimer = Timer.periodic(const Duration(seconds: 10), (_) => _botApplicantTick());
+  }
+
+  Future<void> _botApplicantTick() async {
       if (!mounted || !widget.isHost || _hasNavigatedToQuiz || _isStarting) {
         return;
       }
+      // Arkadaşa davet gönderilen odaya bot katılmaz
+      if (widget.invitedFriendUid != null) return;
       final room = _currentRoom;
       if (room == null ||
           room.guest != null ||
@@ -114,7 +143,6 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
         roomCode: widget.roomCode,
         guestPlayer: bot,
       );
-    });
   }
 
   @override
@@ -124,6 +152,8 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
     _botChatTimer?.cancel();
     _botNudgeTimer?.cancel();
     _botApplicantTimer?.cancel();
+    _botFirstTimer?.cancel();
+    _backgroundLeaveTimer?.cancel();
     _botChatReactionSub?.cancel();
     _roomSubscription.cancel();
     _pulseController.dispose();
@@ -141,13 +171,23 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.detached ||
-        state == AppLifecycleState.paused) {
-      if (!_hasNavigatedToQuiz && _currentRoom != null) {
-        final myUid = FirebaseAuth.instance.currentUser?.uid ?? '';
-        DuelService.leaveRoom(widget.roomCode,
-            isHost: widget.isHost, uid: myUid);
-      }
+    if (_hasNavigatedToQuiz || _currentRoom == null) return;
+    final myUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    if (state == AppLifecycleState.detached) {
+      _backgroundLeaveTimer?.cancel();
+      DuelService.leaveRoom(widget.roomCode, isHost: widget.isHost, uid: myUid);
+    } else if (state == AppLifecycleState.paused) {
+      // Kod paylaşımı vb. için uygulamadan kısa süre çıkılabilir; hemen odayı kapatma.
+      _backgroundLeaveTimer?.cancel();
+      _backgroundLeaveTimer = Timer(_backgroundGrace, () {
+        if (_hasNavigatedToQuiz) return;
+        DuelService.leaveRoom(widget.roomCode, isHost: widget.isHost, uid: myUid);
+      });
+    } else if (state == AppLifecycleState.resumed) {
+      _backgroundLeaveTimer?.cancel();
+      _backgroundLeaveTimer = null;
+      DuelService.pingRoom(widget.roomCode);
     }
   }
 
@@ -187,6 +227,17 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
         _currentRoom = room;
       });
 
+      // Hızlı Maç misafiri odaya alınınca otomatik hazır olur
+      if (widget.quickMatch &&
+          !widget.isHost &&
+          myUid != null &&
+          room.guest?.uid == myUid &&
+          room.guest?.isReady == false &&
+          !_quickReadySent) {
+        _quickReadySent = true;
+        DuelService.setPlayerReady(widget.roomCode, isHost: false, isReady: true);
+      }
+
       // Oyun başladıysa quiz ekranına yönlendir
       if ((room.status == 'in_game' || room.status == 'playing') &&
           !_hasNavigatedToQuiz) {
@@ -197,6 +248,19 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
       // İstek durumu pending değilse veya pendingGuest boşsa son gösterilen UID'yi sıfırla
       if (room.pendingGuest == null || room.joinRequestStatus != 'pending') {
         _lastShownPendingGuestUid = null;
+      }
+
+      // Davet edilen arkadaşın ve botların katılma isteği otomatik onaylanır
+      if (widget.isHost &&
+          room.pendingGuest != null &&
+          room.joinRequestStatus == 'pending' &&
+          (widget.quickMatch ||
+              room.pendingGuest!.uid == widget.invitedFriendUid ||
+              room.pendingGuest!.uid.startsWith('bot_')) &&
+          _lastShownPendingGuestUid != room.pendingGuest!.uid) {
+        _lastShownPendingGuestUid = room.pendingGuest!.uid;
+        DuelService.approveJoinRequest(widget.roomCode);
+        return;
       }
 
       // Oda sahibi için gelen katılma isteğini göster (Tek seferlik ve yarış durumunu engelleyerek)
@@ -251,7 +315,7 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
         _botApplicantTimer?.cancel();
 
         // 3.5 saniye sonra selamlama mesajı gönder
-        Future.delayed(const Duration(milliseconds: 3500), () async {
+        Future.delayed(_botDelay(3500), () async {
           if (!mounted || _hasNavigatedToQuiz || _currentRoom?.guest == null) {
             return;
           }
@@ -269,7 +333,7 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
         });
 
         // 6.5 saniye sonra "Ben hazırım! ⚡" mesajı gönder
-        Future.delayed(const Duration(milliseconds: 6500), () async {
+        Future.delayed(_botDelay(6500), () async {
           if (!mounted || _hasNavigatedToQuiz || _currentRoom?.guest == null) {
             return;
           }
@@ -287,7 +351,7 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
         });
 
         // 8.5 saniye sonra bot hazır duruma geçsin
-        Future.delayed(const Duration(milliseconds: 8500), () async {
+        Future.delayed(_botDelay(8500), () async {
           if (!mounted || _hasNavigatedToQuiz || _currentRoom?.guest == null) {
             return;
           }
@@ -699,18 +763,19 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
       return;
     }
 
-    // Anlık token miktarını al ve gerekiyorsa bahsi kullanıcının bakiyesine uyarla
+    // Anlık token/bilet durumunu al ve gerekiyorsa bahsi kullanıcının karşılayabileceği seviyeye indir
     final currentTokens = await TokenService.getTokenAmount();
+    final tickets = await DuelTicketService.ticketsLeft();
     int activeBet = (_currentRoom?.config.betTokens ?? room.config.betTokens);
-    if (currentTokens < activeBet) {
+    if (!DuelTicketService.canCover(bet: activeBet, tokens: currentTokens, tickets: tickets)) {
       if (currentTokens >= 50) {
         activeBet = 50;
       } else if (currentTokens >= 25) {
         activeBet = 25;
-      } else if (currentTokens >= 10) {
+      } else if (currentTokens >= 10 || tickets > 0) {
         activeBet = 10;
       } else {
-        activeBet = currentTokens > 0 ? currentTokens : 0;
+        activeBet = 0;
       }
       try {
         await DuelService.updateRoomConfig(
@@ -743,10 +808,8 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
         throw Exception('Failed to generate questions');
       }
 
-      // Misafir jetonunu harca
-      if (activeBet > 0) {
-        await TokenService.spendTokens(activeBet);
-      }
+      // Misafirin bahsini öde (bilet veya jeton)
+      await DuelTicketService.payBet(activeBet, roomCode: widget.roomCode);
 
       // Düelloyu başlat
       await DuelService.startDuel(
@@ -756,8 +819,15 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
       );
     } catch (e) {
       debugPrint('Error starting bot duel: $e');
+      try {
+        await DuelService.setRoomStatus(widget.roomCode, 'waiting');
+      } catch (_) {}
       if (mounted) {
-        setState(() => _isStarting = false);
+        setState(() {
+          _isStarting = false;
+          _botStartTriggered = false;
+        });
+        _showToast('duel.start_error'.tr(), isError: true);
       }
     }
   }
@@ -945,6 +1015,11 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
     final bool isWithBot = room.guest?.uid.startsWith('bot_') == true ||
         room.host.uid.startsWith('bot_') == true;
 
+    // Gerçek bir host'un odasında misafir de bahsini öder (bot-host yolunda zaten ödendi)
+    if (!widget.isHost && !room.host.uid.startsWith('bot_') && room.config.betTokens > 0) {
+      DuelTicketService.payBet(room.config.betTokens, roomCode: widget.roomCode);
+    }
+
     AnalyticsService.logDuelMatchStart(
       category: room.config.category,
       difficulty: room.config.difficulty,
@@ -1018,14 +1093,15 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
       return;
     }
 
-    // 2. Check tokens for both players
+    // 2. Check tokens for both players (10 ve altı bahiste ücretsiz bilet kullanılabilir)
     final bet = room.config.betTokens;
-    if (_userTokens < bet) {
+    final tickets = await DuelTicketService.ticketsLeft();
+    if (!DuelTicketService.canCover(bet: bet, tokens: _userTokens, tickets: tickets)) {
       _showToast('duel.you_need_tokens'.tr(args: [bet.toString()]),
           isError: true);
       return;
     }
-    if (room.guest!.tokens < bet) {
+    if (bet > DuelTicketService.maxTicketBet && room.guest!.tokens < bet) {
       _showToast('duel.guest_needs_tokens'.tr(args: [bet.toString()]),
           isError: true);
       return;
@@ -1072,8 +1148,8 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
         throw Exception('Failed to generate questions');
       }
 
-      // Spend host tokens
-      await TokenService.spendTokens(bet);
+      // Host bahsini öde (bilet veya jeton)
+      await DuelTicketService.payBet(bet, roomCode: widget.roomCode);
 
       // Start the duel in Firestore
       await DuelService.startDuel(
@@ -1103,6 +1179,10 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
   }
 
   Future<void> _leaveRoom() async {
+    AnalyticsService.logDuelFunnel('lobby_leave', parameters: {
+      'had_guest': _currentRoom?.guest != null ? 1 : 0,
+      'is_host': widget.isHost ? 1 : 0,
+    });
     _roomSubscription.cancel();
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -1203,7 +1283,6 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
                           const SizedBox(height: 14),
                           const MyNativeAd(
                             height: 70,
-                            factoryId: 'adFactorySmall',
                           ),
                           const SizedBox(height: 14),
                           _buildLobbyChatSection(room),
@@ -1347,63 +1426,11 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
   }
 
   void _showShareDialog(String code) {
-    final shareText =
-        '⚡ EmilekBul 1v1 Bilgi Düellosu!\nArkadaşın seninle yarışmak için oda açtı!\n🔑 Oda Kodu: $code\n🚀 Doğrudan Katıl: emilekbul://join?code=$code\n📲 Uygulama İndir: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul';
-
-    Clipboard.setData(ClipboardData(text: shareText));
-    _showToast('duel.invite_link_copied'.tr());
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Row(
-          children: [
-            const Icon(Icons.share_rounded, color: Color(0xFFFF9F43)),
-            const SizedBox(width: 10),
-            Text('duel.share_room'.tr(),
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('duel.invite_link_ready'.tr(),
-                style: const TextStyle(color: Colors.white70, fontSize: 13)),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white12),
-              ),
-              child: Text(
-                shareText,
-                style: const TextStyle(
-                    color: Color(0xFFFFD56B), fontSize: 12, height: 1.4),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6366F1),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-            child: Text('common.ok'.tr(),
-                style: const TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+    AnalyticsService.logDuelFunnel('room_code_share');
+    ShareService.shareText(
+      context,
+      text: 'duel.share_room_text'.tr(args: [code]),
+      contentType: 'duel_room_code',
     );
   }
 
@@ -1954,7 +1981,9 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
           ),
           const SizedBox(height: 4),
           Text(
-            'duel.share_code_hint'.tr(),
+            DuelRoom.isSpecialHighBet(_currentRoom?.config.betTokens ?? 0)
+                ? 'duel.high_bet_real_only'.tr()
+                : 'duel.share_code_hint'.tr(),
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.4),

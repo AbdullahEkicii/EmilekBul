@@ -6,6 +6,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'token_service.dart';
+import 'league_service.dart';
+import 'referral_service.dart';
 import 'analytics_service.dart';
 
 class UserService {
@@ -275,6 +277,7 @@ class UserService {
       });
       debugPrint(
           "BAŞARILI: Puan eklendi. UID: $uid, Kategori: $category, Puan: $pointsToAdd");
+      await LeagueService.addWeeklyPoints(uid, pointsToAdd);
     } catch (e) {
       debugPrint("HATA: Puan eklenirken hata oluştu: $e");
       rethrow;
@@ -587,6 +590,10 @@ class UserService {
         return const Color(0xFF00FF87); // Cyber
       case '8':
         return const Color(0xFF2C3E50); // Midnight
+      case '9':
+        return const Color(0xFF2DD4BF); // Mint
+      case '10':
+        return const Color(0xFFFB7185); // Coral
       default:
         return Colors.transparent;
     }
@@ -618,6 +625,10 @@ class UserService {
           const Color(0xFF203A43),
           const Color(0xFF2C5364)
         ];
+      case '9': // Mint
+        return [const Color(0xFF2DD4BF), const Color(0xFF99F6E4)];
+      case '10': // Coral
+        return [const Color(0xFFFB7185), const Color(0xFFFDBA74)];
       default:
         return [Colors.transparent, Colors.transparent];
     }
@@ -1061,6 +1072,7 @@ class UserService {
         'isGuest': false,
         'isEmailVerified': true,
         'updatedAt': FieldValue.serverTimestamp(),
+        'migratedAt': FieldValue.serverTimestamp(),
       };
 
       if (sourceData['activeBadge'] != null) {
@@ -1386,19 +1398,25 @@ class UserService {
   /// Level calculation: 1->2 (20), 2->3 (50), 3->4 (90) ...
   /// Requirement for level L from L-1 is 10L + 10
   /// Total quizzes T for level L: 5L^2 + 5L - 10
+  /// [level] seviyesine ulaşmak için gereken toplam test sayısı.
+  /// Seviye 2 hızlı gelir (5 test); sonraki eşikler eski eğrinin bir kademe kaydırılmış halidir (20, 50, 90...).
+  static int quizzesRequiredForLevel(int level) {
+    if (level <= 1) return 0;
+    if (level == 2) return 5;
+    final t = level - 1;
+    return 5 * t * t + 5 * t - 10;
+  }
+
   static int calculateLevel(int completedQuizzes) {
     int level = 1;
-    while (completedQuizzes >=
-        (5 * (level + 1) * (level + 1) + 5 * (level + 1) - 10)) {
+    while (completedQuizzes >= quizzesRequiredForLevel(level + 1)) {
       level++;
     }
     return level;
   }
 
   static int getQuizzesNeededForNextLevel(int currentLevel) {
-    return 5 * (currentLevel + 1) * (currentLevel + 1) +
-        5 * (currentLevel + 1) -
-        10;
+    return quizzesRequiredForLevel(currentLevel + 1);
   }
 
   /// Quiz tamamlandığında quiz sayısını artırır, level ve ödül kontrolü yapar
@@ -1406,7 +1424,7 @@ class UserService {
       String uid) async {
     final userRef = _firestore.collection(usersCollection).doc(uid);
     try {
-      return await _firestore.runTransaction((transaction) async {
+      final result = await _firestore.runTransaction((transaction) async {
         final snapshot = await transaction.get(userRef);
         if (!snapshot.exists) return {'levelUp': false};
 
@@ -1441,6 +1459,9 @@ class UserService {
           'completedQuizzes': newQuizzes,
         };
       });
+      // Davet edilen ilk testini bitirdiyse davet ödülü iki tarafa verilir (idempotent)
+      ReferralService.completePendingReferralIfAny();
+      return result;
     } catch (e) {
       debugPrint('Error incrementing completed quizzes: $e');
       return {'levelUp': false};

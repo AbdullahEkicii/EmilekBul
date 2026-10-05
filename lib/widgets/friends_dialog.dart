@@ -604,7 +604,11 @@ class _FriendsDialogState extends State<FriendsDialog> {
                     icon: const Icon(Icons.sports_esports_rounded, color: Color(0xFFFFD56B), size: 22),
                     onPressed: () {
                       Navigator.pop(context);
-                      FriendRaceEntryDialog.show(context);
+                      FriendRaceEntryDialog.show(
+                        context,
+                        inviteFriendUid: friend.uid,
+                        inviteFriendName: friend.username,
+                      );
                     },
                   ),
 

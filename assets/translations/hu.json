@@ -222,7 +222,8 @@
     "guest_user": "Vendég felhasználó",
     "more": "Több",
     "new": "ÚJ",
-    "see_all": "Összes megtekintése"
+    "see_all": "Összes megtekintése",
+    "ad_not_ready": "A hirdetés még nem áll készen. Próbáld újra egy kicsit később."
   },
   "account": {
     "title": "Saját profil",
@@ -255,7 +256,9 @@
     "full_screen": "Teljes képernyő",
     "full_screen_desc": "Elindítja az alkalmazást teljes képernyős módban (elrejti a navigációs sávot)",
     "language": "Nyelv",
-    "language_desc": "Módosítsa az alkalmazás nyelvét"
+    "language_desc": "Módosítsa az alkalmazás nyelvét",
+    "privacy_options": "Adatvédelmi beállítások",
+    "privacy_options_desc": "Hirdetési hozzájárulás kezelése"
   },
   "quiz": {
     "question_progress": "{}/{}. kérdés",
@@ -311,7 +314,10 @@
     "msg_poor": "Tudsz Jobban csinálni! 🤔",
     "msg_fail": "Próbáld újra! 😅",
     "won_by_speed": "Speed ​​nyert! 🏎️",
-    "lost_by_speed": "Az ellenfél gyorsabb volt! ⚠️"
+    "lost_by_speed": "Az ellenfél gyorsabb volt! ⚠️",
+    "double_reward_desc": "Nézz meg egy rövid videót, és kapj még +{} zsetont!",
+    "double_reward_done": "Jutalom megduplázva! +{} zseton jóváírva.",
+    "double_reward_button": "2x"
   },
   "edit_profile": {
     "title": "Profil szerkesztése",
@@ -436,7 +442,19 @@
     "tap_to_preview": "Koppintson az előnézethez",
     "Avatar 10": "Avatar 10",
     "mystery_avatar": "Mystery Avatar",
-    "title_none": "Egyik sem"
+    "title_none": "Egyik sem",
+    "powerups": "Erősítők",
+    "streak_freeze_title": "Sorozatfagyasztás",
+    "streak_freeze_desc": "Kihagytál egy napot? A fagyasztás automatikusan felhasználódik, és a napi sorozatod megmarad. Legfeljebb {} lehet nálad.",
+    "streak_freeze_owned": "Birtokolt: {}/{}",
+    "streak_freeze_max": "Elérted a korlátot ({})",
+    "frame_mint": "Menta",
+    "frame_coral": "Korall",
+    "booster_title": "Zsetonerősítő",
+    "booster_desc": "Megduplázza a következő {} kvízből szerzett zsetonokat.",
+    "booster_active": "Aktív: még {} kvíz",
+    "booster_inactive": "Nem aktív",
+    "booster_applied": "⚡ Erősítő: +{} extra zseton!"
   },
   "past_tests": {
     "title": "Tesztelőzmények",
@@ -546,7 +564,13 @@
     "reengage_3d_title": "🔥 Ne szakítsd meg a sorozatod!",
     "reengage_3d_body": "Gyere vissza és fedezz fel új kérdéseket!",
     "reengage_7d_title": "💎 Hiányzol nekünk!",
-    "reengage_7d_body": "Különleges meglepetések várják a visszatérő játékosokat!"
+    "reengage_7d_body": "Különleges meglepetések várják a visszatérő játékosokat!",
+    "league_ending_title": "⏳ Ma este véget ér a heti liga",
+    "league_ending_body": "Néhány kvíz feljebb vihet egy ligával. Ne hagyd ki a feljutást!",
+    "streak_risk_title": "🔥 Mindjárt megszakad a sorozatod!",
+    "streak_risk_body": "Oldj meg ma egy kvízt, hogy megtartsd a(z) {} napos sorozatod!",
+    "social_channel_name": "Barátok és párbajok",
+    "social_channel_desc": "Barátkérések, párbajmeghívók és bökések"
   },
   "level_system": {
     "level": "Szint",
@@ -614,7 +638,16 @@
     "quizzes_to_next": "{} kvíz a következő szintre",
     "category_mastery": "Kategória Mastery",
     "your_rank": "A rangod",
-    "climb_higher": "Mássz feljebb!"
+    "climb_higher": "Mássz feljebb!",
+    "day1_body": "A {} zseton értékű napi sorozatjutalmad vár rád. Játssz egy kvízt, és vedd át!",
+    "teaser_title": "🎁 Gyere vissza holnap!",
+    "teaser_body": "Tartsd életben a sorozatodat: vedd át a {} zsetont, pörgesd meg a szerencsekereket, és teljesítsd a napi küldetéseket.",
+    "winback_3d_title": "🔥 Ne veszítsd el a lendületed!",
+    "winback_3d_body": "Eltelt néhány nap. Gyere vissza, játssz egy kvízt, és kezdd újra a sorozatodat!",
+    "winback_7d_title": "🏆 A barátaid egyre feljebb jutnak a ligában!",
+    "winback_7d_body": "A barátaid tovább játszanak. Csatlakozz újra, és emelkedj te is a ligában!",
+    "winback_14d_title": "💎 Hiányzol nekünk!",
+    "winback_14d_body": "Új kérdések és jutalmak várnak rád. Gyere vissza, és nézd meg, mi az új!"
   },
   "quests": {
     "title": "Küldetések és jutalmak",
@@ -669,7 +702,27 @@
     "quiz_category": "Kvízek",
     "duel_category": "Párbajok",
     "social_category": "Szociális",
-    "total_unlocked": "{}/{} Feloldva"
+    "total_unlocked": "{}/{} Feloldva",
+    "platinum_scholar_title": "Platina tudós",
+    "platinum_scholar_desc": "Teljesíts összesen 500 kvízt",
+    "duel_champion_title": "Párbajbajnok",
+    "duel_champion_desc": "Nyerj összesen 50 párbajt",
+    "duel_legend_title": "Párbajlegenda",
+    "duel_legend_desc": "Nyerj összesen 100 párbajt",
+    "level_ten_title": "10. szintű szakértő",
+    "level_ten_desc": "Érd el a 10. szintet",
+    "level_twenty_title": "20. szintű mester",
+    "level_twenty_desc": "Érd el a 20. szintet",
+    "streak_week_title": "Lángoló",
+    "streak_week_desc": "Érj el 7 napos belépési sorozatot",
+    "streak_month_title": "Megállíthatatlan",
+    "streak_month_desc": "Érj el 30 napos belépési sorozatot",
+    "recruiter_title": "Toborzó",
+    "recruiter_desc": "Hívj meg egy barátot a kódoddal",
+    "ambassador_title": "Nagykövet",
+    "ambassador_desc": "Hívj meg 5 barátot a kódoddal",
+    "collector_title": "Nagy gyűjtő",
+    "collector_desc": "Gyűjts 10 tárgyat a boltból"
   },
   "duel": {
     "race_track": "PÁRBASVERSENY",
@@ -811,7 +864,26 @@
     "kick_confirm_msg": "Biztosan ki akarod rúgni a szobából {} személyt?",
     "kicked_from_room": "Kirúgott a szobából a házigazda.",
     "special_bet_badge": "KÜLÖNLEGES 🔥",
-    "fee_info": "{}% díj"
+    "fee_info": "{}% díj",
+    "category": "Kategória",
+    "difficulty": "Nehézség",
+    "challenge_friend_title": "{} kihívása",
+    "challenge_sent": "Kihívás elküldve: {}!",
+    "challenge_failed": "A kihívást nem sikerült elküldeni, de a szobád kész. Oszd meg a szobakódot.",
+    "free_tickets": "Ma {}/{} ingyenes párbajjegy · legfeljebb {} tétig",
+    "friendly": "Barátságos",
+    "friendly_desc": "Barátságos meccs: nincs zseton a tétben. Ranglista- és ligapontot így is szerzel.",
+    "high_bet_real_only": "Magas tétű szobákba csak valódi játékosok lépnek be — oszd meg a kódot!",
+    "host_no_response": "A házigazda nem válaszolt. Próbálj egy másik szobát.",
+    "result_cta_title": "Készen állsz egy igazi ellenfélre?",
+    "result_cta_desc": "{}%-ot értél el ebben: {}. Próbálj egy 1v1 párbajt ebben a kategóriában!",
+    "result_cta_button": "Párbaj",
+    "share_room_text": "⚡ Csatlakozz az 1v1 kvízpárbajomhoz! Szobakód: {}",
+    "ticket_used": "Ingyenes jegy felhasználva",
+    "quick_match": "Gyors meccs",
+    "quick_match_sub": "Egy koppintás · ellenfél másodpercek alatt",
+    "quick_match_searching": "Ellenfél keresése…",
+    "quick_match_hint": "Ingyenes jeggyel, ha van, különben barátságos meccs."
   },
   "errors": {
     "no_internet_ai": "Az AI eléréséhez aktív internetkapcsolatra van szüksége. 📡",
@@ -836,10 +908,16 @@
     "wheel_spin_button": "Pörgető kerék 🔥",
     "wheel_done_today": "Mára kész",
     "streak_claim_today": "Igényelje a mai jutalmat 🎉",
-    "streak_ok": "RENDBEN"
+    "streak_ok": "RENDBEN",
+    "wheel_freeze_prize": "Sorozatfagyasztás ❄️",
+    "wheel_freeze_short": "Fagyasztás"
   },
   "daily_streak": {
-    "day_num": "{}. nap"
+    "day_num": "{}. nap",
+    "freeze_used": "A sorozatod megmenekült! {} fagyasztás felhasználva.",
+    "freezes_owned": "Fagyasztások: {}/{}",
+    "play_to_claim": "Oldj meg ma 1 kvízt, hogy megkapd a jutalmat és megtartsd a sorozatod!",
+    "play_now": "Kvíz indítása"
   },
   "friends": {
     "title": "Barátok",
@@ -879,7 +957,8 @@
     "friend_req_received_title": "Új barát kérés! 👥",
     "friend_req_received_body": "{} baráti kérést küldött neked!",
     "request_received": "Kérés érkezett! ⚡",
-    "accept_request": "Elfogadás"
+    "accept_request": "Elfogadás",
+    "accept": "Elfogadás"
   },
   "review": {
     "card_title": "Értékeljen a Google Playen",
@@ -896,7 +975,7 @@
   },
   "referral": {
     "title": "Ismerősök meghívása",
-    "desc": "Adja meg egy barátja meghívókódját, és szerezzen 500 tokent! Ossza meg kódját, és hívja meg barátait.",
+    "desc": "Add meg egy barátod meghívókódját, és az első kvízed után kapsz 500 zsetont! Oszd meg a saját kódodat, és hívd meg a barátaidat.",
     "your_code": "A MEGHÍVÓ KÓDJA",
     "enter_code": "Írja be a meghívó kódot (+500 token)",
     "hint": "KÓD BEÍRÁSA",
@@ -905,10 +984,64 @@
     "share_button": "Részesedés",
     "copy_button": "Másolat",
     "code_copied": "Meghívó kód kimásolva! 📋",
-    "share_msg": "🏆 Csatlakozz hozzám a Quiz Arénában! Használja a meghívókódomat, hogy azonnal szerezzen 500 tokent:\n👉 Kód: {}\n📲 Alkalmazás letöltése: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "share_msg": "🏆 Csatlakozz hozzám a Quiz Arénában! Használd a meghívókódomat, és az első kvízed után kapsz 500 zsetont:\n👉 Kód: {}\n📲 Alkalmazás letöltése: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
     "success": "Gratulálok! {} Token hozzáadva a fiókjához! 🎉",
     "already_used": "Már használt meghívókódot.",
     "own_code": "Nem használhatja saját meghívókódját.",
-    "invalid_code": "Érvénytelen vagy nem létező meghívókód."
+    "invalid_code": "Érvénytelen vagy nem létező meghívókód.",
+    "pending": "Meghívókód mentve! Te és a barátod megkapjátok a zsetonokat, ha befejezitek az első kvízt."
+  },
+  "share": {
+    "button": "Megosztás",
+    "copied": "Vágólapra másolva",
+    "quiz_result": "{}/{} pontot értem el a(z) {} kvízben a(z) {} alkalmazásban! 🧠 Meg tudsz verni?",
+    "duel_win": "Legyőztem {} játékost {}-{} arányban egy 1v1 kvízpárbajban a(z) {} alkalmazásban! ⚔️ Kihívsz?",
+    "duel_played": "Most játszottam egy 1v1 kvízpárbajt {} ellen a(z) {} alkalmazásban! ⚔️ Hívj ki!",
+    "achievement": "Megszereztem a(z) „{}” jelvényt a(z) {} alkalmazásban! 🏅"
+  },
+  "league": {
+    "title": "Heti liga",
+    "bronze": "Bronz liga",
+    "silver": "Ezüst liga",
+    "gold": "Arany liga",
+    "platinum": "Platina liga",
+    "diamond": "Gyémánt liga",
+    "ends_in": "Vége: {} nap {} óra",
+    "how_it_works": "Gyűjts pontokat kvízekkel és párbajokkal. A hét végén a legjobb {}% feljebb lép, a leggyengébbek kiesnek.",
+    "empty": "Ezen a héten még senki sem szerzett pontot ebben a ligában. Játssz egy kvízt és vedd át a vezetést!",
+    "points": "pont",
+    "promoted_title": "Feljutottál!",
+    "promoted_desc": "Remek hét! Feljutottál ide: {}, és kaptál {} zsetont.",
+    "demoted_title": "Ligaváltás",
+    "demoted_desc": "Ezen a héten itt vagy: {}. Játssz néhány kvízt, hogy visszajuss!",
+    "view": "Liga megtekintése",
+    "result_promoted_sub": "A kemény munkád meghozta gyümölcsét. Tartsd a lendületet az új ligádban!",
+    "result_demoted_sub": "Minden bajnoknak volt már nehéz hete. Pár kvíz, és újra a csúcson vagy!",
+    "result_rank": "Múlt heti helyezés: #{}",
+    "result_reward": "+{} zseton",
+    "share": "Megosztás",
+    "continue": "Tovább",
+    "share_text": "Most a(z) {} ligában vagyok a Quiz Arenában! Le tudsz győzni?"
+  },
+  "daily_challenge": {
+    "title": "Napi kihívás",
+    "badge": "ÚJ",
+    "card_sub": "Mindenkinek ugyanaz az 5 kérdés · napi rangsor",
+    "rules": "Ma mindenki ugyanazt a(z) {} kérdést kapja. Csak egy próbálkozás — minden helyes válasz {} zsetont ér. Légy gyors: holtversenynél az idő dönt!",
+    "start": "A mai kihívás indítása",
+    "leaderboard": "Mai rangsor",
+    "empty": "Ma még senki sem játszott — légy te az első!",
+    "rank": "Helyezés: #{} / {} · {} mp",
+    "come_back": "Holnap új kihívás nyílik. Oszd meg az eredményed, és hívd ki a barátaidat!",
+    "reward": "Napi kihívás teljesítve! +{} zseton",
+    "share_text": "{} · Napi kihívás {}\n{}/{} {}\n🏆 {}"
+  },
+  "streak_rescue": {
+    "title": "A sorozatod mindjárt véget ér!",
+    "body": "Kihagytál egy napot, és elvesztetted a {} napos sorozatodat. Ma még megmentheted!",
+    "watch_ad": "Nézz meg egy hirdetést a megmentéshez",
+    "pay_tokens": "Mentés {} zsetonnal",
+    "no_thanks": "Nem, köszönöm, újrakezdem",
+    "not_enough_tokens": "Nincs elég zsetonod."
   }
 }

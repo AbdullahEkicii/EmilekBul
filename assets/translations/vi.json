@@ -222,7 +222,8 @@
     "guest_user": "Người dùng khách",
     "more": "Hơn",
     "new": "MỚI",
-    "see_all": "Xem Tất Cả"
+    "see_all": "Xem Tất Cả",
+    "ad_not_ready": "Quảng cáo chưa sẵn sàng. Vui lòng thử lại sau giây lát."
   },
   "account": {
     "title": "Hồ sơ của tôi",
@@ -255,7 +256,9 @@
     "full_screen": "Toàn màn hình",
     "full_screen_desc": "Khởi động ứng dụng ở chế độ toàn màn hình (ẩn thanh điều hướng)",
     "language": "Ngôn ngữ",
-    "language_desc": "Thay đổi ngôn ngữ ứng dụng"
+    "language_desc": "Thay đổi ngôn ngữ ứng dụng",
+    "privacy_options": "Tùy chọn quyền riêng tư",
+    "privacy_options_desc": "Quản lý lựa chọn đồng ý quảng cáo"
   },
   "quiz": {
     "question_progress": "Câu hỏi {}/{}",
@@ -311,7 +314,10 @@
     "msg_poor": "Bạn có thể làm tốt hơn! 🤔",
     "msg_fail": "Hãy thử lại! 😅",
     "won_by_speed": "Chiến thắng nhờ tốc độ! 🏎️",
-    "lost_by_speed": "Đối thủ đã nhanh hơn! ⚠️"
+    "lost_by_speed": "Đối thủ đã nhanh hơn! ⚠️",
+    "double_reward_desc": "Xem video ngắn để nhận thêm +{} xu!",
+    "double_reward_done": "Đã nhân đôi phần thưởng! Đã cộng +{} xu.",
+    "double_reward_button": "x2"
   },
   "edit_profile": {
     "title": "Chỉnh sửa hồ sơ",
@@ -436,7 +442,19 @@
     "tap_to_preview": "Nhấn để xem trước",
     "Avatar 10": "Hình đại diện 10",
     "mystery_avatar": "Avatar bí ẩn",
-    "title_none": "Không có"
+    "title_none": "Không có",
+    "powerups": "Vật phẩm hỗ trợ",
+    "streak_freeze_title": "Đóng băng chuỗi",
+    "streak_freeze_desc": "Lỡ một ngày? Lượt đóng băng sẽ tự động được dùng và chuỗi hằng ngày vẫn giữ nguyên. Bạn có thể giữ tối đa {}.",
+    "streak_freeze_owned": "Đang có: {}/{}",
+    "streak_freeze_max": "Đã đạt giới hạn ({})",
+    "frame_mint": "Bạc hà",
+    "frame_coral": "San hô",
+    "booster_title": "Tăng xu",
+    "booster_desc": "Nhân đôi xu nhận được từ {} câu đố tiếp theo.",
+    "booster_active": "Đang bật: còn {} câu đố",
+    "booster_inactive": "Chưa bật",
+    "booster_applied": "⚡ Tăng xu: thêm +{} xu!"
   },
   "past_tests": {
     "title": "Lịch sử kiểm tra",
@@ -546,7 +564,13 @@
     "reengage_3d_title": "🔥 Đừng phá vỡ kỷ lục của bạn!",
     "reengage_3d_body": "Hãy quay lại và khám phá những câu hỏi mới!",
     "reengage_7d_title": "💎 Chúng tôi nhớ bạn!",
-    "reengage_7d_body": "Những bất ngờ đặc biệt đang chờ đợi người chơi quay trở lại!"
+    "reengage_7d_body": "Những bất ngờ đặc biệt đang chờ đợi người chơi quay trở lại!",
+    "league_ending_title": "⏳ Giải đấu tuần kết thúc tối nay",
+    "league_ending_body": "Vài câu đố nữa có thể giúp bạn thăng hạng. Đừng bỏ lỡ!",
+    "streak_risk_title": "🔥 Chuỗi của bạn sắp bị đứt!",
+    "streak_risk_body": "Giải một câu đố hôm nay để giữ chuỗi {} ngày!",
+    "social_channel_name": "Bạn bè & Đấu trí",
+    "social_channel_desc": "Lời mời kết bạn, lời mời đấu và chọc"
   },
   "level_system": {
     "level": "Mức độ",
@@ -614,7 +638,16 @@
     "quizzes_to_next": "{} câu đố lên cấp độ tiếp theo",
     "category_mastery": "Làm chủ hạng mục",
     "your_rank": "Thứ hạng của bạn",
-    "climb_higher": "Leo cao hơn!"
+    "climb_higher": "Leo cao hơn!",
+    "day1_body": "Phần thưởng chuỗi hằng ngày {} xu đang chờ bạn. Chơi một bài đố và nhận ngay!",
+    "teaser_title": "🎁 Mai quay lại nhé!",
+    "teaser_body": "Giữ chuỗi của bạn: nhận {} xu, quay vòng quay may mắn và hoàn thành nhiệm vụ hằng ngày.",
+    "winback_3d_title": "🔥 Đừng mất đà!",
+    "winback_3d_body": "Đã vài ngày rồi. Quay lại, chơi một bài đố và bắt đầu lại chuỗi nhé!",
+    "winback_7d_title": "🏆 Bạn bè của bạn đang leo hạng giải đấu!",
+    "winback_7d_body": "Bạn bè vẫn đang chơi. Quay lại và cùng leo hạng nào!",
+    "winback_14d_title": "💎 Chúng tôi nhớ bạn!",
+    "winback_14d_body": "Câu hỏi và phần thưởng mới đang chờ bạn. Quay lại xem có gì mới nhé!"
   },
   "quests": {
     "title": "Nhiệm vụ & Phần thưởng",
@@ -669,7 +702,27 @@
     "quiz_category": "Câu đố",
     "duel_category": "Đấu tay đôi",
     "social_category": "Xã hội",
-    "total_unlocked": "{}/{} Đã mở khóa"
+    "total_unlocked": "{}/{} Đã mở khóa",
+    "platinum_scholar_title": "Học giả Bạch kim",
+    "platinum_scholar_desc": "Hoàn thành tổng cộng 500 câu đố",
+    "duel_champion_title": "Nhà vô địch đấu trí",
+    "duel_champion_desc": "Thắng tổng cộng 50 trận đấu",
+    "duel_legend_title": "Huyền thoại đấu trí",
+    "duel_legend_desc": "Thắng tổng cộng 100 trận đấu",
+    "level_ten_title": "Chuyên gia cấp 10",
+    "level_ten_desc": "Đạt cấp 10",
+    "level_twenty_title": "Bậc thầy cấp 20",
+    "level_twenty_desc": "Đạt cấp 20",
+    "streak_week_title": "Bùng cháy",
+    "streak_week_desc": "Đạt chuỗi đăng nhập 7 ngày",
+    "streak_month_title": "Không thể cản phá",
+    "streak_month_desc": "Đạt chuỗi đăng nhập 30 ngày",
+    "recruiter_title": "Người mời gọi",
+    "recruiter_desc": "Mời một người bạn tham gia bằng mã của bạn",
+    "ambassador_title": "Đại sứ",
+    "ambassador_desc": "Mời 5 người bạn tham gia bằng mã của bạn",
+    "collector_title": "Nhà sưu tập lớn",
+    "collector_desc": "Sưu tập 10 vật phẩm từ cửa hàng"
   },
   "duel": {
     "race_track": "CUỘC ĐUA ĐÔI",
@@ -811,7 +864,26 @@
     "kick_confirm_msg": "Bạn có chắc chắn muốn đuổi {} ra khỏi phòng không?",
     "kicked_from_room": "Bạn bị chủ nhà đuổi ra khỏi phòng.",
     "special_bet_badge": "ĐẶC BIỆT 🔥",
-    "fee_info": "{}% Phí"
+    "fee_info": "{}% Phí",
+    "category": "Chủ đề",
+    "difficulty": "Độ khó",
+    "challenge_friend_title": "Thách đấu {}",
+    "challenge_sent": "Đã gửi lời thách đấu tới {}!",
+    "challenge_failed": "Không gửi được lời thách đấu, nhưng phòng đã sẵn sàng. Hãy chia sẻ mã phòng.",
+    "free_tickets": "Hôm nay còn {}/{} vé đấu miễn phí · cho mức cược tối đa {}",
+    "friendly": "Giao hữu",
+    "friendly_desc": "Trận giao hữu: không cược xu. Bạn vẫn nhận điểm bảng xếp hạng và giải đấu.",
+    "high_bet_real_only": "Chỉ người chơi thật vào phòng cược cao — hãy chia sẻ mã phòng!",
+    "host_no_response": "Chủ phòng không phản hồi. Hãy thử phòng khác.",
+    "result_cta_title": "Sẵn sàng đấu với đối thủ thật?",
+    "result_cta_desc": "Bạn đạt {}% ở chủ đề {}. Thử đấu 1v1 ở chủ đề này nhé!",
+    "result_cta_button": "Đấu",
+    "share_room_text": "⚡ Vào đấu trí 1v1 với mình! Mã phòng: {}",
+    "ticket_used": "Đã dùng vé miễn phí",
+    "quick_match": "Đấu nhanh",
+    "quick_match_sub": "Một chạm · có đối thủ trong vài giây",
+    "quick_match_searching": "Đang tìm đối thủ…",
+    "quick_match_hint": "Dùng vé miễn phí nếu có, không thì đấu giao hữu."
   },
   "errors": {
     "no_internet_ai": "Bạn cần có kết nối Internet đang hoạt động để tiếp cận AI của chúng tôi. 📡",
@@ -836,10 +908,16 @@
     "wheel_spin_button": "Bánh xe quay 🔥",
     "wheel_done_today": "Đã xong cho hôm nay",
     "streak_claim_today": "Yêu cầu phần thưởng hôm nay 🎉",
-    "streak_ok": "ĐƯỢC RỒI"
+    "streak_ok": "ĐƯỢC RỒI",
+    "wheel_freeze_prize": "Đóng băng chuỗi ❄️",
+    "wheel_freeze_short": "Đóng băng"
   },
   "daily_streak": {
-    "day_num": "Ngày {}"
+    "day_num": "Ngày {}",
+    "freeze_used": "Chuỗi của bạn đã được cứu! Đã dùng {} lượt đóng băng.",
+    "freezes_owned": "Lượt đóng băng: {}/{}",
+    "play_to_claim": "Giải 1 câu đố hôm nay để nhận thưởng và giữ chuỗi!",
+    "play_now": "Chơi đố vui"
   },
   "friends": {
     "title": "Bạn",
@@ -879,7 +957,8 @@
     "friend_req_received_title": "Yêu cầu kết bạn mới! 👥",
     "friend_req_received_body": "{} đã gửi cho bạn lời mời kết bạn!",
     "request_received": "Đã nhận được yêu cầu! ⚡",
-    "accept_request": "Chấp nhận"
+    "accept_request": "Chấp nhận",
+    "accept": "Chấp nhận"
   },
   "review": {
     "card_title": "Xếp hạng trên Google Play",
@@ -896,7 +975,7 @@
   },
   "referral": {
     "title": "Mời bạn bè",
-    "desc": "Nhập mã mời của bạn bè để kiếm 500 Token! Chia sẻ mã của bạn và mời bạn bè của bạn.",
+    "desc": "Nhập mã mời của bạn bè và nhận 500 xu sau bài đố đầu tiên! Chia sẻ mã của bạn và mời bạn bè cùng chơi.",
     "your_code": "MÃ MỜI CỦA BẠN",
     "enter_code": "Nhập mã mời (+500 Token)",
     "hint": "NHẬP MÃ",
@@ -905,10 +984,64 @@
     "share_button": "Chia sẻ",
     "copy_button": "Sao chép",
     "code_copied": "Đã sao chép mã mời! 📋",
-    "share_msg": "🏆 Hãy tham gia cùng tôi tại Đấu trường đố vui! Sử dụng mã mời của tôi để nhận ngay 500 Token:\n👉 Mã số: {}\n📲 Tải xuống ứng dụng: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "share_msg": "🏆 Hãy tham gia cùng tôi tại Đấu trường đố vui! Dùng mã mời của tôi để nhận 500 xu sau bài đố đầu tiên:\n👉 Mã số: {}\n📲 Tải xuống ứng dụng: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
     "success": "Chúc mừng! {} Mã thông báo đã được thêm vào tài khoản của bạn! 🎉",
     "already_used": "Bạn đã sử dụng mã mời.",
     "own_code": "Bạn không thể sử dụng mã mời của riêng bạn.",
-    "invalid_code": "Mã mời không hợp lệ hoặc không tồn tại."
+    "invalid_code": "Mã mời không hợp lệ hoặc không tồn tại.",
+    "pending": "Đã lưu mã mời! Bạn và bạn bè sẽ nhận xu khi hoàn thành bài đố đầu tiên."
+  },
+  "share": {
+    "button": "Chia sẻ",
+    "copied": "Đã sao chép vào bộ nhớ tạm",
+    "quiz_result": "Mình đạt {}/{} trong câu đố {} trên {}! 🧠 Bạn có vượt qua được không?",
+    "duel_win": "Mình đã thắng {} {}-{} trong trận đấu đố vui 1v1 trên {}! ⚔️ Dám thách đấu mình không?",
+    "duel_played": "Mình vừa đấu đố vui 1v1 với {} trên {}! ⚔️ Thách đấu mình đi!",
+    "achievement": "Mình đã mở khóa huy hiệu \"{}\" trên {}! 🏅"
+  },
+  "league": {
+    "title": "Giải đấu tuần",
+    "bronze": "Giải Đồng",
+    "silver": "Giải Bạc",
+    "gold": "Giải Vàng",
+    "platinum": "Giải Bạch kim",
+    "diamond": "Giải Kim cương",
+    "ends_in": "Kết thúc sau {} ngày {} giờ",
+    "how_it_works": "Kiếm điểm từ câu đố và đấu trí. Cuối tuần, {}% đứng đầu được thăng hạng và nhóm cuối bị xuống hạng.",
+    "empty": "Tuần này chưa ai ghi điểm ở giải này. Chơi một câu đố và dẫn đầu nào!",
+    "points": "điểm",
+    "promoted_title": "Thăng hạng!",
+    "promoted_desc": "Tuần tuyệt vời! Bạn đã lên {} và nhận {} xu.",
+    "demoted_title": "Đổi giải đấu",
+    "demoted_desc": "Tuần này bạn ở {}. Chơi vài câu đố để leo lại nhé!",
+    "view": "Xem giải đấu",
+    "result_promoted_sub": "Nỗ lực của bạn đã được đền đáp. Hãy giữ phong độ ở giải đấu mới!",
+    "result_demoted_sub": "Nhà vô địch nào cũng có một tuần khó khăn. Vài bài đố nữa là bạn lại trở lại đỉnh cao!",
+    "result_rank": "Hạng tuần trước: #{}",
+    "result_reward": "+{} xu",
+    "share": "Chia sẻ",
+    "continue": "Tiếp tục",
+    "share_text": "Giờ mình đang ở {} trên Quiz Arena! Bạn có thể đánh bại mình không?"
+  },
+  "daily_challenge": {
+    "title": "Thử thách hằng ngày",
+    "badge": "MỚI",
+    "card_sub": "5 câu hỏi giống nhau cho mọi người · xếp hạng mỗi ngày",
+    "rules": "Hôm nay mọi người cùng làm {} câu hỏi giống nhau. Chỉ một lượt — mỗi câu đúng được {} xu. Nhanh lên: hòa điểm thì xét thời gian!",
+    "start": "Bắt đầu thử thách hôm nay",
+    "leaderboard": "Xếp hạng hôm nay",
+    "empty": "Hôm nay chưa ai chơi — hãy là người đầu tiên!",
+    "rank": "Hạng #{} / {} · {} giây",
+    "come_back": "Ngày mai sẽ mở thử thách mới. Chia sẻ kết quả và thách đấu bạn bè!",
+    "reward": "Hoàn thành thử thách hằng ngày! +{} xu",
+    "share_text": "{} · Thử thách hằng ngày {}\n{}/{} {}\n🏆 {}"
+  },
+  "streak_rescue": {
+    "title": "Chuỗi của bạn sắp kết thúc!",
+    "body": "Bạn đã bỏ lỡ một ngày và mất chuỗi {} ngày. Hôm nay bạn vẫn có thể cứu nó!",
+    "watch_ad": "Xem quảng cáo để cứu",
+    "pay_tokens": "Cứu bằng {} xu",
+    "no_thanks": "Không, cảm ơn, bắt đầu lại",
+    "not_enough_tokens": "Không đủ xu."
   }
 }

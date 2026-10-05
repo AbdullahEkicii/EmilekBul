@@ -1,7 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'services/ads_service.dart';
+import 'services/interstitial_ad_manager.dart';
 import 'screens/animated_splash_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/kategori_screen.dart';
@@ -24,6 +25,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 
 void main() async {
+  final startupWatch = Stopwatch()..start();
   WidgetsFlutterBinding.ensureInitialized();
   await FullScreenService.init();
 
@@ -33,19 +35,33 @@ void main() async {
       Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform),
       dotenv.load(),
       EasyLocalization.ensureInitialized(),
-      SoundService.init(),
       PerformanceService.init(),
     ]);
 
-    // Analytics servisini başlat
-    await AnalyticsService.init();
-    
-    // Firestore önbellek boyutunu 15 MB ile sınırla (Varsayılan 100 MB veri şişmesini önler)
+    // Firestore ayarları, Firestore'a ilk erişimden ÖNCE yapılmalı (sıra önemli).
+    // Önbellek boyutunu 15 MB ile sınırla (Varsayılan 100 MB veri şişmesini önler)
     FirebaseFirestore.instance.settings = const Settings(
       persistenceEnabled: true,
       cacheSizeBytes: 15 * 1024 * 1024,
     );
 
+    // Ses ve Analytics ilk frame'i bloklamasın: arka planda başlat
+    Future(() async {
+      try {
+        await SoundService.init();
+      } catch (e) {
+        debugPrint('SoundService init error: $e');
+      }
+      try {
+        await AnalyticsService.init();
+      } catch (e) {
+        debugPrint('AnalyticsService init error: $e');
+      }
+    });
+
+    // NOT: AppCheck bilerek beklenmeye devam ediyor. Arka plana alınırsa ilk
+    // Firestore/Auth/Functions istekleri token'sız gidip (enforcement açıksa)
+    // permission-denied/unauthenticated hatası verebilir.
     await FirebaseAppCheck.instance.activate(
       providerAndroid: const AndroidPlayIntegrityProvider(), // Production provider
       providerApple: const AppleDeviceCheckProvider(),
@@ -56,12 +72,16 @@ void main() async {
 
   // Arka planda başlasınlar, açılışı geciktirmesinler
   Future(() async {
-    try {
-      await MobileAds.instance.initialize();
-    } catch (e) {
-      debugPrint("MobileAds init error: $e");
-    }
-    NotificationService.init().catchError((e) => debugPrint("Notif init error: $e"));
+    await AdsService.init();
+    InterstitialAdManager.warmUp();
+  });
+  NotificationService.init().catchError((e) => debugPrint("Notif init error: $e"));
+
+  debugPrint('Startup: runApp öncesi ${startupWatch.elapsedMilliseconds} ms');
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    final ms = startupWatch.elapsedMilliseconds;
+    debugPrint('Startup: ilk frame sonrası $ms ms');
+    AnalyticsService.logAppStartup(ms);
   });
 
   runApp(
@@ -126,12 +146,14 @@ class QuizFlow extends StatefulWidget {
   final String? initialCategory;
   final String? initialDifficulty;
   final int? initialDuration;
+  final bool isOnboarding;
 
   const QuizFlow({
     super.key,
     this.initialCategory,
     this.initialDifficulty,
     this.initialDuration,
+    this.isOnboarding = false,
   });
 
   @override
@@ -171,11 +193,9 @@ class _QuizFlowState extends State<QuizFlow> {
         widget.initialDifficulty != null &&
         widget.initialDuration != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        // Since we only pass these parameters for the forced initial quiz from WelcomeScreen,
-        // it's safe to assume this is an onboarding flow.
         if (mounted) {
           setState(() {
-            _isOnboarding = true;
+            _isOnboarding = widget.isOnboarding;
           });
           _startQuiz(
             widget.initialCategory!,
@@ -239,6 +259,7 @@ class _QuizFlowState extends State<QuizFlow> {
   }
 
   void _showCategoryScreen() {
+    AnalyticsService.logScreenView(screenName: 'quiz_flow_category');
     setState(() {
       _screenState = 'category';
     });
@@ -254,6 +275,7 @@ class _QuizFlowState extends State<QuizFlow> {
     debugPrint('Quiz başlatılıyor: $category, $difficulty, $duration, isDuel: $isDuel');
     final languageCode = context.locale.languageCode;
 
+    AnalyticsService.logScreenView(screenName: 'quiz_flow_quiz');
     AnalyticsService.logQuizStart(
       category: category,
       difficulty: difficulty,
@@ -276,6 +298,7 @@ class _QuizFlowState extends State<QuizFlow> {
 
     try {
       debugPrint('Hibrit soru havuzundan çekiliyor...');
+      final loadWatch = Stopwatch()..start();
 
       final questions = await QuestionPoolService.getHybridQuestions(
         category: category,
@@ -286,6 +309,11 @@ class _QuizFlowState extends State<QuizFlow> {
       );
 
       debugPrint('Soru yükleme başarılı, ${questions.length} soru hazır');
+      AnalyticsService.logQuestionsLoaded(
+        category: category,
+        latencyMs: loadWatch.elapsedMilliseconds,
+        count: questions.length,
+      );
 
       if (!mounted) return;
       setState(() {
@@ -308,7 +336,7 @@ class _QuizFlowState extends State<QuizFlow> {
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('İnternet bağlantısı yok. Lütfen tekrar deneyin.'),
+          content: Text('errors.no_internet_ai'.tr()),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 3),
         ),
@@ -346,15 +374,22 @@ class _QuizFlowState extends State<QuizFlow> {
       isWinner: isWinner,
     );
 
-    setState(() {
-      _userAnswers = userAnswers;
-      _score = score;
-      _botScore = botScore ?? 0;
-      _botName = botName ?? 'Rakip';
-      _botAvatar = botAvatar ?? 'avatars/avatar_1.jpg';
-      _playerFinishedFirst = playerFinishedFirst ?? false;
-      _screenState = 'result';
-    });
+    // Sonuç ekranından önce (uygunsa) geçiş reklamı
+    InterstitialAdManager.onTestFinished(
+      source: _isDuel ? 'duel' : 'solo',
+      onDone: () {
+        if (!mounted) return;
+        setState(() {
+          _userAnswers = userAnswers;
+          _score = score;
+          _botScore = botScore ?? 0;
+          _botName = botName ?? 'Rakip';
+          _botAvatar = botAvatar ?? 'avatars/avatar_1.jpg';
+          _playerFinishedFirst = playerFinishedFirst ?? false;
+          _screenState = 'result';
+        });
+      },
+    );
   }
 
   void _onRestartQuiz() {

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'analytics_service.dart';
 import 'token_service.dart';
 
 enum ReferralResult {
@@ -125,26 +126,18 @@ class ReferralService {
 
       final referrerUid = referrerDoc.id;
 
-      // 4. Kullanıcıya 500 Token ver & Bayrakları güncelle
+      // 4. İlişkiyi kaydet; ödül davet edilen İLK TESTİNİ bitirince verilir
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_claimedKey, true);
-
-      await TokenService.addTokens(referralRewardTokens);
+      AnalyticsService.logReferralRedeemed();
 
       await _firestore.collection('users').doc(user.uid).set({
         'hasUsedReferralCode': true,
         'usedReferralCode': cleanCode,
         'referredBy': referrerUid,
+        'referralPending': true,
         'referralClaimedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-
-      // 5. Kod sahibine (Arkadaşa) da bonus token ve sayaç artışı sağla
-      try {
-        await _firestore.collection('users').doc(referrerUid).update({
-          'tokens': FieldValue.increment(referrerBonusTokens),
-          'referralCount': FieldValue.increment(1),
-        });
-      } catch (_) {}
 
       // 6. Başarı bildirimi
       if (context.mounted) {
@@ -157,7 +150,7 @@ class ReferralService {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'referral.success'.tr(args: [referralRewardTokens.toString()]),
+                    'referral.pending'.tr(args: [referralRewardTokens.toString()]),
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
                   ),
                 ),
@@ -175,6 +168,42 @@ class ReferralService {
     } catch (e) {
       debugPrint('Error redeeming referral code: $e');
       return ReferralResult.error;
+    }
+  }
+
+  /// Davet edilen ilk testini bitirdiğinde çağrılır: iki tarafa da ödül verir.
+  /// İdempotent: bekleyen bayrak transaction ile tek seferde kapatılır.
+  static Future<void> completePendingReferralIfAny() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      final userRef = _firestore.collection('users').doc(user.uid);
+      final referrerUid = await _firestore.runTransaction<String?>((tx) async {
+        final snap = await tx.get(userRef);
+        final data = snap.data();
+        if (data == null || data['referralPending'] != true) return null;
+        final by = data['referredBy'] as String?;
+        tx.update(userRef, {
+          'referralPending': false,
+          'referralRewardedAt': FieldValue.serverTimestamp(),
+        });
+        return (by == null || by.isEmpty) ? '' : by;
+      });
+      if (referrerUid == null) return;
+
+      await TokenService.addTokens(referralRewardTokens, source: 'referral');
+      if (referrerUid.isNotEmpty) {
+        try {
+          await _firestore.collection('users').doc(referrerUid).update({
+            'tokens': FieldValue.increment(referrerBonusTokens),
+            'referralCount': FieldValue.increment(1),
+          });
+        } catch (e) {
+          debugPrint('Referrer reward failed: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('completePendingReferralIfAny error: $e');
     }
   }
 }

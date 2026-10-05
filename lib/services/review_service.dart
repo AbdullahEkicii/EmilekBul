@@ -50,7 +50,7 @@ class ReviewService {
       await prefs.setBool(_claimedKey, true);
 
       // 2. Token ekle
-      await TokenService.addTokens(reviewRewardTokens);
+      await TokenService.addTokens(reviewRewardTokens, source: 'review');
 
       // 3. Firestore kaydı
       final user = FirebaseAuth.instance.currentUser;
@@ -287,7 +287,7 @@ class ReviewService {
     );
   }
 
-  /// Uygun anlarda (örn: 3. test sonrası veya seviye atlamada) kullanıcıyı rahatsız etmeden değerlendirme önerir
+  /// Pozitif anlarda (başarılı test, düello galibiyeti) çağrılır; en az 3 gün arayla gösterilir
   static Future<void> checkAndPromptAutoReview(BuildContext context) async {
     try {
       final alreadyClaimed = await hasClaimedReward();

@@ -222,7 +222,8 @@
     "guest_user": "访客用户",
     "more": "更多的",
     "new": "新的",
-    "see_all": "查看全部"
+    "see_all": "查看全部",
+    "ad_not_ready": "广告尚未准备好，请稍后再试。"
   },
   "account": {
     "title": "我的个人资料",
@@ -255,7 +256,9 @@
     "full_screen": "全屏",
     "full_screen_desc": "以全屏模式启动应用程序（隐藏导航栏）",
     "language": "语言",
-    "language_desc": "更改应用程序语言"
+    "language_desc": "更改应用程序语言",
+    "privacy_options": "隐私选项",
+    "privacy_options_desc": "管理广告同意选项"
   },
   "quiz": {
     "question_progress": "问题 {}/{}",
@@ -311,7 +314,10 @@
     "msg_poor": "你可以做得更好！ 🤔",
     "msg_fail": "再试一次！ 😅",
     "won_by_speed": "以速度取胜！ 🏎️",
-    "lost_by_speed": "对手更快！ ⚠️"
+    "lost_by_speed": "对手更快！ ⚠️",
+    "double_reward_desc": "观看短视频，额外获得 +{} 代币！",
+    "double_reward_done": "奖励翻倍！已添加 +{} 代币。",
+    "double_reward_button": "翻倍"
   },
   "edit_profile": {
     "title": "编辑个人资料",
@@ -436,7 +442,19 @@
     "tap_to_preview": "点击预览",
     "Avatar 10": "阿凡达 10",
     "mystery_avatar": "神秘头像",
-    "title_none": "没有任何"
+    "title_none": "没有任何",
+    "powerups": "道具",
+    "streak_freeze_title": "连胜冻结",
+    "streak_freeze_desc": "错过了一天？冻结会自动使用，你的每日连胜不会中断。最多可持有 {} 个。",
+    "streak_freeze_owned": "已拥有：{}/{}",
+    "streak_freeze_max": "已达上限（{}）",
+    "frame_mint": "薄荷",
+    "frame_coral": "珊瑚",
+    "booster_title": "代币加成",
+    "booster_desc": "接下来 {} 次测验获得的代币翻倍。",
+    "booster_active": "生效中：剩余 {} 次",
+    "booster_inactive": "未激活",
+    "booster_applied": "⚡ 加成：额外 +{} 代币！"
   },
   "past_tests": {
     "title": "测试历史",
@@ -546,7 +564,13 @@
     "reengage_3d_title": "🔥 不要打破你的连胜！",
     "reengage_3d_body": "回来发现新问题！",
     "reengage_7d_title": "💎我们想念你！",
-    "reengage_7d_body": "特别惊喜等待回归玩家！"
+    "reengage_7d_body": "特别惊喜等待回归玩家！",
+    "league_ending_title": "⏳ 每周联赛今晚结束",
+    "league_ending_body": "再玩几局测验就可能晋级，别错过！",
+    "streak_risk_title": "🔥 你的连胜马上要中断了！",
+    "streak_risk_body": "今天完成一次测验，保住你 {} 天的连胜！",
+    "social_channel_name": "好友与对决",
+    "social_channel_desc": "好友请求、对决邀请和戳一戳"
   },
   "level_system": {
     "level": "等级",
@@ -614,7 +638,16 @@
     "quizzes_to_next": "{} 次测验进入下一级别",
     "category_mastery": "类别掌握",
     "your_rank": "你的等级",
-    "climb_higher": "爬得更高！"
+    "climb_higher": "爬得更高！",
+    "day1_body": "{}代币的每日连胜奖励正在等你。玩一局测验并领取吧！",
+    "teaser_title": "🎁 明天再来！",
+    "teaser_body": "保持连胜：领取{}代币，转动幸运转盘，完成每日任务。",
+    "winback_3d_title": "🔥 别失去势头！",
+    "winback_3d_body": "已经过去几天了。回来玩一局测验，重新开始你的连胜吧！",
+    "winback_7d_title": "🏆 你的好友正在联赛中攀升！",
+    "winback_7d_body": "你的好友还在继续玩。快回来，一起冲击联赛排名吧！",
+    "winback_14d_title": "💎 我们想念你！",
+    "winback_14d_body": "新题目和奖励正在等你。回来看看有什么新内容吧！"
   },
   "quests": {
     "title": "任务与奖励",
@@ -669,7 +702,27 @@
     "quiz_category": "测验",
     "duel_category": "决斗",
     "social_category": "社会的",
-    "total_unlocked": "{}/{} 已解锁"
+    "total_unlocked": "{}/{} 已解锁",
+    "platinum_scholar_title": "白金学者",
+    "platinum_scholar_desc": "累计完成 500 次测验",
+    "duel_champion_title": "对决冠军",
+    "duel_champion_desc": "累计赢得 50 场对决",
+    "duel_legend_title": "对决传奇",
+    "duel_legend_desc": "累计赢得 100 场对决",
+    "level_ten_title": "10 级专家",
+    "level_ten_desc": "达到 10 级",
+    "level_twenty_title": "20 级大师",
+    "level_twenty_desc": "达到 20 级",
+    "streak_week_title": "火力全开",
+    "streak_week_desc": "连续登录 7 天",
+    "streak_month_title": "势不可挡",
+    "streak_month_desc": "连续登录 30 天",
+    "recruiter_title": "招募者",
+    "recruiter_desc": "用邀请码邀请一位好友加入",
+    "ambassador_title": "大使",
+    "ambassador_desc": "用邀请码邀请 5 位好友加入",
+    "collector_title": "大收藏家",
+    "collector_desc": "从商店收集 10 件物品"
   },
   "duel": {
     "race_track": "决斗赛",
@@ -811,7 +864,26 @@
     "kick_confirm_msg": "您确定要将 {} 踢出房间吗？",
     "kicked_from_room": "你被主人踢出了房间。",
     "special_bet_badge": "特别🔥",
-    "fee_info": "{}％ 费用"
+    "fee_info": "{}％ 费用",
+    "category": "类别",
+    "difficulty": "难度",
+    "challenge_friend_title": "挑战 {}",
+    "challenge_sent": "已向 {} 发出挑战！",
+    "challenge_failed": "挑战发送失败，但房间已准备好。请分享房间码。",
+    "free_tickets": "今日免费对决券 {}/{} · 适用于不超过 {} 的下注",
+    "friendly": "友谊赛",
+    "friendly_desc": "友谊赛：不押代币，但仍可获得排行榜和联赛积分。",
+    "high_bet_real_only": "高额房间只有真实玩家加入——分享你的房间码吧！",
+    "host_no_response": "房主没有回应，试试其他房间吧。",
+    "result_cta_title": "准备好迎战真正的对手了吗？",
+    "result_cta_desc": "你的正确率 {}%（{}）。来这个类别打一场 1v1 对决吧！",
+    "result_cta_button": "对决",
+    "share_room_text": "⚡ 来和我进行 1v1 答题对决！房间码：{}",
+    "ticket_used": "已使用免费券",
+    "quick_match": "快速匹配",
+    "quick_match_sub": "一键开始 · 几秒匹配对手",
+    "quick_match_searching": "正在寻找对手…",
+    "quick_match_hint": "有免费券则使用，否则为友谊赛。"
   },
   "errors": {
     "no_internet_ai": "您需要有效的互联网连接才能访问我们的人工智能。 📡",
@@ -836,10 +908,16 @@
     "wheel_spin_button": "旋转轮🔥",
     "wheel_done_today": "今天完成",
     "streak_claim_today": "领取今天的奖励🎉",
-    "streak_ok": "好的"
+    "streak_ok": "好的",
+    "wheel_freeze_prize": "连胜冻结 ❄️",
+    "wheel_freeze_short": "冻结"
   },
   "daily_streak": {
-    "day_num": "天 {}"
+    "day_num": "天 {}",
+    "freeze_used": "连胜已保住！使用了 {} 个冻结。",
+    "freezes_owned": "冻结：{}/{}",
+    "play_to_claim": "今天完成 1 次测验即可领取奖励并保持连胜！",
+    "play_now": "去答题"
   },
   "friends": {
     "title": "朋友们",
@@ -879,7 +957,8 @@
     "friend_req_received_title": "新好友请求！ 👥",
     "friend_req_received_body": "{} 向您发送了好友请求！",
     "request_received": "请求已收到！ ⚡",
-    "accept_request": "接受"
+    "accept_request": "接受",
+    "accept": "接受"
   },
   "review": {
     "card_title": "在 Google Play 上评分",
@@ -896,7 +975,7 @@
   },
   "referral": {
     "title": "邀请好友",
-    "desc": "输入朋友的邀请码即可赚取 500 代币！分享您的代码并邀请您的朋友。",
+    "desc": "输入好友的邀请码，完成第一局测验后即可获得 500 代币！分享你的邀请码，邀请好友一起玩。",
     "your_code": "您的邀请码",
     "enter_code": "输入邀请码（+500 代币）",
     "hint": "输入代码",
@@ -905,10 +984,64 @@
     "share_button": "分享",
     "copy_button": "复制",
     "code_copied": "邀请码已复制！ 📋",
-    "share_msg": "🏆 和我一起参加测验竞技场！使用我的邀请码即可立即获得 500 代币：\n👉 代码：{}\n📲 下载应用程序：https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "share_msg": "🏆 和我一起参加测验竞技场！使用我的邀请码，完成第一局测验后即可获得 500 代币：\n👉 代码：{}\n📲 下载应用程序：https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
     "success": "恭喜！ {} 令牌已添加到您的帐户！ 🎉",
     "already_used": "您已经使用了邀请码。",
     "own_code": "您不能使用自己的邀请码。",
-    "invalid_code": "邀请码无效或不存在。"
+    "invalid_code": "邀请码无效或不存在。",
+    "pending": "邀请码已保存！你和好友完成第一局测验后都将获得代币。"
+  },
+  "share": {
+    "button": "分享",
+    "copied": "已复制到剪贴板",
+    "quiz_result": "我得了 {}/{} 分！（{} 测验 · {}）🧠 你能超过我吗？",
+    "duel_win": "我在 1v1 答题对决中击败了 {}，比分 {}-{}！（{}）⚔️ 敢来挑战我吗？",
+    "duel_played": "我刚和 {} 进行了一场 1v1 答题对决！（{}）⚔️ 来挑战我吧！",
+    "achievement": "我解锁了「{}」徽章！（{}）🏅"
+  },
+  "league": {
+    "title": "每周联赛",
+    "bronze": "青铜联赛",
+    "silver": "白银联赛",
+    "gold": "黄金联赛",
+    "platinum": "铂金联赛",
+    "diamond": "钻石联赛",
+    "ends_in": "剩余 {} 天 {} 小时",
+    "how_it_works": "通过测验和对决获得积分。每周结束时，前 {}% 晋级，排名靠后的降级。",
+    "empty": "本周还没有人在这个联赛得分。来一局测验，抢占榜首吧！",
+    "points": "分",
+    "promoted_title": "晋级啦！",
+    "promoted_desc": "精彩的一周！你晋级到了{}，并获得 {} 代币。",
+    "demoted_title": "联赛变动",
+    "demoted_desc": "本周你在{}。多玩几局测验，重新晋级吧！",
+    "view": "查看联赛",
+    "result_promoted_sub": "你的努力得到了回报。在新联赛中继续保持势头！",
+    "result_demoted_sub": "每位冠军都经历过艰难的一周。再玩几局，你就能重返巅峰！",
+    "result_rank": "上周排名：第{}名",
+    "result_reward": "+{}代币",
+    "share": "分享",
+    "continue": "继续",
+    "share_text": "我现在在 Quiz Arena 的{}！你能打败我吗？"
+  },
+  "daily_challenge": {
+    "title": "每日挑战",
+    "badge": "新",
+    "card_sub": "所有人同样的 5 道题 · 每日排名",
+    "rules": "今天所有人都答同样的 {} 道题。仅限一次机会——每答对一题得 {} 代币。要快：同分按用时排名！",
+    "start": "开始今日挑战",
+    "leaderboard": "今日排名",
+    "empty": "今天还没有人玩过——来当第一个吧！",
+    "rank": "排名 #{} / {} · {} 秒",
+    "come_back": "明天将解锁新挑战。分享你的成绩，挑战好友吧！",
+    "reward": "每日挑战完成！+{} 代币",
+    "share_text": "{} · 每日挑战 {}\n{}/{} {}\n🏆 {}"
+  },
+  "streak_rescue": {
+    "title": "你的连胜即将结束！",
+    "body": "你错过了一天，{}天连胜已中断。今天仍可挽回！",
+    "watch_ad": "观看广告挽回",
+    "pay_tokens": "用{}代币挽回",
+    "no_thanks": "不用了，重新开始",
+    "not_enough_tokens": "代币不足。"
   }
 }

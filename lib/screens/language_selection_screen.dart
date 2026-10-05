@@ -142,6 +142,7 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
               initialCategory: 'Genel Kültür',
               initialDifficulty: 'Kolay',
               initialDuration: 30,
+              isOnboarding: true,
             ),
           ),
           (route) => false,

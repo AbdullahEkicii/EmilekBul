@@ -26,7 +26,14 @@ import '../services/quest_service.dart';
 import '../models/quest.dart';
 import '../services/achievement_service.dart';
 import '../services/streak_service.dart';
+import '../services/cloud_state_service.dart';
+import '../services/league_service.dart';
+import 'league_result_screen.dart';
+import '../widgets/quick_match_dialog.dart';
+import 'league_screen.dart';
+import 'daily_challenge_screen.dart';
 import '../widgets/daily_streak_dialog.dart';
+import '../widgets/streak_rescue_dialog.dart';
 import '../widgets/lucky_wheel_dialog.dart';
 import '../widgets/friend_race_dialog.dart';
 import '../widgets/friends_dialog.dart';
@@ -36,7 +43,6 @@ import '../services/presence_service.dart';
 import '../models/category_model.dart';
 import '../constants/app_categories.dart';
 import '../services/duel_invite_service.dart';
-import 'duel_room_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
   final VoidCallback onStart;
@@ -52,7 +58,7 @@ class WelcomeScreen extends StatefulWidget {
 }
 
 class _WelcomeScreenState extends State<WelcomeScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _headerAnimationController;
   late AnimationController _buttonAnimationController;
   late Animation<double> _headerFadeAnimation;
@@ -84,6 +90,18 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   // Streak & Retention states
   int _streakCount = 0;
   bool _canClaimStreak = false;
+  int _streakFreezes = 0;
+  bool _playedToday = false;
+
+  // Oturum başına en fazla bir "bilgi" dialogu (streak > lig > aylık kazanan > bildirim izni)
+  static bool _sessionDialogShown = false;
+
+  bool _claimSessionDialog() {
+    if (_sessionDialogShown) return false;
+    _sessionDialogShown = true;
+    return true;
+  }
+  League _league = LeagueService.leagues.first;
   bool _canSpinWheel = false;
 
   Future<void> _checkConsecutiveLogin() async {
@@ -95,16 +113,40 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         setState(() {
           _streakCount = streakStatus['streak'] as int;
           _canClaimStreak = streakStatus['canClaimToday'] as bool;
+          _streakFreezes = streakStatus['freezes'] as int;
+          _playedToday = streakStatus['playedToday'] as bool;
           _canSpinWheel = canSpin;
         });
 
-        if (_canClaimStreak) {
+        // Seri bozulduysa (günde bir kez) kurtarma teklifi; sonrasında akış yeniden çalışır
+        final rescueOffer = await StreakService.getPendingRescueOffer();
+        if (rescueOffer != null && currentUser != null && mounted) {
+          await StreakService.markRescueOfferShown();
+          _sessionDialogShown = true;
+          if (!mounted) return;
+          await StreakRescueDialog.show(
+            context,
+            lostStreak: rescueOffer['streak']!,
+            missedDays: rescueOffer['missed']!,
+          );
+          if (mounted) _checkConsecutiveLogin();
+          return;
+        }
+
+        // Test çözülüp ödül açıldıysa her zaman göster; sadece hatırlatma ise oturum dialog sınırına uy
+        final bool claimableNow = _canClaimStreak && _playedToday;
+        final bool showStreak = _canClaimStreak && (claimableNow || !_sessionDialogShown);
+        if (showStreak) {
+          _sessionDialogShown = true;
           Future.delayed(const Duration(milliseconds: 700), () {
             if (mounted && currentUser != null) {
               DailyStreakDialog.show(
                 context,
                 currentStreak: _streakCount,
                 canClaimToday: _canClaimStreak,
+                freezes: streakStatus['freezes'] as int,
+                freezesUsed: streakStatus['freezesUsed'] as int,
+                playedToday: _playedToday,
                 onClaimed: () {
                   _checkConsecutiveLogin();
                   _loadUserData();
@@ -122,6 +164,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     // Animation controllers
     _headerAnimationController = AnimationController(
@@ -137,7 +180,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     _onboardingController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
-    )..repeat(reverse: true);
+    );
+    // Sadece onboarding rehberi görünürken çalışsın (boşuna frame üretmesin)
+    if (_showOnboardingGuide) _onboardingController.repeat(reverse: true);
 
     _pulsingAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
       CurvedAnimation(parent: _onboardingController, curve: Curves.easeInOut),
@@ -182,12 +227,16 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
     // Auth başarılı ise kontrolleri paralel yap — ANR önleme
     if (currentUser != null) {
+      // Streak/çark/görev durumunu buluttan geri yükle (kontrollerden önce)
+      await CloudStateService.restore();
+
       // Tüm bağımsız kontrolleri paralel çalıştır
       await Future.wait([
         _checkAppUpdate(),
         _checkMonthlyWinner(),
         _checkConsecutiveLogin(),
         _loadUserData(),
+        _checkLeague(),
       ]);
 
       // Check for first-time guest (depends on currentUser being set)
@@ -219,10 +268,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         }
       });
     }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      checkUpdate(context);
-    });
 
     // Auth state changes listener
     _authSubscription =
@@ -264,7 +309,30 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final uid = currentUser?.uid;
+    if (uid == null) return;
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      // Arka planda gereksiz Firestore okuma/dinleme yapma
+      _friendRequestsSub?.cancel();
+      _friendRequestsSub = null;
+      _duelInvitesSub?.cancel();
+      _duelInvitesSub = null;
+      _pokesSub?.cancel();
+      _pokesSub = null;
+      PresenceService.stopPresence();
+    } else if (state == AppLifecycleState.resumed) {
+      // Sadece paused'da iptal edilmişse yeniden kur (çift abonelik olmasın)
+      if (_friendRequestsSub == null && mounted) {
+        PresenceService.startPresence();
+        _startSocialStreams(uid);
+      }
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _authSubscription?.cancel();
     _friendRequestsSub?.cancel();
     _duelInvitesSub?.cancel();
@@ -309,6 +377,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       }
     }).catchError((_) {});
 
+    _startSocialStreams(uid);
+  }
+
+  /// Sosyal Firestore dinleyicilerini (yeniden) kurar; önce eskileri iptal eder, çift abonelik olmaz.
+  void _startSocialStreams(String uid) {
     // 1. Gelen Arkadaşlık İsteklerini Dinle
     _friendRequestsSub?.cancel();
     _friendRequestsSub = FriendService.streamIncomingRequests(uid).listen((requests) {
@@ -339,6 +412,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         _isFirstInvitesLoad = false;
         for (final inv in invites) {
           _processedInviteIds.add(inv.id);
+        }
+        // Uygulama kapalıyken gelen, hâlâ geçerli olabilecek en yeni daveti göster (oda ~2 dk açık kalır)
+        final fresh = invites
+            .where((inv) => inv.status == 'pending' && DateTime.now().difference(inv.createdAt).inMinutes < 3)
+            .toList();
+        if (fresh.isNotEmpty && mounted) {
+          _showDuelInviteModal(fresh.first);
         }
         return;
       }
@@ -512,15 +592,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         accept: true,
                       );
                       if (mounted) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DuelRoomScreen(
-                              roomCode: invite.roomCode,
-                              isHost: false,
-                            ),
-                          ),
-                        );
+                        FriendRaceEntryDialog.show(context, joinRoomCode: invite.roomCode);
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -554,6 +626,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         final tokens = data['tokens'] as int? ?? 50;
         final prefs = await SharedPreferences.getInstance();
         await prefs.setInt('user_tokens', tokens);
+        final referralCount = (data['referralCount'] as num?)?.toInt() ?? 0;
+        if (referralCount > 0 && mounted) {
+          await AchievementService.checkAndUnlockReferralAchievements(referralCount, context);
+        }
       }
       final hasUnseen = await AchievementService.hasUnseenAchievements();
       if (mounted) {
@@ -709,6 +785,53 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     );
   }
 
+  Future<void> _checkLeague() async {
+    final result = await LeagueService.evaluateWeekIfNeeded();
+    final league = await LeagueService.getMyLeague();
+    if (!mounted) return;
+    setState(() => _league = league);
+    if (result == null || result.outcome == LeagueOutcome.stayed) return;
+
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (!mounted) return;
+      // Başka bir diyalog bu oturumda zaten gösterildiyse sonucu atlamak yerine sonraki açılışa bırakma: sadece sade bildirim
+      if (!_claimSessionDialog()) {
+        final promoted = result.outcome == LeagueOutcome.promoted;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              promoted
+                  ? 'league.promoted_desc'.tr(args: [result.to.titleKey.tr(), result.reward.toString()])
+                  : 'league.demoted_desc'.tr(args: [result.to.titleKey.tr()]),
+            ),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+        return;
+      }
+      Navigator.push(context, MaterialPageRoute(builder: (_) => LeagueResultScreen(result: result)));
+    });
+  }
+
+  Widget _buildLeagueChip() {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const LeagueScreen()));
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: _league.color.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _league.color.withValues(alpha: 0.55)),
+        ),
+        child: Text(_league.emoji, style: const TextStyle(fontSize: 14)),
+      ),
+    );
+  }
+
   Widget _buildStreakChip() {
     return GestureDetector(
       onTap: () {
@@ -716,6 +839,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           context,
           currentStreak: _streakCount,
           canClaimToday: _canClaimStreak,
+          freezes: _streakFreezes,
+          playedToday: _playedToday,
           onClaimed: () {
             _checkConsecutiveLogin();
             _loadUserData();
@@ -951,13 +1076,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             HapticFeedback.lightImpact();
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => const QuizFlow(
-                  initialCategory: 'Genel Kültür',
-                  initialDifficulty: 'Zor',
-                  initialDuration: 30,
-                ),
-              ),
+              MaterialPageRoute(builder: (context) => const DailyChallengeScreen()),
             );
           },
           child: Padding(
@@ -970,7 +1089,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     color: Colors.amber.withValues(alpha: 0.25),
                     shape: BoxShape.circle,
                   ),
-                  child: const Text('🚀', style: TextStyle(fontSize: 22)),
+                  child: const Text('🎯', style: TextStyle(fontSize: 22)),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -981,7 +1100,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         children: [
                           Flexible(
                             child: Text(
-                              'new_features.special_quiz_of_day'.tr(),
+                              'daily_challenge.title'.tr(),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -999,7 +1118,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              'new_features.double_points_badge'.tr(),
+                              'daily_challenge.badge'.tr(),
                               style: const TextStyle(
                                 color: Colors.black,
                                 fontSize: 10,
@@ -1011,7 +1130,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'new_features.hard_mode_extra_token'.tr(),
+                        'daily_challenge.card_sub'.tr(),
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.8),
                           fontSize: 12,
@@ -1126,10 +1245,15 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   Future<void> _checkNotifications() async {
     try {
       if (!mounted) return;
-      // Önce izin kontrolü (Kullanıcıya dialog gösterebilir)
-      await NotificationPermissionManager.notificationPermissions(context);
+      // Önce izin kontrolü (Kullanıcıya dialog gösterebilir); bu oturumda başka dialog çıktıysa atla
+      if (!_sessionDialogShown) {
+        await NotificationPermissionManager.notificationPermissions(context);
+      }
 
       // Bildirim planlama işini arka planda, sessizce yapalım (beklemiyoruz)
+      NotificationService.refreshWinBackNotifications().catchError((e) {
+        debugPrint("Win-back planlama hatası: $e");
+      });
       NotificationService.rescheduleNotifications().catchError((e) {
         debugPrint("Arkaplan planlama hatası: $e");
       });
@@ -1205,6 +1329,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               _buildStreakChip(),
+                              const SizedBox(width: 8),
+                              _buildLeagueChip(),
                               const SizedBox(width: 8),
                               _buildFriendsChip(),
                             ],
@@ -1416,6 +1542,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                     ),
                                   ),
                                   const SizedBox(height: 14),
+                                  QuickMatchButton(
+                                    onTap: () => QuickMatchDialog.show(context),
+                                  ),
+                                  const SizedBox(height: 12),
                                   FriendRaceButton(
                                     onTap: () => FriendRaceEntryDialog.show(context),
                                   ),
@@ -1452,7 +1582,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   const SizedBox(height: 16),
                                   const MyNativeAd(
                                     height: 70,
-                                    factoryId: 'adFactorySmall',
                                   ),
                                   const SizedBox(height: 16),
                                   QuestsPanel(),
@@ -1534,9 +1663,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
           // Eğer henüz görmediyse göster
           if (!hasSeen && mounted) {
-            _showWinnerDialog(winner);
-            // Bir kere gösterdikten sonra işaretle
-            await prefs.setBool('seen_winner_$yearMonth', true);
+            Future.delayed(const Duration(milliseconds: 1600), () {
+              if (!mounted || !_claimSessionDialog()) return;
+              _showWinnerDialog(winner);
+              // Bir kere gösterdikten sonra işaretle
+              prefs.setBool('seen_winner_$yearMonth', true);
+            });
           }
         }
       }
@@ -1863,6 +1995,92 @@ void _showOfflineDialog(BuildContext context, {required VoidCallback onStart}) {
       ],
     ),
   );
+}
+
+class QuickMatchButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const QuickMatchButton({required this.onTap, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFF5252).withValues(alpha: 0.35),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () async {
+              HapticFeedback.mediumImpact();
+              final hasInternet = await AppUtils.hasInternetConnection();
+              if (!hasInternet && context.mounted) {
+                _showOfflineDialog(context, onStart: () {});
+                return;
+              }
+              onTap();
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF9F43), Color(0xFFFF5252)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1.5),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.flash_on_rounded, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'duel.quick_match'.tr(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
+                        ),
+                        Text(
+                          'duel.quick_match_sub'.tr(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class FriendRaceButton extends StatelessWidget {

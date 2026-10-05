@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 import '../constants/ad_constants.dart';
 
 class MyBannerAd extends StatefulWidget {
@@ -18,11 +19,24 @@ class MyBannerAd extends StatefulWidget {
 class _MyBannerAdState extends State<MyBannerAd> {
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
+  bool _isLoading = false;
+  bool _isVisible = false;
+  late final Key _visibilityKey;
 
   @override
   void initState() {
     super.initState();
-    _loadAd();
+    _visibilityKey = UniqueKey();
+  }
+
+  void _onVisibilityChanged(VisibilityInfo info) {
+    final bool isVisibleNow = info.visibleFraction > 0.05;
+    if (isVisibleNow != _isVisible) {
+      _isVisible = isVisibleNow;
+      if (_isVisible && !_isAdLoaded && !_isLoading) {
+        _loadAd();
+      }
+    }
   }
 
   void _loadAd() {
@@ -30,6 +44,8 @@ class _MyBannerAdState extends State<MyBannerAd> {
     if (kIsWeb || (defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS)) {
       return;
     }
+    if (_isLoading || _isAdLoaded) return;
+    _isLoading = true;
 
     _bannerAd = BannerAd(
       adUnitId: AdConstants.bannerAdUnitId,
@@ -37,11 +53,14 @@ class _MyBannerAdState extends State<MyBannerAd> {
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
-          if (mounted) {
-            setState(() {
-              _isAdLoaded = true;
-            });
+          if (!mounted) {
+            ad.dispose();
+            return;
           }
+          setState(() {
+            _isAdLoaded = true;
+            _isLoading = false;
+          });
         },
         onAdFailedToLoad: (ad, error) {
           debugPrint('BannerAd failed to load: $error');
@@ -50,6 +69,7 @@ class _MyBannerAdState extends State<MyBannerAd> {
             setState(() {
               _bannerAd = null;
               _isAdLoaded = false;
+              _isLoading = false;
             });
           }
         },
@@ -62,19 +82,27 @@ class _MyBannerAdState extends State<MyBannerAd> {
   @override
   void dispose() {
     _bannerAd?.dispose();
+    _bannerAd = null;
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!AdConstants.adsEnabled || !_isAdLoaded || _bannerAd == null) {
+    if (!AdConstants.adsEnabled) {
       return const SizedBox.shrink();
     }
 
-    return SizedBox(
-      width: _bannerAd!.size.width.toDouble(),
-      height: _bannerAd!.size.height.toDouble(),
-      child: AdWidget(ad: _bannerAd!),
+    return VisibilityDetector(
+      key: _visibilityKey,
+      onVisibilityChanged: _onVisibilityChanged,
+      child: SizedBox(
+        width: widget.adSize.width.toDouble(),
+        height: widget.adSize.height.toDouble(),
+        child: _isAdLoaded && _bannerAd != null
+            ? AdWidget(ad: _bannerAd!)
+            : const SizedBox.shrink(),
+      ),
     );
   }
 }
+

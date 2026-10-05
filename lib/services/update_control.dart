@@ -10,7 +10,7 @@ Future<void> checkUpdate(BuildContext context) async {
       'https://raw.githubusercontent.com/AbdullahEkicii/EmilekBul/main/version.json';
 
   try {
-    final response = await http.get(Uri.parse(jsonUrl));
+    final response = await http.get(Uri.parse(jsonUrl)).timeout(const Duration(seconds: 5));
     if (response.statusCode != 200) return;
 
     final json = jsonDecode(response.body);

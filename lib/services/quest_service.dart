@@ -1,6 +1,8 @@
 import 'package:emilekbul/models/quest.dart';
 import 'package:emilekbul/services/database_helper.dart';
 import 'package:emilekbul/services/token_service.dart';
+import 'package:emilekbul/services/analytics_service.dart';
+import 'package:emilekbul/services/cloud_state_service.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -159,10 +161,36 @@ class QuestService {
     }
 
     // Ödülü ver ve durumu güncelle
-    await TokenService.addTokens(quest.rewardTokens);
+    await TokenService.addTokens(quest.rewardTokens, source: 'quest');
+    AnalyticsService.logQuestCompleted(questId: quest.id, reward: quest.rewardTokens);
     final updatedQuest = quest.copyWith(isClaimed: true, lastUpdated: DateTime.now());
     await _upsertQuest(updatedQuest);
+    await _saveToCloud();
     return true;
+  }
+
+  static Future<void> _saveToCloud() async {
+    final quests = await getActiveQuests();
+    await CloudStateService.save('quests', {
+      for (final q in quests) q.id: q.toMap(),
+    });
+  }
+
+  /// Buluttaki görev kaydı yereldekinden yeniyse (veya yerelde yoksa) yereli günceller.
+  static Future<void> importState(Map<String, dynamic> cloud) async {
+    if (cloud.isEmpty) return;
+    final local = {for (final q in await getActiveQuests()) q.id: q};
+    for (final entry in cloud.entries) {
+      final value = entry.value;
+      if (value is! Map) continue;
+      try {
+        final cloudQuest = Quest.fromMap(Map<String, dynamic>.from(value));
+        final localQuest = local[cloudQuest.id];
+        if (localQuest == null || cloudQuest.lastUpdated.isAfter(localQuest.lastUpdated)) {
+          await _upsertQuest(cloudQuest);
+        }
+      } catch (_) {}
+    }
   }
 
   /// Test çözüldüğünde görev ilerlemelerini günceller
@@ -248,6 +276,8 @@ class QuestService {
         ));
       }
     }
+
+    await _saveToCloud();
   }
 
   /// Tarihin yılın kaçıncı haftası olduğunu döner

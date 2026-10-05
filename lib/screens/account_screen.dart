@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'edit_profile_screen.dart';
 import 'change_password_screen.dart';
+import '../services/share_service.dart';
+import '../services/ads_service.dart';
 import '../services/user_service.dart';
 import '../services/sound_service.dart';
 import '../services/performance_service.dart';
@@ -42,6 +44,7 @@ class _AccountScreenState extends State<AccountScreen>
   User? currentUser;
   bool isLoading = false;
   bool _isGuest = false;
+  bool _showPrivacyOptions = false;
   List<String> _unlockedAchievements = [];
   List<String> _unseenAchievements = [];
   List<String> _claimedAchievements = [];
@@ -55,6 +58,9 @@ class _AccountScreenState extends State<AccountScreen>
     // We don't know if linked yet, so assume guest if anonymous until profile loads
     _isGuest = currentUser?.isAnonymous ?? false;
     _loadUserProfile();
+    AdsService.isPrivacyOptionsRequired().then((required) {
+      if (mounted && required) setState(() => _showPrivacyOptions = true);
+    });
 
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 800),
@@ -74,7 +80,10 @@ class _AccountScreenState extends State<AccountScreen>
     _orbController = AnimationController(
       duration: const Duration(seconds: 15),
       vsync: this,
-    )..repeat(reverse: true);
+    );
+    if (!PerformanceService.isPerformanceMode) {
+      _orbController.repeat(reverse: true);
+    }
 
     _fadeAnimation =
         Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
@@ -779,7 +788,6 @@ class _AccountScreenState extends State<AccountScreen>
             padding: EdgeInsets.symmetric(horizontal: 24, vertical: 4),
             child: MyNativeAd(
               height: 70,
-              factoryId: 'adFactorySmall',
             ),
           ),
           _buildMenuItem(
@@ -842,6 +850,14 @@ class _AccountScreenState extends State<AccountScreen>
             color: Colors.indigoAccent,
             onTap: _showLanguageDialog,
           ),
+          if (_showPrivacyOptions)
+            _buildMenuItem(
+              icon: Icons.privacy_tip_rounded,
+              title: 'settings.privacy_options'.tr(),
+              subtitle: 'settings.privacy_options_desc'.tr(),
+              color: Colors.tealAccent,
+              onTap: AdsService.showPrivacyOptions,
+            ),
           if (!_isGuest) // Only show password change if not guest
             _buildMenuItem(
               icon: Icons.shield_moon_rounded,
@@ -1012,12 +1028,16 @@ class _AccountScreenState extends State<AccountScreen>
       case 'bronze_scholar':
       case 'silver_scholar':
       case 'gold_scholar':
+      case 'platinum_scholar':
         final quizzes = (_userProfile?['completedQuizzes'] as num?)?.toInt() ?? 0;
         return quizzes.clamp(0, a.maxProgress);
       case 'level_five':
+      case 'level_ten':
+      case 'level_twenty':
         final level = (_userProfile?['level'] as num?)?.toInt() ?? 1;
         return level.clamp(0, a.maxProgress);
       case 'smart_shopper':
+      case 'collector':
         final ownedFrames = (_userProfile?['ownedFrames'] as List?)
                 ?.where((f) => f != '0' && f != 'yok' && f.toString().isNotEmpty)
                 .length ??
@@ -1034,8 +1054,18 @@ class _AccountScreenState extends State<AccountScreen>
         return count.clamp(0, a.maxProgress);
       case 'duel_initiate':
       case 'duel_warrior':
+      case 'duel_champion':
+      case 'duel_legend':
         final wins = prefs?.getInt('duel_wins_count') ?? _duelWins;
         return wins.clamp(0, a.maxProgress);
+      case 'streak_week':
+      case 'streak_month':
+        final streak = prefs?.getInt('user_login_streak_count') ?? 0;
+        return streak.clamp(0, a.maxProgress);
+      case 'recruiter':
+      case 'ambassador':
+        final referrals = (_userProfile?['referralCount'] as num?)?.toInt() ?? 0;
+        return referrals.clamp(0, a.maxProgress);
       default:
         return 0;
     }
@@ -1515,6 +1545,25 @@ class _AccountScreenState extends State<AccountScreen>
                                         ),
                                       ),
                                       const SizedBox(width: 14),
+
+                                      if (isUnlocked && isClaimed) ...[
+                                        InkWell(
+                                          borderRadius: BorderRadius.circular(8),
+                                          onTap: () => ShareService.shareText(
+                                            context,
+                                            text: 'share.achievement'.tr(args: [
+                                              achievement.titleKey.tr(),
+                                              'app_title'.tr(),
+                                            ]),
+                                            contentType: 'achievement',
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(6),
+                                            child: Icon(Icons.ios_share_rounded, color: Colors.white.withValues(alpha: 0.7), size: 16),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                      ],
 
                                       // Action Buttons
                                       if (!isUnlocked)

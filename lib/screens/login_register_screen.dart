@@ -1,3 +1,4 @@
+import '../services/performance_service.dart';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -54,8 +55,10 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen>
   void initState() {
     super.initState();
     _orbController =
-        AnimationController(duration: const Duration(seconds: 10), vsync: this)
-          ..repeat(reverse: true);
+        AnimationController(duration: const Duration(seconds: 10), vsync: this);
+    if (!PerformanceService.isPerformanceMode) {
+      _orbController.repeat(reverse: true);
+    }
     _orbAnimation = Tween<double>(begin: 0, end: 1).animate(
         CurvedAnimation(parent: _orbController, curve: Curves.easeInOut));
   }

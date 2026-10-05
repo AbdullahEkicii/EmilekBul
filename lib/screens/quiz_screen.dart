@@ -9,10 +9,10 @@ import '../constants/app_categories.dart';
 import '../widgets/my_native_ad.dart';
 import '../widgets/glass_container.dart';
 import '../services/bot_room_service.dart';
+import '../services/analytics_service.dart';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'dart:async';
-import 'dart:ui'; // For BackdropFilter
 import 'dart:math' as math;
 
 class QuizScreen extends StatefulWidget {
@@ -376,7 +376,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
       }
       return false;
     }
-    await TokenService.spendTokens(cost);
+    await TokenService.spendTokens(cost, reason: 'joker');
     await _loadUserTokens();
     return true;
   }
@@ -644,6 +644,11 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
+              AnalyticsService.logQuizAbandoned(
+                category: widget.category,
+                answered: _currentIndex,
+                total: widget.questions.length,
+              );
               _finishTest();
             },
             style: ElevatedButton.styleFrom(
@@ -765,9 +770,8 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                             opacity: _isTransitioning ? 1.0 : 0.0,
                             duration: const Duration(milliseconds: 300),
                             child: ClipRect(
-                              child: BackdropFilter(
-                                filter:
-                                    ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                              child: PerformanceService.blur(
+                                sigma: 12,
                                 child: Container(
                                   color:
                                       const Color(0xFF0F172A).withValues(alpha: 0.7),
@@ -851,8 +855,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                   padding: EdgeInsets.fromLTRB(12, 4, 12, 8),
                   child: MyNativeAd(
                     height: 70,
-                    factoryId: 'adFactorySmall',
-                    refreshInterval: 30,
                   ),
                 ),
               ],

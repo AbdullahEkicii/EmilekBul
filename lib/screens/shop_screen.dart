@@ -6,6 +6,8 @@ import 'edit_profile_screen.dart';
 import '../services/user_service.dart';
 import '../services/token_service.dart';
 import '../services/achievement_service.dart';
+import '../services/analytics_service.dart';
+import '../services/streak_service.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/navigation_buttons.dart';
 import '../widgets/my_native_ad.dart';
@@ -18,9 +20,13 @@ class ShopScreen extends StatefulWidget {
 }
 
 class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
-  int _selectedIndex = 0; // 0: Avatars, 1: Frames, 2: Titles
+  int _selectedIndex = 0; // 0: Avatars, 1: Frames, 2: Titles, 3: Power-ups
   Map<String, dynamic>? _userProfile;
   bool _isLoading = true;
+  int _streakFreezes = 0;
+  bool _isBuyingFreeze = false;
+  int _boosterRemaining = 0;
+  bool _isBuyingBooster = false;
 
   List<Map<String, dynamic>> _avatars = [];
 
@@ -85,6 +91,19 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
   }
 
   final List<Map<String, dynamic>> _frames = [
+    // Başlangıç çerçeveleri (ilk satın alma için uygun fiyatlı)
+    {
+      'id': '9',
+      'name': 'shop.frame_mint',
+      'cost': 350,
+      'color': const Color(0xFF2DD4BF)
+    },
+    {
+      'id': '10',
+      'name': 'shop.frame_coral',
+      'cost': 500,
+      'color': const Color(0xFFFB7185)
+    },
     {
       'id': '4',
       'name': 'shop.frame_silver',
@@ -136,6 +155,12 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
   ];
 
   final List<Map<String, dynamic>> _titles = [
+    // İlk Adım Ünvanları (200 - 500 Token)
+    {'id': 'Hızlı Düşünür', 'name': 'shop.title_fast_thinker', 'cost': 200},
+    {'id': 'Bilgi Avcısı', 'name': 'shop.title_knowledge_hunter', 'cost': 300},
+    {'id': 'Düellocu', 'name': 'shop.title_duelist', 'cost': 400},
+    {'id': 'Bilgin', 'name': 'shop.title_scholar', 'cost': 500},
+
     // Başlangıç Seviyesi Ünvanlar (2,500 - 6,000 Token)
     {'id': 'Çaylak', 'name': 'shop.title_novice', 'cost': 2500},
     {'id': 'Bilge', 'name': 'shop.title_sage', 'cost': 4000},
@@ -182,12 +207,44 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
       profile['tokens'] = localTokens;
     }
 
+    final freezes = await StreakService.getFreezeCount();
+    final booster = await TokenService.getBoosterRemaining();
+
     if (mounted) {
       setState(() {
         _userProfile = profile;
+        _streakFreezes = freezes;
+        _boosterRemaining = booster;
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _buyStreakFreeze() async {
+    if (_isBuyingFreeze) return;
+    setState(() => _isBuyingFreeze = true);
+    final result = await StreakService.buyFreeze();
+    if (!mounted) return;
+    setState(() => _isBuyingFreeze = false);
+
+    final String message;
+    final Color color;
+    switch (result) {
+      case FreezePurchaseResult.success:
+        message = 'shop.success_message'.tr();
+        color = Colors.green;
+        AnalyticsService.logShopPurchase(category: 'powerups', itemId: 'streak_freeze', price: StreakService.freezePrice);
+      case FreezePurchaseResult.maxReached:
+        message = 'shop.streak_freeze_max'.tr(args: [StreakService.maxFreezes.toString()]);
+        color = Colors.orange;
+      case FreezePurchaseResult.insufficientTokens:
+        message = 'shop.insufficient_funds'.tr();
+        color = Colors.redAccent;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: color),
+    );
+    _loadUserProfile();
   }
 
   void _handlePurchase(String category, Map<String, dynamic> item) async {
@@ -207,6 +264,7 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
       if (result['success']) {
         // Local token'ları da güncelle
         await TokenService.updateTokenAmount(result['newBalance']);
+        AnalyticsService.logShopPurchase(category: category, itemId: '${item['id']}', price: item['cost'] as int);
         _loadUserProfile();
         
         // Başarımları kontrol et
@@ -475,6 +533,8 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
         return _buildGrid('frames', _frames);
       case 2:
         return _buildGrid('titles', _titles);
+      case 3:
+        return _buildPowerUps();
       default:
         return const SizedBox();
     }
@@ -502,8 +562,6 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: MyNativeAd(
                 height: 65,
-                factoryId: 'adFactorySmall',
-                refreshInterval: 30,
               ),
             ),
             _buildCustomBottomNav(),
@@ -522,6 +580,7 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
           _buildNavItem(0, 'shop.avatars'.tr(), Icons.face),
           _buildNavItem(1, 'shop.frames'.tr(), Icons.crop_square),
           _buildNavItem(2, 'shop.titles'.tr(), Icons.military_tech),
+          _buildNavItem(3, 'shop.powerups'.tr(), Icons.bolt_rounded),
         ],
       ),
     );
@@ -630,6 +689,192 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _buyBooster() async {
+    if (_isBuyingBooster) return;
+    setState(() => _isBuyingBooster = true);
+    final ok = await TokenService.buyBooster();
+    if (!mounted) return;
+    setState(() => _isBuyingBooster = false);
+    if (ok) {
+      AnalyticsService.logShopPurchase(category: 'powerups', itemId: 'token_booster', price: TokenService.boosterPrice);
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(ok ? 'shop.success_message'.tr() : 'shop.insufficient_funds'.tr()),
+        backgroundColor: ok ? Colors.green : Colors.redAccent,
+      ),
+    );
+    _loadUserProfile();
+  }
+
+  Widget _buildBoosterCard() {
+    final bool active = _boosterRemaining > 0;
+    final int userTokens = _userProfile?['tokens'] ?? 0;
+    final bool canAfford = userTokens >= TokenService.boosterPrice;
+    return GlassContainer(
+      borderRadius: 24,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF7C3AED).withValues(alpha: 0.2),
+                  border: Border.all(color: const Color(0xFFA78BFA).withValues(alpha: 0.6), width: 1.5),
+                ),
+                child: const Text('⚡', style: TextStyle(fontSize: 28)),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'shop.booster_title'.tr(),
+                      style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      active
+                          ? 'shop.booster_active'.tr(args: [_boosterRemaining.toString()])
+                          : 'shop.booster_inactive'.tr(),
+                      style: const TextStyle(color: Color(0xFFC4B5FD), fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'shop.booster_desc'.tr(args: [TokenService.boosterTests.toString()]),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13, height: 1.4),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: (active || !canAfford || _isBuyingBooster) ? null : _buyBooster,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7C3AED),
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.white.withValues(alpha: 0.08),
+                disabledForegroundColor: Colors.white38,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              icon: const Icon(Icons.monetization_on, color: Colors.amber, size: 20),
+              label: Text(
+                active
+                    ? 'shop.booster_active'.tr(args: [_boosterRemaining.toString()])
+                    : '${'shop.buy'.tr()} · ${TokenService.boosterPrice}',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPowerUps() {
+    final bool isFull = _streakFreezes >= StreakService.maxFreezes;
+    final int userTokens = _userProfile?['tokens'] ?? 0;
+    final bool canAfford = userTokens >= StreakService.freezePrice;
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      physics: const BouncingScrollPhysics(),
+      children: [
+        GlassContainer(
+          borderRadius: 24,
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF0EA5E9).withValues(alpha: 0.18),
+                      border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.6), width: 1.5),
+                    ),
+                    child: const Text('❄️', style: TextStyle(fontSize: 28)),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'shop.streak_freeze_title'.tr(),
+                          style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'shop.streak_freeze_owned'.tr(args: [
+                            _streakFreezes.toString(),
+                            StreakService.maxFreezes.toString(),
+                          ]),
+                          style: const TextStyle(color: Color(0xFF7DD3FC), fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'shop.streak_freeze_desc'.tr(args: [StreakService.maxFreezes.toString()]),
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13, height: 1.4),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: (isFull || !canAfford || _isBuyingFreeze) ? null : _buyStreakFreeze,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0EA5E9),
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.white.withValues(alpha: 0.08),
+                    disabledForegroundColor: Colors.white38,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  icon: _isBuyingFreeze
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.monetization_on, color: Colors.amber, size: 20),
+                  label: Text(
+                    isFull
+                        ? 'shop.streak_freeze_max'.tr(args: [StreakService.maxFreezes.toString()])
+                        : '${'shop.buy'.tr()} · ${StreakService.freezePrice}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        _buildBoosterCard(),
+      ],
     );
   }
 

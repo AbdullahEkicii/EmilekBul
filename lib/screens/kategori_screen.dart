@@ -282,7 +282,6 @@ class _KategoriScreenState extends State<KategoriScreen>
                         padding: EdgeInsets.symmetric(horizontal: 20.0),
                         child: MyNativeAd(
                           height: 70,
-                          factoryId: 'adFactorySmall',
                         ),
                       ),
                     ),

@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'analytics_service.dart';
 import 'user_service.dart';
 
 class TokenService {
@@ -8,6 +9,11 @@ class TokenService {
   static const int _quizCost = 10;
   static const int _duelCost = 20;
   static const int _duelReward = 40;
+
+  // Jeton Güçlendirici: sonraki N testte test jeton ödülü 2 katına çıkar
+  static const String _boosterKey = 'token_booster_remaining';
+  static const int boosterPrice = 300;
+  static const int boosterTests = 3;
 
   // SharedPreferences instance'ı için cache
   static SharedPreferences? _prefs;
@@ -32,34 +38,62 @@ class TokenService {
   }
 
   // Token ekle
-  static Future<void> addTokens(int amount) async {
+  static Future<void> addTokens(int amount, {String source = 'other'}) async {
     final currentTokens = await getTokenAmount();
     await updateTokenAmount(currentTokens + amount);
+    if (amount > 0) AnalyticsService.logTokenEarned(amount: amount, source: source);
   }
 
   // Token çıkar
-  static Future<bool> spendTokens(int amount) async {
+  static Future<bool> spendTokens(int amount, {String reason = 'other'}) async {
     final currentTokens = await getTokenAmount();
     if (currentTokens >= amount) {
       await updateTokenAmount(currentTokens - amount);
+      if (amount > 0) AnalyticsService.logTokenSpent(amount: amount, reason: reason);
       return true;
     }
     return false;
   }
 
+  static Future<int> getBoosterRemaining() async {
+    final prefs = await _getPrefs();
+    return prefs.getInt(_boosterKey) ?? 0;
+  }
+
+  /// Güçlendirici satın alır. Zaten aktifse veya jeton yetmezse false döner.
+  static Future<bool> buyBooster() async {
+    final prefs = await _getPrefs();
+    if ((prefs.getInt(_boosterKey) ?? 0) > 0) return false;
+    final paid = await spendTokens(boosterPrice, reason: 'token_booster');
+    if (!paid) return false;
+    await prefs.setInt(_boosterKey, boosterTests);
+    return true;
+  }
+
+  /// Aktif güçlendirici varsa ekstra ödülü verir ve bir hak düşer. Verilen ekstra miktarı döner.
+  static Future<int> applyBooster(int baseReward) async {
+    if (baseReward <= 0) return 0;
+    final prefs = await _getPrefs();
+    final remaining = prefs.getInt(_boosterKey) ?? 0;
+    if (remaining <= 0) return 0;
+    await prefs.setInt(_boosterKey, remaining - 1);
+    await addTokens(baseReward, source: 'token_booster');
+    return baseReward;
+  }
+
   // Quiz için token harca
   static Future<bool> spendQuizTokens() async {
-    return await spendTokens(_quizCost);
+    return await spendTokens(_quizCost, reason: 'quiz_entry');
   }
 
   // Düello için token harca
   static Future<bool> spendDuelTokens() async {
-    return await spendTokens(_duelCost);
+    return await spendTokens(_duelCost, reason: 'duel_entry');
   }
 
   // Düello galibiyeti için token ver
   static Future<void> awardTokensForDuelWin() async {
-    await addTokens(_duelReward);
+    await addTokens(_duelReward, source: 'duel_win');
   }
 
   // Günlük ödül kontrolü
@@ -91,7 +125,7 @@ class TokenService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
         _lastDailyRewardKey, DateTime.now().toIso8601String());
-    await addTokens(_dailyRewardAmount);
+    await addTokens(_dailyRewardAmount, source: 'daily_reward');
     return true;
   }
 
@@ -116,6 +150,6 @@ class TokenService {
       String difficulty, int correctAnswers) async {
     final tokensPerAnswer = getTokensForCorrectAnswer(difficulty);
     final totalTokens = correctAnswers * tokensPerAnswer;
-    await addTokens(totalTokens);
+    await addTokens(totalTokens, source: 'quiz');
   }
 }

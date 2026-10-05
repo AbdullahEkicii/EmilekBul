@@ -2,10 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/ad_constants.dart';
+import '../services/ads_service.dart';
+import '../services/analytics_service.dart';
 
 class RewardedAdManager {
   RewardedAd? _rewardedAd;
   bool _isLoading = false;
+
+  bool get isReady => _rewardedAd != null;
 
   static const String _watchCountKey = 'rewarded_ad_watch_count';
   static const String _lastWatchTimeKey = 'rewarded_ad_last_watch_time';
@@ -69,36 +73,54 @@ class RewardedAdManager {
     }
   }
 
-  void loadAd({required VoidCallback onAdLoaded}) {
+  void loadAd({required VoidCallback onAdLoaded, VoidCallback? onFailed}) {
     if (_isLoading) return;
-    if (kIsWeb || (defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS)) {
+    if (!AdsService.isSupportedPlatform) {
+      onFailed?.call();
+      return;
+    }
+    if (_rewardedAd != null) {
+      onAdLoaded();
       return;
     }
     _isLoading = true;
 
-    final String adUnitId = AdConstants.rewardedAdUnitId;
+    AdsService.ready.then((canRequestAds) {
+      if (!canRequestAds) {
+        _isLoading = false;
+        onFailed?.call();
+        return;
+      }
+      RewardedAd.load(
+        adUnitId: AdConstants.rewardedAdUnitId,
+        request: const AdRequest(),
+        rewardedAdLoadCallback: RewardedAdLoadCallback(
+          onAdLoaded: (ad) {
+            _rewardedAd = ad;
+            _isLoading = false;
+            onAdLoaded();
+          },
+          onAdFailedToLoad: (error) {
+            debugPrint('Rewarded ad failed to load: $error');
+            _isLoading = false;
+            onFailed?.call();
+          },
+        ),
+      );
+    });
+  }
 
-    RewardedAd.load(
-      adUnitId: adUnitId,
-      request: const AdRequest(),
-      rewardedAdLoadCallback: RewardedAdLoadCallback(
-        onAdLoaded: (ad) {
-          _rewardedAd = ad;
-          _isLoading = false;
-          onAdLoaded();
-        },
-        onAdFailedToLoad: (error) {
-          debugPrint('Rewarded ad failed to load: $error');
-          _isLoading = false;
-        },
-      ),
-    );
+  /// Gösterilmemiş yüklü reklamı serbest bırak (ekran dispose'unda çağrılır)
+  void dispose() {
+    _rewardedAd?.dispose();
+    _rewardedAd = null;
   }
 
   void showAd({required VoidCallback onRewarded}) {
     if (_rewardedAd == null) return;
 
     _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
+      onAdImpression: (_) => AnalyticsService.logAdImpression(format: 'rewarded', placement: 'reward'),
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
       },

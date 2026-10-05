@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart';
+import 'dart:ui' show ImageFilter;
+import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PerformanceService {
@@ -18,6 +19,15 @@ class PerformanceService {
   }
 
   static bool get isPerformanceMode => _performanceModeEnabled;
+
+  /// Performans modunda pahalı BackdropFilter blur'ünü atlar (animasyonlar etkilenmez).
+  static Widget blur({required double sigma, required Widget child}) {
+    if (_performanceModeEnabled) return child;
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+      child: child,
+    );
+  }
 
   /// Enables or disables performance mode
   static Future<void> setPerformanceMode(bool enabled) async {

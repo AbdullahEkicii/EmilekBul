@@ -316,7 +316,6 @@ class _LoadingScreenState extends State<LoadingScreen>
                   padding: EdgeInsets.fromLTRB(16, 4, 16, 6),
                   child: MyNativeAd(
                     height: 75,
-                    factoryId: 'adFactorySmall',
                   ),
                 ),
               ],

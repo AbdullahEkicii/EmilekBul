@@ -1,6 +1,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/analytics_service.dart';
+import '../services/cloud_state_service.dart';
+import '../services/streak_service.dart';
 import '../services/token_service.dart';
 import '../services/sound_service.dart';
 import '../widgets/rewarded_ad_manager.dart';
@@ -45,6 +48,30 @@ class LuckyWheelDialog extends StatefulWidget {
     final todayStr =
         "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
     await prefs.setString(_lastAdWheelSpinKey, todayStr);
+    await _saveToCloud();
+  }
+
+  static Future<void> _saveToCloud() async {
+    final prefs = await SharedPreferences.getInstance();
+    await CloudStateService.save('wheel', {
+      'lastSpin': prefs.getString(_lastWheelSpinKey),
+      'lastAdSpin': prefs.getString(_lastAdWheelSpinKey),
+    });
+  }
+
+  static Future<void> importState(Map<String, dynamic> cloud) async {
+    final prefs = await SharedPreferences.getInstance();
+    for (final entry in {
+      _lastWheelSpinKey: cloud['lastSpin'],
+      _lastAdWheelSpinKey: cloud['lastAdSpin'],
+    }.entries) {
+      final cloudValue = entry.value;
+      if (cloudValue is! String) continue;
+      final localValue = prefs.getString(entry.key);
+      if (localValue == null || cloudValue.compareTo(localValue) > 0) {
+        await prefs.setString(entry.key, cloudValue);
+      }
+    }
   }
 
   static Future<void> show(
@@ -101,7 +128,7 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
     {'amount': 50, 'label': '50 Token', 'color': const Color(0xFF3B82F6)},
     {'amount': 100, 'label': '100 Token', 'color': const Color(0xFF10B981)},
     {'amount': 250, 'label': '250 Token! 🔥', 'color': const Color(0xFFF59E0B)},
-    {'amount': 40, 'label': '40 Token', 'color': const Color(0xFFEC4899)},
+    {'amount': 0, 'type': 'freeze', 'label': '', 'color': const Color(0xFF0EA5E9)},
     {'amount': 75, 'label': '75 Token', 'color': const Color(0xFF06B6D4)},
     {'amount': 500, 'label': '500 JACKPOT! 🏆', 'color': const Color(0xFFEF4444)},
     {'amount': 60, 'label': '60 Token', 'color': const Color(0xFF14B8A6)},
@@ -113,6 +140,8 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
   bool _isAdLoading = false;
   final RewardedAdManager _rewardedAdManager = RewardedAdManager();
   int _selectedPrizeIndex = 0;
+  String _wonLabel = '';
+  static const int _freezeFallbackTokens = 75;
   double _startAngle = 0.0;
   double _targetAngle = 0.0;
   bool _canSpin = true;
@@ -158,7 +187,17 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
     setState(() {
       _isAdLoading = true;
     });
-    _rewardedAdManager.loadAd(onAdLoaded: () {
+    _rewardedAdManager.loadAd(onFailed: () {
+      if (!mounted) return;
+      setState(() => _isAdLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('common.ad_not_ready'.tr()),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }, onAdLoaded: () {
       if (!mounted) return;
       setState(() {
         _isAdLoading = false;
@@ -228,15 +267,30 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
       _startAngle = _targetAngle % (2 * pi);
       _currentRotationNotifier.value = _startAngle;
       final prize = _prizes[_selectedPrizeIndex];
-      final int amount = prize['amount'] as int;
+      final bool isAdSpin = _hasUsedAdSpinToday;
 
-      await TokenService.addTokens(amount);
+      if (prize['type'] == 'freeze') {
+        final granted = await StreakService.grantFreeze();
+        if (granted) {
+          _wonLabel = 'new_features.wheel_freeze_prize'.tr();
+        } else {
+          await TokenService.addTokens(_freezeFallbackTokens, source: 'lucky_wheel');
+          _wonLabel = '$_freezeFallbackTokens Token';
+        }
+        AnalyticsService.logWheelSpin(prize: granted ? 'streak_freeze' : 'freeze_fallback', isAdSpin: isAdSpin);
+      } else {
+        final int amount = prize['amount'] as int;
+        await TokenService.addTokens(amount, source: 'lucky_wheel');
+        _wonLabel = prize['label'] as String;
+        AnalyticsService.logWheelSpin(prize: '$amount', isAdSpin: isAdSpin);
+      }
 
       final prefs = await SharedPreferences.getInstance();
       final now = DateTime.now();
       final todayStr =
           "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
       await prefs.setString(LuckyWheelDialog._lastWheelSpinKey, todayStr);
+      await LuckyWheelDialog._saveToCloud();
 
       _confettiController.forward(from: 0.0);
 
@@ -406,7 +460,7 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
                             const SizedBox(width: 8),
                             Flexible(
                               child: Text(
-                                '${'new_features.wheel_you_won'.tr()} ${_prizes[_selectedPrizeIndex]['label']}',
+                                '${'new_features.wheel_you_won'.tr()} $_wonLabel',
                                 style: const TextStyle(
                                   color: Color(0xFF34D399),
                                   fontWeight: FontWeight.w900,
@@ -488,7 +542,7 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
               width: wheelSize,
               height: wheelSize,
               child: CustomPaint(
-                painter: _LuxuryWheelPainter(prizes: _prizes),
+                painter: _LuxuryWheelPainter(prizes: _prizes, freezeLabel: 'new_features.wheel_freeze_short'.tr()),
               ),
             ),
           ),
@@ -736,8 +790,9 @@ class _CarnivalRimPainter extends CustomPainter {
 /// Renders the rich gradient wheel sectors with 3D bevels, golden spokes, and icons
 class _LuxuryWheelPainter extends CustomPainter {
   final List<Map<String, dynamic>> prizes;
+  final String freezeLabel;
 
-  _LuxuryWheelPainter({required this.prizes});
+  _LuxuryWheelPainter({required this.prizes, required this.freezeLabel});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -815,9 +870,11 @@ class _LuxuryWheelPainter extends CustomPainter {
       canvas.translate(textX, textY);
       canvas.rotate(textAngle + (pi / 2));
 
+      final bool isFreeze = prize['type'] == 'freeze';
+
       // Amount Number
       final textSpan = TextSpan(
-        text: '${prize['amount']}',
+        text: isFreeze ? '❄️' : '${prize['amount']}',
         style: const TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.w900,
@@ -839,9 +896,9 @@ class _LuxuryWheelPainter extends CustomPainter {
       );
 
       // "TOKEN" subtitle
-      const subSpan = TextSpan(
-        text: '🪙 TOKEN',
-        style: TextStyle(
+      final subSpan = TextSpan(
+        text: isFreeze ? freezeLabel.toUpperCase() : '🪙 TOKEN',
+        style: const TextStyle(
           color: Color(0xFFFFD56B),
           fontWeight: FontWeight.w800,
           fontSize: 9,

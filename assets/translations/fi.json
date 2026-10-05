@@ -222,7 +222,8 @@
     "guest_user": "Vieraskäyttäjä",
     "more": "Lisää",
     "new": "UUSI",
-    "see_all": "Katso kaikki"
+    "see_all": "Katso kaikki",
+    "ad_not_ready": "Mainos ei ole vielä valmis. Yritä hetken päästä uudelleen."
   },
   "account": {
     "title": "Oma profiili",
@@ -255,7 +256,9 @@
     "full_screen": "Koko näyttö",
     "full_screen_desc": "Käynnistää sovelluksen koko näytön tilassa (piilottaa navigointipalkin)",
     "language": "Kieli",
-    "language_desc": "Vaihda sovelluksen kieli"
+    "language_desc": "Vaihda sovelluksen kieli",
+    "privacy_options": "Tietosuoja-asetukset",
+    "privacy_options_desc": "Hallitse mainossuostumuksiasi"
   },
   "quiz": {
     "question_progress": "Kysymys {}/{}",
@@ -311,7 +314,10 @@
     "msg_poor": "Voit tehdä paremmin! 🤔",
     "msg_fail": "Yritä uudelleen! 😅",
     "won_by_speed": "Voitti Speedillä! 🏎️",
-    "lost_by_speed": "Vastustaja oli nopeampi! ⚠️"
+    "lost_by_speed": "Vastustaja oli nopeampi! ⚠️",
+    "double_reward_desc": "Katso lyhyt video ja saat +{} rahaketta lisää!",
+    "double_reward_done": "Palkinto tuplattu! +{} rahaketta lisätty.",
+    "double_reward_button": "2x"
   },
   "edit_profile": {
     "title": "Muokkaa profiilia",
@@ -436,7 +442,19 @@
     "tap_to_preview": "Esikatsele napauttamalla",
     "Avatar 10": "Avatar 10",
     "mystery_avatar": "Mysteeri Avatar",
-    "title_none": "Ei mitään"
+    "title_none": "Ei mitään",
+    "powerups": "Tehosteet",
+    "streak_freeze_title": "Putkijäädytys",
+    "streak_freeze_desc": "Jäikö päivä väliin? Jäädytys käytetään automaattisesti ja päivittäinen putkesi säilyy. Voit pitää enintään {}.",
+    "streak_freeze_owned": "Omistat: {}/{}",
+    "streak_freeze_max": "Raja täynnä ({})",
+    "frame_mint": "Minttu",
+    "frame_coral": "Koralli",
+    "booster_title": "Rahaketehoste",
+    "booster_desc": "Tuplaa seuraavista {} visasta ansaitsemasi rahakkeet.",
+    "booster_active": "Aktiivinen: {} visaa jäljellä",
+    "booster_inactive": "Ei aktiivinen",
+    "booster_applied": "⚡ Tehoste: +{} lisärahaketta!"
   },
   "past_tests": {
     "title": "Testihistoria",
@@ -546,7 +564,13 @@
     "reengage_3d_title": "🔥 Älä katkaise sarjaasi!",
     "reengage_3d_body": "Tule takaisin ja löydä uusia kysymyksiä!",
     "reengage_7d_title": "💎 Meillä on ikävä sinua!",
-    "reengage_7d_body": "Erityiset yllätykset odottavat palaavia pelaajia!"
+    "reengage_7d_body": "Erityiset yllätykset odottavat palaavia pelaajia!",
+    "league_ending_title": "⏳ Viikkoliiga päättyy tänä iltana",
+    "league_ending_body": "Pari visaa voi nostaa sinut ylempään liigaan. Älä missaa nousua!",
+    "streak_risk_title": "🔥 Putkesi on katkeamassa!",
+    "streak_risk_body": "Ratkaise tänään yksi visa pitääksesi {} päivän putkesi!",
+    "social_channel_name": "Kaverit ja kaksintaistelut",
+    "social_channel_desc": "Kaveripyynnöt, kaksintaistelukutsut ja tökkäykset"
   },
   "level_system": {
     "level": "Taso",
@@ -614,7 +638,16 @@
     "quizzes_to_next": "{} tietokilpailua seuraavalle tasolle",
     "category_mastery": "Kategorian hallinta",
     "your_rank": "Sijoituksesi",
-    "climb_higher": "Kiipeä korkeammalle!"
+    "climb_higher": "Kiipeä korkeammalle!",
+    "day1_body": "Päivittäinen putkipalkintosi, {} kolikkoa, odottaa. Pelaa visa ja lunasta se!",
+    "teaser_title": "🎁 Palaa huomenna!",
+    "teaser_body": "Pidä putkesi käynnissä: lunasta {} kolikkoa, pyöritä onnenpyörää ja suorita päivän tehtävät.",
+    "winback_3d_title": "🔥 Älä menetä vauhtiasi!",
+    "winback_3d_body": "On kulunut muutama päivä. Palaa, pelaa visa ja aloita putkesi uudelleen!",
+    "winback_7d_title": "🏆 Ystäväsi nousevat liigassa!",
+    "winback_7d_body": "Ystäväsi pelaavat edelleen. Hyppää mukaan ja nouse liigassa sinäkin!",
+    "winback_14d_title": "💎 Kaipaamme sinua!",
+    "winback_14d_body": "Uusia kysymyksiä ja palkintoja odottaa. Palaa katsomaan, mitä uutta on!"
   },
   "quests": {
     "title": "Tehtävät ja palkinnot",
@@ -669,7 +702,27 @@
     "quiz_category": "Tietokilpailut",
     "duel_category": "Kaksintaistelut",
     "social_category": "Sosiaalinen",
-    "total_unlocked": "{}/{} Avattu"
+    "total_unlocked": "{}/{} Avattu",
+    "platinum_scholar_title": "Platinaoppinut",
+    "platinum_scholar_desc": "Suorita yhteensä 500 visaa",
+    "duel_champion_title": "Kaksintaistelumestari",
+    "duel_champion_desc": "Voita yhteensä 50 kaksintaistelua",
+    "duel_legend_title": "Kaksintaistelulegenda",
+    "duel_legend_desc": "Voita yhteensä 100 kaksintaistelua",
+    "level_ten_title": "Tason 10 asiantuntija",
+    "level_ten_desc": "Saavuta taso 10",
+    "level_twenty_title": "Tason 20 mestari",
+    "level_twenty_desc": "Saavuta taso 20",
+    "streak_week_title": "Tulessa",
+    "streak_week_desc": "Saavuta 7 päivän kirjautumisputki",
+    "streak_month_title": "Pysäyttämätön",
+    "streak_month_desc": "Saavuta 30 päivän kirjautumisputki",
+    "recruiter_title": "Värvääjä",
+    "recruiter_desc": "Saa ystävä mukaan kutsukoodillasi",
+    "ambassador_title": "Lähettiläs",
+    "ambassador_desc": "Saa 5 ystävää mukaan kutsukoodillasi",
+    "collector_title": "Suurkeräilijä",
+    "collector_desc": "Kerää 10 tuotetta kaupasta"
   },
   "duel": {
     "race_track": "DUEL RACE",
@@ -811,7 +864,26 @@
     "kick_confirm_msg": "Haluatko varmasti potkaista {} huoneesta?",
     "kicked_from_room": "Isäntä potkaisi sinut huoneesta.",
     "special_bet_badge": "ERIKOISTA 🔥",
-    "fee_info": "Maksu {} %"
+    "fee_info": "Maksu {} %",
+    "category": "Kategoria",
+    "difficulty": "Vaikeus",
+    "challenge_friend_title": "Haasta {}",
+    "challenge_sent": "Haaste lähetetty: {}!",
+    "challenge_failed": "Haastetta ei voitu lähettää, mutta huoneesi on valmis. Jaa huonekoodi.",
+    "free_tickets": "{}/{} ilmaista lippua tänään · panoksiin {} asti",
+    "friendly": "Ystävyys",
+    "friendly_desc": "Ystävyysottelu: ei panoksia. Saat silti tulostaulu- ja liigapisteitä.",
+    "high_bet_real_only": "Korkean panoksen huoneisiin liittyy vain oikeita pelaajia — jaa huonekoodisi!",
+    "host_no_response": "Isäntä ei vastannut. Kokeile toista huonetta.",
+    "result_cta_title": "Valmis oikeaan vastustajaan?",
+    "result_cta_desc": "Sait {} % kategoriassa {}. Kokeile 1v1-kaksintaistelua!",
+    "result_cta_button": "Kaksintaistelu",
+    "share_room_text": "⚡ Liity 1v1-visakaksintaisteluuni! Huonekoodi: {}",
+    "ticket_used": "Ilmainen lippu käytetty",
+    "quick_match": "Pikaottelu",
+    "quick_match_sub": "Yksi napautus · vastustaja sekunneissa",
+    "quick_match_searching": "Etsitään vastustajaa…",
+    "quick_match_hint": "Ilmaislipulla, jos sinulla on, muuten ystävyysottelu."
   },
   "errors": {
     "no_internet_ai": "Tarvitset aktiivisen Internet-yhteyden päästäksesi tekoälyyn. 📡",
@@ -836,10 +908,16 @@
     "wheel_spin_button": "Pyörivä pyörä 🔥",
     "wheel_done_today": "Valmis tänään",
     "streak_claim_today": "Lunasta tämän päivän palkinto 🎉",
-    "streak_ok": "OK"
+    "streak_ok": "OK",
+    "wheel_freeze_prize": "Putkijäädytys ❄️",
+    "wheel_freeze_short": "Jäädytys"
   },
   "daily_streak": {
-    "day_num": "Päivä {}"
+    "day_num": "Päivä {}",
+    "freeze_used": "Putkesi pelastettiin! Jäädytyksiä käytetty: {}.",
+    "freezes_owned": "Jäädytykset: {}/{}",
+    "play_to_claim": "Ratkaise tänään 1 visa lunastaaksesi palkinnon ja pitääksesi putken!",
+    "play_now": "Pelaa visa"
   },
   "friends": {
     "title": "Ystävät",
@@ -879,7 +957,8 @@
     "friend_req_received_title": "Uusi ystäväpyyntö! 👥",
     "friend_req_received_body": "{} lähetti sinulle kaveripyynnön!",
     "request_received": "Pyyntö vastaanotettu! ⚡",
-    "accept_request": "Hyväksyä"
+    "accept_request": "Hyväksyä",
+    "accept": "Hyväksy"
   },
   "review": {
     "card_title": "Arvioi Google Playssa",
@@ -896,7 +975,7 @@
   },
   "referral": {
     "title": "Kutsu ystäviä",
-    "desc": "Syötä ystäväsi kutsukoodi ansaitaksesi 500 Tokenia! Jaa koodisi ja kutsu ystäväsi.",
+    "desc": "Syötä ystävän kutsukoodi ja saat 500 kolikkoa ensimmäisen visasi jälkeen! Jaa koodisi ja kutsu ystäväsi mukaan.",
     "your_code": "KUTSUKOODISI",
     "enter_code": "Anna kutsukoodi (+500 merkkiä)",
     "hint": "ANNA KOODI",
@@ -905,10 +984,64 @@
     "share_button": "Jakaa",
     "copy_button": "Kopioida",
     "code_copied": "Kutsukoodi kopioitu! 📋",
-    "share_msg": "🏆 Tule mukaan Quiz Arenalle! Käytä kutsukoodiani saadaksesi 500 Tokenia välittömästi:\n👉 Koodi: {}\n📲 Lataa sovellus: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "share_msg": "🏆 Tule mukaan Quiz Arenalle! Käytä kutsukoodiani ja saat 500 kolikkoa ensimmäisen visasi jälkeen:\n👉 Koodi: {}\n📲 Lataa sovellus: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
     "success": "Onnittelut! {} Tunnuksia lisätty tilillesi! 🎉",
     "already_used": "Olet jo käyttänyt kutsukoodia.",
     "own_code": "Et voi käyttää omaa kutsukoodiasi.",
-    "invalid_code": "Virheellinen kutsukoodi tai sitä ei ole olemassa."
+    "invalid_code": "Virheellinen kutsukoodi tai sitä ei ole olemassa.",
+    "pending": "Kutsukoodi tallennettu! Sinä ja ystäväsi saatte kolikot, kun olette suorittaneet ensimmäisen visanne."
+  },
+  "share": {
+    "button": "Jaa",
+    "copied": "Kopioitu leikepöydälle",
+    "quiz_result": "Sain {}/{} {}-visassa sovelluksessa {}! 🧠 Pystytkö parempaan?",
+    "duel_win": "Voitin pelaajan {} {}-{} 1v1-visakaksintaistelussa sovelluksessa {}! ⚔️ Uskallatko haastaa minut?",
+    "duel_played": "Pelasin juuri 1v1-visakaksintaistelun pelaajaa {} vastaan sovelluksessa {}! ⚔️ Haasta minut!",
+    "achievement": "Avasin merkin \"{}\" sovelluksessa {}! 🏅"
+  },
+  "league": {
+    "title": "Viikkoliiga",
+    "bronze": "Pronssiliiga",
+    "silver": "Hopealiiga",
+    "gold": "Kultaliiga",
+    "platinum": "Platinaliiga",
+    "diamond": "Timanttiliiga",
+    "ends_in": "Päättyy {} pv {} h",
+    "how_it_works": "Ansaitse pisteitä visoista ja kaksintaisteluista. Viikon lopussa parhaat {} % nousevat ja viimeiset putoavat.",
+    "empty": "Kukaan ei ole vielä saanut pisteitä tässä liigassa tällä viikolla. Pelaa visa ja ota johto!",
+    "points": "p",
+    "promoted_title": "Nousit!",
+    "promoted_desc": "Loistava viikko! Nousit liigaan {} ja ansaitsit {} rahaketta.",
+    "demoted_title": "Liiga vaihtui",
+    "demoted_desc": "Olet tällä viikolla liigassa {}. Pelaa muutama visa ja nouse takaisin!",
+    "view": "Näytä liiga",
+    "result_promoted_sub": "Kovan työn tulos näkyy. Pidä vauhti yllä uudessa liigassasi!",
+    "result_demoted_sub": "Jokaisella mestarilla on ollut rankka viikko. Muutama visa ja olet taas huipulla!",
+    "result_rank": "Viime viikon sijoitus: #{}",
+    "result_reward": "+{} kolikkoa",
+    "share": "Jaa",
+    "continue": "Jatka",
+    "share_text": "Olen nyt liigassa {} Quiz Arenassa! Pystytkö voittamaan minut?"
+  },
+  "daily_challenge": {
+    "title": "Päivän haaste",
+    "badge": "UUSI",
+    "card_sub": "Samat 5 kysymystä kaikille · päivän tulokset",
+    "rules": "Tänään kaikki saavat samat {} kysymystä. Vain yksi yritys — jokainen oikea vastaus antaa {} rahaketta. Ole nopea: aika ratkaisee tasatilanteen!",
+    "start": "Aloita päivän haaste",
+    "leaderboard": "Päivän tulokset",
+    "empty": "Kukaan ei ole vielä pelannut tänään — ole ensimmäinen!",
+    "rank": "Sija #{} / {} · {} s",
+    "come_back": "Uusi haaste avautuu huomenna. Jaa tuloksesi ja haasta kaverisi!",
+    "reward": "Päivän haaste suoritettu! +{} rahaketta",
+    "share_text": "{} · Päivän haaste {}\n{}/{} {}\n🏆 {}"
+  },
+  "streak_rescue": {
+    "title": "Putkesi on päättymässä!",
+    "body": "Jätit yhden päivän väliin ja menetit {} päivän putkesi. Voit yhä pelastaa sen tänään!",
+    "watch_ad": "Katso mainos pelastaaksesi",
+    "pay_tokens": "Pelasta {} kolikolla",
+    "no_thanks": "Ei kiitos, aloita alusta",
+    "not_enough_tokens": "Ei tarpeeksi kolikoita."
   }
 }

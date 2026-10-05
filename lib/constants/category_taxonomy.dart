@@ -318,13 +318,13 @@ class CategoryTaxonomy {
 
   /// Soru sorma açısı / format çeşitlendirmesi
   static const List<String> questionAngles = [
-    'İstisna & Aykırılık Açısı ("Aşağıdakilerden hangisi bu duruma / gruba / döneme dahil DEĞİLDİR?")',
-    'Kronolojik Sıralama & Zaman Açısı ("Aşağıdaki olaylardan / eserlerden hangisi diğerlerinden daha önce / sonra gerçekleşmiştir?")',
-    'Vaka / Senaryo & Tarihi Olay Açısı ("Tarihte yaşanan şu kritik olayın sonucunda ortaya çıkan gelişme...")',
-    'Öncül & İpucu Analizi ("Hakkında ipuçları verilen (doğum yeri, ödülü, ünlü eseri) kişi / yer / kavram hangisidir?")',
-    'Eşleştirme & Eser-Yazar / Şehir-Ülke Açısı ("Aşağıdaki eşleştirmelerden hangisi yanlıştır / doğrudur?")',
-    'Köken & Etimoloji / İlk Kez Açısı ("Dünyada ilk kez nerede / kim tarafından ortaya çıkarılmıştır?")',
-    'Sebep-Sonuç İlişkisi ("Bu tarihi/bilimsel kırılmanın arkasındaki temel itici güç neydi?")',
+    'İstisna Açısı (kısa bir cümle: "Aşağıdakilerden hangisi ... DEĞİLDİR?")',
+    'Zaman Açısı (tek cümle: "... hangi yılda / yüzyılda gerçekleşmiştir?"; şıklar yalnızca yıl/dönem)',
+    'Sonuç Açısı (tek cümle: "... olayının sonucu ne olmuştur?"; şıklar kısa ifadeler)',
+    'İpucu Açısı (en fazla 1 ipucu cümlesi: "... ile tanınan kişi / yer hangisidir?"; şıklar yalnızca ad)',
+    'Eşleştirme Açısı (tek cümle: "... kimin / hangi ülkenin eseridir?"; şıklar yalnızca ad)',
+    'Köken Açısı (tek cümle: "... ilk kez nerede / kim tarafından ortaya çıkarılmıştır?"; şıklar yalnızca ad/yer)',
+    'Neden Açısı (tek cümle: "... neden ortaya çıkmıştır?"; şıklar kısa ifadeler)',
   ];
 
   /// Verilen kategori için rastgele bir mikro-tema döner

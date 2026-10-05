@@ -6,10 +6,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'dart:math';
 import 'package:easy_localization/easy_localization.dart';
+import 'analytics_service.dart';
+import 'streak_service.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
+
+  static const int _streakReminderId = 600;
+  static const int _leagueReminderId = 700;
+  static const String _schemaKey = 'notif_schema_v2';
+
+  /// Günlük hatırlatma kimliği tarihe bağlıdır; böylece o günün bildirimi iptal edilebilir.
+  static int _dailyIdFor(DateTime date) =>
+      100 + DateTime(date.year, date.month, date.day).difference(DateTime(2024)).inDays % 60;
 
   /// Hizmeti başlatır
   static Future<void> init() async {
@@ -32,8 +42,7 @@ class NotificationService {
     await _notifications.initialize(
       settings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        // Bildirime tıklanınca yapılacak işlemler
-        debugPrint('Bildirim tıklandı: ${response.payload}');
+        AnalyticsService.logNotificationOpen(type: response.payload ?? 'unknown');
       },
       onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
@@ -57,10 +66,10 @@ class NotificationService {
       importance: Importance.high,
     );
 
-    final AndroidNotificationChannel socialChannel = const AndroidNotificationChannel(
+    final AndroidNotificationChannel socialChannel = AndroidNotificationChannel(
       'social_channel',
-      'Arkadaş & Düello Bildirimleri',
-      description: 'Arkadaşlık istekleri, düello davetleri ve dürtme bildirimleri',
+      'notifications.social_channel_name'.tr(),
+      description: 'notifications.social_channel_desc'.tr(),
       importance: Importance.max,
       enableVibration: true,
       playSound: true,
@@ -88,7 +97,14 @@ class NotificationService {
       final lastScheduledStr = prefs.getString('last_notification_schedule');
 
       bool needsSchedule = false;
-      if (lastScheduledStr == null) {
+      // Eski kimlik şemasındaki (0..26) günlük bildirimleri temizle
+      if (!(prefs.getBool(_schemaKey) ?? false)) {
+        for (int id = 0; id <= 27; id++) {
+          await _notifications.cancel(id);
+        }
+        await prefs.setBool(_schemaKey, true);
+        needsSchedule = true;
+      } else if (lastScheduledStr == null) {
         needsSchedule = true;
       } else {
         final lastScheduled = DateTime.parse(lastScheduledStr);
@@ -116,6 +132,7 @@ class NotificationService {
 
       await scheduleWeeklyReminder();
       await scheduleMonthlyAnnouncement();
+      await scheduleLeagueEndingReminder();
 
       debugPrint("Bildirimler güncellendi (14 Günlük + Haftalık + Aylık)");
     } catch (e) {
@@ -146,6 +163,7 @@ class NotificationService {
 
       await scheduleWeeklyReminder();
       await scheduleMonthlyAnnouncement();
+      await scheduleLeagueEndingReminder();
 
       debugPrint("Bildirimler güncellendi (14 Günlük + Haftalık + Aylık)");
     } catch (e) {
@@ -165,8 +183,9 @@ class NotificationService {
     final targetDate = now.add(Duration(days: daysFromNow));
 
     // Günde 1 bildirim (Öğlen 12 ile Akşam 20 arası rastgele)
-    final hour = 12 + Random().nextInt(8); // 12,13..19
-    final minute = Random().nextInt(60);
+    final preferred = await _preferredPlayHour();
+    final hour = preferred ?? (12 + Random().nextInt(8)); // varsayılan 12..19
+    final minute = preferred != null ? Random().nextInt(30) : Random().nextInt(60);
 
     var notifyTime = tz.TZDateTime(tz.local, targetDate.year, targetDate.month,
         targetDate.day, hour, minute);
@@ -177,10 +196,11 @@ class NotificationService {
       final isMorning = hour < 15; // İçeriği saate göre ayarla
       final content = _getRandomContent(isMorning: isMorning);
       await _scheduleNotification(
-        id: daysFromNow * 2, // Çakışmamak için
+        id: _dailyIdFor(targetDate),
         title: content['title']!,
         body: content['body']!,
         scheduledTime: notifyTime,
+        payload: 'daily',
       );
     }
   }
@@ -190,6 +210,7 @@ class NotificationService {
     required String title,
     required String body,
     required tz.TZDateTime scheduledTime,
+    String? payload,
   }) async {
     try {
       await _notifications.zonedSchedule(
@@ -197,6 +218,7 @@ class NotificationService {
         title,
         body,
         scheduledTime,
+        payload: payload,
         NotificationDetails(
           android: AndroidNotificationDetails(
             'daily_channel',
@@ -318,6 +340,59 @@ class NotificationService {
     }
   }
 
+  // ---- Saatlik oyun alışkanlığı (24 elemanlı sayaç) ----
+  static const String _hourHistKey = 'play_hour_histogram';
+  static const int _minSamplesForPreference = 5;
+
+  /// Test bitişinde çağrılır; o saatin sayacını artırır.
+  static Future<void> recordPlayHour() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final hist = _readHistogram(prefs);
+      hist[DateTime.now().hour]++;
+      await prefs.setStringList(_hourHistKey, hist.map((e) => e.toString()).toList());
+    } catch (e) {
+      debugPrint('recordPlayHour error: $e');
+    }
+  }
+
+  static List<int> _readHistogram(SharedPreferences prefs) {
+    final raw = prefs.getStringList(_hourHistKey);
+    if (raw == null || raw.length != 24) return List<int>.filled(24, 0);
+    return raw.map((e) => int.tryParse(e) ?? 0).toList();
+  }
+
+  /// En çok oynanan saat (yeterli veri yoksa null). Gece saatleri 9..21 aralığına çekilir.
+  static Future<int?> _preferredPlayHour() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final hist = _readHistogram(prefs);
+      final total = hist.fold<int>(0, (a, b) => a + b);
+      if (total < _minSamplesForPreference) return null;
+      var best = 0;
+      for (int h = 1; h < 24; h++) {
+        if (hist[h] > hist[best]) best = h;
+      }
+      return best.clamp(9, 21);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// [base] gününe tercih edilen saati uygular (veri yoksa base'i aynen döner).
+  static Future<tz.TZDateTime> _atPreferredHour(tz.TZDateTime base) async {
+    final h = await _preferredPlayHour();
+    if (h == null) return base;
+    return tz.TZDateTime(tz.local, base.year, base.month, base.day, h, Random().nextInt(30));
+  }
+
+  // Kimlikler: 500 (2s), 501 (24s), 502 (3g), 503 (7g), 504 (14g), 505 (ilk günler teaser)
+  static const int _teaserId = 505;
+  static const String _teaserDateKey = 'retention_teaser_date';
+
+  static String _ymd(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
   /// Quiz tamamlandıktan sonra re-engagement bildirimleri planla
   static Future<void> scheduleReEngagementNotifications() async {
     try {
@@ -328,57 +403,173 @@ class NotificationService {
       final isFirstQuiz = !prefs.containsKey('first_quiz_completed');
       if (isFirstQuiz) {
         await prefs.setBool('first_quiz_completed', true);
+        await prefs.setString('first_quiz_date', _ymd(now));
       }
 
-      // Re-engagement bildirimleri (benzersiz ID'ler: 500-503)
-      // 1. 2 saat sonra
-      final twoHoursLater = now.add(const Duration(hours: 2));
-      await _scheduleNotification(
-        id: 500,
-        title: 'notifications.reengage_2h_title'.tr(),
-        body: 'notifications.reengage_2h_body'.tr(),
-        scheduledTime: twoHoursLater,
-      );
+      // 1. 2 saat sonra (sadece ilk testten sonra; aktif oyuncuyu gün içinde rahatsız etmemek için)
+      if (isFirstQuiz) {
+        await _scheduleNotification(
+          id: 500,
+          title: 'notifications.reengage_2h_title'.tr(),
+          body: 'notifications.reengage_2h_body'.tr(),
+          scheduledTime: now.add(const Duration(hours: 2)),
+          payload: 'reengage_2h',
+        );
+      }
 
-      // 2. 24 saat sonra
-      final oneDayLater = now.add(const Duration(hours: 24));
+      // 2. 24 saat sonra (ödül metni gerçek seri ödülüne bağlıdır)
+      final reward = await StreakService.getNextDayRewardEstimate();
       await _scheduleNotification(
         id: 501,
         title: 'notifications.reengage_24h_title'.tr(),
-        body: 'notifications.reengage_24h_body'.tr(),
-        scheduledTime: oneDayLater,
+        body: 'retention.day1_body'.tr(args: [reward.toString()]),
+        payload: 'reengage_24h',
+        scheduledTime: now.add(const Duration(hours: 24)),
       );
 
-      // 3. 3 gün sonra
-      final threeDaysLater = now.add(const Duration(days: 3));
-      await _scheduleNotification(
-        id: 502,
-        title: 'notifications.reengage_3d_title'.tr(),
-        body: 'notifications.reengage_3d_body'.tr(),
-        scheduledTime: threeDaysLater,
-      );
+      // 3. İlk 3 gün: ertesi gün tercih edilen saatte "yarın dönersen" bildirimi
+      await _scheduleFirstDaysTeaser(now, prefs, reward);
 
-      // 4. 7 gün sonra
-      final sevenDaysLater = now.add(const Duration(days: 7));
-      await _scheduleNotification(
-        id: 503,
-        title: 'notifications.reengage_7d_title'.tr(),
-        body: 'notifications.reengage_7d_body'.tr(),
-        scheduledTime: sevenDaysLater,
-      );
+      // 4. Win-back: 3 / 7 / 14 gün
+      await _scheduleWinBack(now);
 
-      debugPrint("Re-engagement bildirimleri planlandı (2h, 24h, 3d, 7d)");
+      debugPrint("Re-engagement bildirimleri planlandı (2h, 24h, teaser, 3d, 7d, 14d)");
     } catch (e) {
       debugPrint("Re-engagement bildirim hatası: $e");
     }
   }
 
+  /// İlk 3 günde (ilk testin günü + sonraki 2 gün) yarın için ödül hatırlatması.
+  static Future<void> _scheduleFirstDaysTeaser(
+      tz.TZDateTime now, SharedPreferences prefs, int reward) async {
+    final firstStr = prefs.getString('first_quiz_date');
+    if (firstStr == null) return;
+    final first = DateTime.tryParse(firstStr);
+    if (first == null) return;
+    final today = DateTime(now.year, now.month, now.day);
+    final dayIndex = today.difference(DateTime(first.year, first.month, first.day)).inDays;
+    if (dayIndex < 0 || dayIndex > 2) return;
+
+    final tomorrow = today.add(const Duration(days: 1));
+    final base = await _atPreferredHour(
+        tz.TZDateTime(tz.local, tomorrow.year, tomorrow.month, tomorrow.day, 10));
+    await _scheduleNotification(
+      id: _teaserId,
+      title: 'retention.teaser_title'.tr(),
+      body: 'retention.teaser_body'.tr(args: [reward.toString()]),
+      scheduledTime: base,
+      payload: 'first_days_teaser',
+    );
+    await prefs.setString(_teaserDateKey, _ymd(tomorrow));
+  }
+
+  /// 3/7/14 gün giriş yapmayanlar için farklı, genel (veriye dayanmayan) içerikler.
+  static Future<void> _scheduleWinBack(tz.TZDateTime now) async {
+    const steps = [
+      (id: 502, days: 3, key: '3d'),
+      (id: 503, days: 7, key: '7d'),
+      (id: 504, days: 14, key: '14d'),
+    ];
+    for (final step in steps) {
+      final t = await _atPreferredHour(now.add(Duration(days: step.days)));
+      await _scheduleNotification(
+        id: step.id,
+        title: 'retention.winback_${step.key}_title'.tr(),
+        body: 'retention.winback_${step.key}_body'.tr(),
+        payload: 'reengage_${step.key}',
+        scheduledTime: t,
+      );
+    }
+  }
+
+  /// Uygulama açıldığında: eski win-back bildirimlerini iptal edip yeniden planlar.
+  /// (500/501 ilk gün akışına aittir; dokunulmaz. Teaser, günü geldiyse iptal edilir.)
+  static Future<void> refreshWinBackNotifications() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!prefs.containsKey('first_quiz_completed')) return;
+      for (int id = 502; id <= 504; id++) {
+        await _notifications.cancel(id);
+      }
+      final teaserDate = prefs.getString(_teaserDateKey);
+      if (teaserDate != null && _ymd(DateTime.now()).compareTo(teaserDate) >= 0) {
+        await _notifications.cancel(_teaserId);
+      }
+      await _scheduleWinBack(tz.TZDateTime.now(tz.local));
+    } catch (e) {
+      debugPrint('refreshWinBackNotifications error: $e');
+    }
+  }
+
   /// Re-engagement bildirimlerini iptal et (kullanıcı geri döndüğünde)
   static Future<void> cancelReEngagementNotifications() async {
-    for (int id = 500; id <= 503; id++) {
+    for (int id = 500; id <= 505; id++) {
       await _notifications.cancel(id);
     }
     debugPrint("Re-engagement bildirimleri iptal edildi");
+  }
+
+  /// Kullanıcı bugün test çözdü: bugünkü genel hatırlatmayı gönderme.
+  static Future<void> markPlayedToday() async {
+    try {
+      await _notifications.cancel(_dailyIdFor(DateTime.now()));
+      await recordPlayHour();
+    } catch (e) {
+      debugPrint('markPlayedToday error: $e');
+    }
+  }
+
+  /// "Serin bozulmak üzere" hatırlatması: bugün ödül alınmadıysa bugün 20:00'de,
+  /// alındıysa yarın 20:00'de (yarın girmezse) gösterilir.
+  static Future<void> scheduleStreakReminder({required int streak, required bool claimedToday}) async {
+    try {
+      await _notifications.cancel(_streakReminderId);
+      if (streak <= 0) return;
+      final now = tz.TZDateTime.now(tz.local);
+      var target = tz.TZDateTime(tz.local, now.year, now.month, now.day, 20);
+      if (claimedToday) target = target.add(const Duration(days: 1));
+      if (target.isBefore(now)) return;
+      await _scheduleNotification(
+        id: _streakReminderId,
+        title: 'notifications.streak_risk_title'.tr(),
+        body: 'notifications.streak_risk_body'.tr(args: [streak.toString()]),
+        scheduledTime: target,
+        payload: 'streak_risk',
+      );
+    } catch (e) {
+      debugPrint('scheduleStreakReminder error: $e');
+    }
+  }
+
+  /// Haftalık lig kapanış hatırlatması: her Pazar 18:00.
+  static Future<void> scheduleLeagueEndingReminder() async {
+    try {
+      final now = tz.TZDateTime.now(tz.local);
+      var target = tz.TZDateTime(tz.local, now.year, now.month, now.day, 18)
+          .add(Duration(days: (DateTime.sunday - now.weekday) % 7));
+      if (target.isBefore(now)) target = target.add(const Duration(days: 7));
+      await _notifications.zonedSchedule(
+        _leagueReminderId,
+        'notifications.league_ending_title'.tr(),
+        'notifications.league_ending_body'.tr(),
+        target,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            'daily_channel',
+            'notifications.daily_channel_name'.tr(),
+            channelDescription: 'notifications.daily_channel_desc'.tr(),
+            importance: Importance.high,
+            priority: Priority.high,
+            color: const Color(0xFF6366F1),
+          ),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+        payload: 'league_ending',
+      );
+    } catch (e) {
+      debugPrint('scheduleLeagueEndingReminder error: $e');
+    }
   }
 
   static Future<void> cancelAllNotifications() async {
@@ -423,10 +614,10 @@ class NotificationService {
     String? payload,
   }) async {
     try {
-      const androidDetails = AndroidNotificationDetails(
+      final androidDetails = AndroidNotificationDetails(
         'social_channel',
-        'Arkadaş & Düello Bildirimleri',
-        channelDescription: 'Arkadaşlık istekleri, düello davetleri ve dürtme bildirimleri',
+        'notifications.social_channel_name'.tr(),
+        channelDescription: 'notifications.social_channel_desc'.tr(),
         importance: Importance.max,
         priority: Priority.high,
         showWhen: true,
@@ -435,7 +626,7 @@ class NotificationService {
         icon: 'ic_stat_notification',
       );
 
-      const notificationDetails = NotificationDetails(android: androidDetails);
+      final notificationDetails = NotificationDetails(android: androidDetails);
 
       await _notifications.show(
         id,

@@ -23,11 +23,26 @@ class AiApiService {
     'gemini-3.7-flash',
   ];
   final String _apiKey = dotenv.env['API_KEY']!;
+  // Soru/şık uzunluk sınırları (prompt + istemci tarafı doğrulama aynı değerleri kullanır)
+  static const int _maxQuestionChars = 160;
+  static const int _maxOptionChars = 50;
+
   Future<GenerateContentResponse> _generateContentWithFallback(
-      String prompt) async {
+    String prompt, {
+    int maxOutputTokens = 4096,
+  }) async {
     final content = Content.text(prompt);
     for (final modelName in _modelList) {
-      final model = GenerativeModel(model: modelName, apiKey: _apiKey);
+      final model = GenerativeModel(
+        model: modelName,
+        apiKey: _apiKey,
+        generationConfig: GenerationConfig(
+          temperature: 0.9,
+          // Düşünen (thinking) modellerde düşünme token'ları da bu limite dahildir; cömert tut.
+          maxOutputTokens: maxOutputTokens,
+          responseMimeType: 'application/json',
+        ),
+      );
       try {
         debugPrint('🧠 Deneniyor: $modelName');
         final response = await model.generateContent([content]);
@@ -84,16 +99,11 @@ class AiApiService {
         randomSeed: randomSeed,
       );
 
-      final response = await _generateContentWithFallback(prompt);
-      final text = response.text;
-      final jsonStart = text?.indexOf('[') ?? -1;
-      final jsonEnd = text?.lastIndexOf(']') ?? -1;
-      if (jsonStart == -1 || jsonEnd == -1) {
-        throw Exception('ai_service.errors.format_error');
-      }
-      final jsonString = text!.substring(jsonStart, jsonEnd + 1);
-      final List<dynamic> list = jsonDecode(jsonString);
-      return list.map((e) => Question.fromJson(e)).toList();
+      final response = await _generateContentWithFallback(
+        prompt,
+        maxOutputTokens: 2048 + count * 700 * uniqueLangs.length,
+      );
+      return _parseQuestions(response.text);
     } catch (e, s) {
       debugPrint('AI API MULTILINGUAL HATASI: $e\n$s');
       if (e.toString().contains('ai_service.errors')) {
@@ -129,16 +139,11 @@ class AiApiService {
         randomSeed: randomSeed,
       );
 
-      final response = await _generateContentWithFallback(prompt);
-      final text = response.text;
-      final jsonStart = text?.indexOf('[') ?? -1;
-      final jsonEnd = text?.lastIndexOf(']') ?? -1;
-      if (jsonStart == -1 || jsonEnd == -1) {
-        throw Exception('ai_service.errors.format_error');
-      }
-      final jsonString = text!.substring(jsonStart, jsonEnd + 1);
-      final List<dynamic> list = jsonDecode(jsonString);
-      return list.map((e) => Question.fromJson(e)).toList();
+      final response = await _generateContentWithFallback(
+        prompt,
+        maxOutputTokens: 2048 + count * 700,
+      );
+      return _parseQuestions(response.text);
     } catch (e, s) {
       debugPrint('AI API HATASI: $e\n$s');
       if (e.toString().contains('ai_service.errors')) {
@@ -146,6 +151,41 @@ class AiApiService {
       }
       throw Exception('ai_service.errors.general_error');
     }
+  }
+
+  List<Question> _parseQuestions(String? text) {
+    final jsonStart = text?.indexOf('[') ?? -1;
+    final jsonEnd = text?.lastIndexOf(']') ?? -1;
+    if (jsonStart == -1 || jsonEnd == -1) {
+      throw Exception('ai_service.errors.format_error');
+    }
+    final List<dynamic> list = jsonDecode(text!.substring(jsonStart, jsonEnd + 1));
+    final all = list.map((e) => Question.fromJson(e)).toList();
+    // Aşırı uzun soru/şık üretenleri ele; hepsi elenirse yine de hepsini döndür (boş test olmasın)
+    final compact = all.where(_isCompact).toList();
+    if (compact.length != all.length) {
+      debugPrint('✂️ ${all.length - compact.length} uzun soru elendi');
+    }
+    return compact.isNotEmpty ? compact : all;
+  }
+
+  bool _isCompact(Question q) {
+    if (q.options.length != 4 || q.correctIndex < 0 || q.correctIndex > 3) {
+      return false;
+    }
+    bool fits(String question, List<String> options) =>
+        question.length <= _maxQuestionChars &&
+        options.every((o) => o.length <= _maxOptionChars);
+    if (!fits(q.question, q.options)) return false;
+    for (final entry in (q.translations ?? const <String, dynamic>{}).entries) {
+      final t = entry.value;
+      if (t is Map &&
+          !fits(t['question']?.toString() ?? '',
+              (t['options'] as List?)?.map((e) => e.toString()).toList() ?? const [])) {
+        return false;
+      }
+    }
+    return true;
   }
 
   static const Map<String, String> _languageNames = {
@@ -233,6 +273,7 @@ Parameters:
 
 Rules:
 1. Exactly 4 options per question.
+   LENGTH LIMITS (hard): the question text MUST be a single sentence of at most $_maxQuestionChars characters; each option MUST be at most $_maxOptionChars characters (a name, term, date or short phrase - never a sentence or list). Do NOT embed long scenarios, multi-part lists or numbered statements in the question; if the angle suggests it, compress it into one short line.
 2. The options at index 0, 1, 2, 3 in each language MUST be exact translations/equivalents of each other so both players have matching choices.
 3. The 'correctIndex' (0, 1, 2, or 3) MUST be identical and correct across all languages.
 4. Language & Quality: The questions and choices in each language MUST be grammatically flawless, natural, and clear for native speakers.
@@ -291,6 +332,7 @@ Critical Rules:
 2. QUESTION STRUCTURE:
    - Exactly 4 options per question with exactly 1 unambiguously correct option.
    - Questions and options should be concise, clear, and proportional to the difficulty.
+   - LENGTH LIMITS (hard): the question text MUST be a single sentence of at most $_maxQuestionChars characters; each option MUST be at most $_maxOptionChars characters (a name, term, date or short phrase - never a sentence or list). Do NOT embed long scenarios, multi-part lists or numbered statements in the question; if the angle suggests it, compress it into one short line.
    - The 'correctIndex' MUST be an integer between 0 and 3 matching the correct option.
 3. UNIQUENESS & DIVERSITY:
    - Specifically focus on the sub-topic '$subTopic' with the perspective '$questionAngle'.

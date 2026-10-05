@@ -222,7 +222,8 @@
     "guest_user": "Pengguna Tamu",
     "more": "Lagi",
     "new": "BARU",
-    "see_all": "Lihat Semua"
+    "see_all": "Lihat Semua",
+    "ad_not_ready": "Iklan belum siap. Coba lagi sebentar lagi."
   },
   "account": {
     "title": "Profil Saya",
@@ -255,7 +256,9 @@
     "full_screen": "Layar Penuh",
     "full_screen_desc": "Memulai aplikasi dalam mode layar penuh (menyembunyikan bilah navigasi)",
     "language": "Bahasa",
-    "language_desc": "Ubah bahasa aplikasi"
+    "language_desc": "Ubah bahasa aplikasi",
+    "privacy_options": "Opsi privasi",
+    "privacy_options_desc": "Kelola persetujuan iklan"
   },
   "quiz": {
     "question_progress": "Pertanyaan {}/{}",
@@ -311,7 +314,10 @@
     "msg_poor": "Anda Bisa Melakukan Lebih Baik! 🤔",
     "msg_fail": "Coba Lagi! 😅",
     "won_by_speed": "Dimenangkan oleh Kecepatan! 🏎️",
-    "lost_by_speed": "Lawan Lebih Cepat! ⚠️"
+    "lost_by_speed": "Lawan Lebih Cepat! ⚠️",
+    "double_reward_desc": "Tonton video singkat dan dapatkan +{} token lagi!",
+    "double_reward_done": "Hadiah digandakan! +{} token ditambahkan.",
+    "double_reward_button": "2x"
   },
   "edit_profile": {
     "title": "Sunting Profil",
@@ -436,7 +442,19 @@
     "tap_to_preview": "Ketuk untuk melihat pratinjau",
     "Avatar 10": "Avatar 10",
     "mystery_avatar": "Avatar Misteri",
-    "title_none": "Tidak ada"
+    "title_none": "Tidak ada",
+    "powerups": "Power-up",
+    "streak_freeze_title": "Pembeku Streak",
+    "streak_freeze_desc": "Melewatkan sehari? Pembeku dipakai otomatis dan streak harianmu tetap aman. Kamu bisa menyimpan hingga {}.",
+    "streak_freeze_owned": "Dimiliki: {}/{}",
+    "streak_freeze_max": "Batas tercapai ({})",
+    "frame_mint": "Mint",
+    "frame_coral": "Koral",
+    "booster_title": "Penguat Token",
+    "booster_desc": "Menggandakan token dari {} kuis berikutnya.",
+    "booster_active": "Aktif: sisa {} kuis",
+    "booster_inactive": "Tidak aktif",
+    "booster_applied": "⚡ Penguat: +{} token tambahan!"
   },
   "past_tests": {
     "title": "Riwayat Tes",
@@ -546,7 +564,13 @@
     "reengage_3d_title": "🔥 Jangan hancurkan pukulanmu!",
     "reengage_3d_body": "Kembalilah dan temukan pertanyaan baru!",
     "reengage_7d_title": "💎 Kami merindukanmu!",
-    "reengage_7d_body": "Kejutan spesial menanti pemain yang kembali!"
+    "reengage_7d_body": "Kejutan spesial menanti pemain yang kembali!",
+    "league_ending_title": "⏳ Liga mingguan berakhir malam ini",
+    "league_ending_body": "Beberapa kuis bisa membuatmu naik liga. Jangan lewatkan promosinya!",
+    "streak_risk_title": "🔥 Streak-mu hampir putus!",
+    "streak_risk_body": "Selesaikan satu kuis hari ini untuk menjaga streak {} harimu!",
+    "social_channel_name": "Teman & Duel",
+    "social_channel_desc": "Permintaan pertemanan, undangan duel, dan colekan"
   },
   "level_system": {
     "level": "Tingkat",
@@ -614,7 +638,16 @@
     "quizzes_to_next": "{} kuis ke tingkat berikutnya",
     "category_mastery": "Kategori Penguasaan",
     "your_rank": "Peringkat Anda",
-    "climb_higher": "Naik lebih tinggi!"
+    "climb_higher": "Naik lebih tinggi!",
+    "day1_body": "Hadiah streak harian {} token menunggumu. Mainkan kuis dan klaim!",
+    "teaser_title": "🎁 Kembali besok!",
+    "teaser_body": "Pertahankan streak: klaim {} token, putar roda keberuntungan, dan selesaikan misi harian.",
+    "winback_3d_title": "🔥 Jangan kehilangan semangat!",
+    "winback_3d_body": "Sudah beberapa hari. Kembalilah, mainkan kuis, dan mulai ulang streak-mu!",
+    "winback_7d_title": "🏆 Teman-temanmu naik di liga!",
+    "winback_7d_body": "Teman-temanmu terus bermain. Ayo kembali dan naik liga juga!",
+    "winback_14d_title": "💎 Kami merindukanmu!",
+    "winback_14d_body": "Pertanyaan dan hadiah baru menunggumu. Kembali dan lihat yang baru!"
   },
   "quests": {
     "title": "Misi & Hadiah",
@@ -669,7 +702,27 @@
     "quiz_category": "Kuis",
     "duel_category": "Duel",
     "social_category": "Sosial",
-    "total_unlocked": "{}/{} Tidak Terkunci"
+    "total_unlocked": "{}/{} Tidak Terkunci",
+    "platinum_scholar_title": "Cendekiawan Platinum",
+    "platinum_scholar_desc": "Selesaikan total 500 kuis",
+    "duel_champion_title": "Juara Duel",
+    "duel_champion_desc": "Menangkan total 50 duel",
+    "duel_legend_title": "Legenda Duel",
+    "duel_legend_desc": "Menangkan total 100 duel",
+    "level_ten_title": "Ahli Level 10",
+    "level_ten_desc": "Capai Level 10",
+    "level_twenty_title": "Master Level 20",
+    "level_twenty_desc": "Capai Level 20",
+    "streak_week_title": "Membara",
+    "streak_week_desc": "Capai streak login 7 hari",
+    "streak_month_title": "Tak Terhentikan",
+    "streak_month_desc": "Capai streak login 30 hari",
+    "recruiter_title": "Perekrut",
+    "recruiter_desc": "Ajak seorang teman bergabung dengan kodemu",
+    "ambassador_title": "Duta",
+    "ambassador_desc": "Ajak 5 teman bergabung dengan kodemu",
+    "collector_title": "Kolektor Hebat",
+    "collector_desc": "Kumpulkan 10 item dari toko"
   },
   "duel": {
     "race_track": "BALAP DUEL",
@@ -811,7 +864,26 @@
     "kick_confirm_msg": "Apakah Anda yakin ingin mengeluarkan {} dari ruangan?",
     "kicked_from_room": "Anda diusir dari kamar oleh tuan rumah.",
     "special_bet_badge": "KHUSUS 🔥",
-    "fee_info": "{}% Biaya"
+    "fee_info": "{}% Biaya",
+    "category": "Kategori",
+    "difficulty": "Tingkat kesulitan",
+    "challenge_friend_title": "Tantang {}",
+    "challenge_sent": "Tantangan dikirim ke {}!",
+    "challenge_failed": "Tantangan gagal dikirim, tapi ruanganmu siap. Bagikan kode ruangan saja.",
+    "free_tickets": "{}/{} tiket duel gratis hari ini · untuk taruhan hingga {}",
+    "friendly": "Persahabatan",
+    "friendly_desc": "Pertandingan persahabatan: tanpa taruhan token. Kamu tetap dapat poin papan peringkat dan liga.",
+    "high_bet_real_only": "Hanya pemain sungguhan yang masuk ruang taruhan tinggi — bagikan kode ruanganmu!",
+    "host_no_response": "Tuan rumah tidak merespons. Coba ruangan lain.",
+    "result_cta_title": "Siap melawan lawan sungguhan?",
+    "result_cta_desc": "Skormu {}% di {}. Coba duel 1v1 di kategori ini!",
+    "result_cta_button": "Duel",
+    "share_room_text": "⚡ Gabung duel kuis 1v1-ku! Kode ruangan: {}",
+    "ticket_used": "Tiket gratis dipakai",
+    "quick_match": "Main Cepat",
+    "quick_match_sub": "Satu ketuk · lawan dalam hitungan detik",
+    "quick_match_searching": "Mencari lawan…",
+    "quick_match_hint": "Pakai tiket gratis jika ada, jika tidak pertandingan persahabatan."
   },
   "errors": {
     "no_internet_ai": "Anda memerlukan koneksi internet aktif untuk menghubungi AI kami. 📡",
@@ -836,10 +908,16 @@
     "wheel_spin_button": "Roda Putar 🔥",
     "wheel_done_today": "Selesai untuk Hari Ini",
     "streak_claim_today": "Klaim Hadiah Hari Ini 🎉",
-    "streak_ok": "OKE"
+    "streak_ok": "OKE",
+    "wheel_freeze_prize": "Pembeku Streak ❄️",
+    "wheel_freeze_short": "Pembeku"
   },
   "daily_streak": {
-    "day_num": "Hari {}"
+    "day_num": "Hari {}",
+    "freeze_used": "Streak kamu selamat! {} pembeku digunakan.",
+    "freezes_owned": "Pembeku: {}/{}",
+    "play_to_claim": "Selesaikan 1 kuis hari ini untuk klaim hadiah dan jaga streak-mu!",
+    "play_now": "Main kuis"
   },
   "friends": {
     "title": "Teman-teman",
@@ -879,7 +957,8 @@
     "friend_req_received_title": "Permintaan Pertemanan Baru! 👥",
     "friend_req_received_body": "{} mengirimi Anda permintaan pertemanan!",
     "request_received": "Permintaan Diterima! ⚡",
-    "accept_request": "Menerima"
+    "accept_request": "Menerima",
+    "accept": "Terima"
   },
   "review": {
     "card_title": "Nilai di Google Play",
@@ -896,7 +975,7 @@
   },
   "referral": {
     "title": "Undang Teman",
-    "desc": "Masukkan kode undangan teman untuk mendapatkan 500 Token! Bagikan kode Anda dan undang teman Anda.",
+    "desc": "Masukkan kode undangan teman dan dapatkan 500 token setelah kuis pertamamu! Bagikan kodemu dan ajak teman-temanmu.",
     "your_code": "KODE UNDANGAN ANDA",
     "enter_code": "Masukkan Kode Undangan (+500 Token)",
     "hint": "MASUKKAN KODE",
@@ -905,10 +984,64 @@
     "share_button": "Membagikan",
     "copy_button": "Menyalin",
     "code_copied": "Kode undangan disalin! 📋",
-    "share_msg": "🏆 Bergabunglah dengan saya di Arena Kuis! Gunakan kode undangan saya untuk mendapatkan 500 Token secara instan:\n👉 Kode: {}\n📲 Unduh Aplikasi: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "share_msg": "🏆 Bergabunglah dengan saya di Arena Kuis! Gunakan kode undangan saya untuk mendapatkan 500 token setelah kuis pertamamu:\n👉 Kode: {}\n📲 Unduh Aplikasi: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
     "success": "Selamat! {} Token ditambahkan ke akun Anda! 🎉",
     "already_used": "Anda telah menggunakan kode undangan.",
     "own_code": "Anda tidak dapat menggunakan kode undangan Anda sendiri.",
-    "invalid_code": "Kode undangan tidak valid atau tidak ada."
+    "invalid_code": "Kode undangan tidak valid atau tidak ada.",
+    "pending": "Kode undangan tersimpan! Kamu dan temanmu mendapat token setelah menyelesaikan kuis pertama."
+  },
+  "share": {
+    "button": "Bagikan",
+    "copied": "Disalin ke papan klip",
+    "quiz_result": "Aku dapat {}/{} di kuis {} di {}! 🧠 Bisa kalahkan aku?",
+    "duel_win": "Aku mengalahkan {} {}-{} dalam duel kuis 1v1 di {}! ⚔️ Berani tantang aku?",
+    "duel_played": "Aku baru main duel kuis 1v1 melawan {} di {}! ⚔️ Tantang aku!",
+    "achievement": "Aku membuka lencana \"{}\" di {}! 🏅"
+  },
+  "league": {
+    "title": "Liga Mingguan",
+    "bronze": "Liga Perunggu",
+    "silver": "Liga Perak",
+    "gold": "Liga Emas",
+    "platinum": "Liga Platinum",
+    "diamond": "Liga Berlian",
+    "ends_in": "Berakhir dalam {}h {}j",
+    "how_it_works": "Kumpulkan poin dari kuis dan duel. Di akhir minggu, {}% teratas naik liga dan yang terbawah turun.",
+    "empty": "Belum ada yang mencetak poin di liga ini minggu ini. Main kuis dan pimpin!",
+    "points": "poin",
+    "promoted_title": "Naik liga!",
+    "promoted_desc": "Minggu yang hebat! Kamu naik ke {} dan dapat {} token.",
+    "demoted_title": "Liga berubah",
+    "demoted_desc": "Minggu ini kamu di {}. Main beberapa kuis untuk naik lagi!",
+    "view": "Lihat liga",
+    "result_promoted_sub": "Kerja kerasmu membuahkan hasil. Pertahankan semangat di ligamu yang baru!",
+    "result_demoted_sub": "Setiap juara pernah mengalami minggu yang berat. Beberapa kuis lagi dan kamu kembali ke puncak!",
+    "result_rank": "Peringkat minggu lalu: #{}",
+    "result_reward": "+{} token",
+    "share": "Bagikan",
+    "continue": "Lanjut",
+    "share_text": "Sekarang aku di {} di Quiz Arena! Bisakah kamu mengalahkanku?"
+  },
+  "daily_challenge": {
+    "title": "Tantangan Harian",
+    "badge": "BARU",
+    "card_sub": "5 soal yang sama untuk semua · peringkat harian",
+    "rules": "Hari ini semua orang dapat {} soal yang sama. Hanya satu kesempatan — tiap jawaban benar memberi {} token. Cepatlah: waktu menentukan jika seri!",
+    "start": "Mulai tantangan hari ini",
+    "leaderboard": "Peringkat hari ini",
+    "empty": "Belum ada yang main hari ini — jadilah yang pertama!",
+    "rank": "Peringkat #{} dari {} · {} dtk",
+    "come_back": "Tantangan baru terbuka besok. Bagikan hasilmu dan tantang temanmu!",
+    "reward": "Tantangan harian selesai! +{} token",
+    "share_text": "{} · Tantangan Harian {}\n{}/{} {}\n🏆 {}"
+  },
+  "streak_rescue": {
+    "title": "Streak kamu hampir berakhir!",
+    "body": "Kamu melewatkan satu hari dan kehilangan streak {} hari. Hari ini kamu masih bisa menyelamatkannya!",
+    "watch_ad": "Tonton iklan untuk menyelamatkan",
+    "pay_tokens": "Selamatkan dengan {} token",
+    "no_thanks": "Tidak, terima kasih, mulai ulang",
+    "not_enough_tokens": "Token tidak cukup."
   }
 }

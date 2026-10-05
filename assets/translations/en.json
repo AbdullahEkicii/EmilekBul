@@ -222,7 +222,8 @@
     "guest_user": "Guest User",
     "more": "More",
     "new": "NEW",
-    "see_all": "See All"
+    "see_all": "See All",
+    "ad_not_ready": "The ad isn't ready yet. Please try again in a moment."
   },
   "account": {
     "title": "My Profile",
@@ -255,7 +256,9 @@
     "full_screen": "Full Screen",
     "full_screen_desc": "Hide status bar for immersive view",
     "language": "Language",
-    "language_desc": "Change app language"
+    "language_desc": "Change app language",
+    "privacy_options": "Privacy options",
+    "privacy_options_desc": "Manage your ad consent choices"
   },
   "quiz": {
     "question_progress": "Question {}/{}",
@@ -311,7 +314,10 @@
     "msg_poor": "You Can Do Better! 🤔",
     "msg_fail": "Try Again! 😅",
     "won_by_speed": "Won by Speed! 🏎️",
-    "lost_by_speed": "Opponent was Faster! ⚠️"
+    "lost_by_speed": "Opponent was Faster! ⚠️",
+    "double_reward_desc": "Watch a short video and get +{} more tokens!",
+    "double_reward_done": "Reward doubled! +{} tokens added.",
+    "double_reward_button": "2x"
   },
   "edit_profile": {
     "title": "Edit Profile",
@@ -437,7 +443,19 @@
     "tap_to_preview": "Tap to preview",
     "Avatar 10": "Avatar 10",
     "mystery_avatar": "Mystery Avatar",
-    "title_none": "None"
+    "title_none": "None",
+    "powerups": "Power-ups",
+    "streak_freeze_title": "Streak Freeze",
+    "streak_freeze_desc": "Missed a day? A freeze is used automatically and your daily streak stays alive. You can hold up to {}.",
+    "streak_freeze_owned": "Owned: {}/{}",
+    "streak_freeze_max": "Limit reached ({})",
+    "frame_mint": "Mint",
+    "frame_coral": "Coral",
+    "booster_title": "Token Booster",
+    "booster_desc": "Double the tokens you earn from your next {} quizzes.",
+    "booster_active": "Active: {} quizzes left",
+    "booster_inactive": "Not active",
+    "booster_applied": "⚡ Booster: +{} extra tokens!"
   },
   "past_tests": {
     "title": "Test History",
@@ -547,7 +565,13 @@
     "reengage_3d_title": "🔥 Don't break your streak!",
     "reengage_3d_body": "Come back and discover new questions!",
     "reengage_7d_title": "💎 We miss you!",
-    "reengage_7d_body": "Special surprises await returning players!"
+    "reengage_7d_body": "Special surprises await returning players!",
+    "league_ending_title": "⏳ The weekly league ends tonight",
+    "league_ending_body": "A couple of quizzes could move you up a league. Don't miss the promotion!",
+    "streak_risk_title": "🔥 Your streak is about to break!",
+    "streak_risk_body": "Solve one quiz today to keep your {}-day streak alive!",
+    "social_channel_name": "Friends & Duels",
+    "social_channel_desc": "Friend requests, duel invites and pokes"
   },
   "level_system": {
     "level": "Level",
@@ -615,7 +639,16 @@
     "quizzes_to_next": "{} quizzes to next level",
     "category_mastery": "Category Mastery",
     "your_rank": "Your Rank",
-    "climb_higher": "Climb higher!"
+    "climb_higher": "Climb higher!",
+    "day1_body": "Your daily streak reward of {} tokens is waiting. Play a quiz and claim it!",
+    "teaser_title": "🎁 Come back tomorrow!",
+    "teaser_body": "Keep your streak going: claim {} tokens, spin the lucky wheel and finish daily quests.",
+    "winback_3d_title": "🔥 Don't lose your momentum!",
+    "winback_3d_body": "It's been a few days. Come back, play a quiz and restart your streak!",
+    "winback_7d_title": "🏆 Your friends are climbing the league!",
+    "winback_7d_body": "Your friends keep playing. Jump back in and climb the league too!",
+    "winback_14d_title": "💎 We miss you!",
+    "winback_14d_body": "New questions and rewards are waiting. Come back and see what's new!"
   },
   "quests": {
     "title": "Quests & Rewards",
@@ -670,7 +703,27 @@
     "quiz_category": "Quizzes",
     "duel_category": "Duels",
     "social_category": "Social",
-    "total_unlocked": "{}/{} Unlocked"
+    "total_unlocked": "{}/{} Unlocked",
+    "platinum_scholar_title": "Platinum Scholar",
+    "platinum_scholar_desc": "Complete 500 quizzes in total",
+    "duel_champion_title": "Duel Champion",
+    "duel_champion_desc": "Win 50 duel matches in total",
+    "duel_legend_title": "Duel Legend",
+    "duel_legend_desc": "Win 100 duel matches in total",
+    "level_ten_title": "Level 10 Expert",
+    "level_ten_desc": "Reach Level 10",
+    "level_twenty_title": "Level 20 Master",
+    "level_twenty_desc": "Reach Level 20",
+    "streak_week_title": "On Fire",
+    "streak_week_desc": "Reach a 7-day login streak",
+    "streak_month_title": "Unstoppable",
+    "streak_month_desc": "Reach a 30-day login streak",
+    "recruiter_title": "Recruiter",
+    "recruiter_desc": "Get a friend to join with your invite code",
+    "ambassador_title": "Ambassador",
+    "ambassador_desc": "Get 5 friends to join with your invite code",
+    "collector_title": "Grand Collector",
+    "collector_desc": "Collect 10 items from the shop"
   },
   "duel": {
     "race_track": "DUEL RACE",
@@ -812,7 +865,26 @@
     "kick_confirm_msg": "Are you sure you want to kick {} from the room?",
     "kicked_from_room": "You were kicked from the room by the host.",
     "special_bet_badge": "SPECIAL 🔥",
-    "fee_info": "{}% Fee"
+    "fee_info": "{}% Fee",
+    "category": "Category",
+    "difficulty": "Difficulty",
+    "challenge_friend_title": "Challenge {}",
+    "challenge_sent": "Challenge sent to {}!",
+    "challenge_failed": "The challenge couldn't be sent, but your room is ready. Share the room code instead.",
+    "free_tickets": "{}/{} free duel tickets today · for bets up to {}",
+    "friendly": "Friendly",
+    "friendly_desc": "Friendly match: no tokens at stake. You still earn leaderboard and league points.",
+    "high_bet_real_only": "Only real players join high-stakes rooms — share your room code!",
+    "host_no_response": "The host didn't respond. Try another room.",
+    "result_cta_title": "Ready for a real rival?",
+    "result_cta_desc": "You scored {}% in {}. Try a 1v1 duel in this category!",
+    "result_cta_button": "Duel",
+    "share_room_text": "⚡ Join my 1v1 quiz duel! Room code: {}",
+    "ticket_used": "Free ticket used",
+    "quick_match": "Quick Match",
+    "quick_match_sub": "One tap · opponent in seconds",
+    "quick_match_searching": "Finding an opponent…",
+    "quick_match_hint": "Free ticket if you have one, otherwise a friendly match."
   },
   "errors": {
     "no_internet_ai": "You need an active internet connection to reach our AI. 📡",
@@ -840,10 +912,16 @@
     "wheel_spin_button": "Spin Wheel 🔥",
     "wheel_done_today": "Done for Today",
     "streak_claim_today": "Claim Today's Reward 🎉",
-    "streak_ok": "OK"
+    "streak_ok": "OK",
+    "wheel_freeze_prize": "Streak Freeze ❄️",
+    "wheel_freeze_short": "Freeze"
   },
   "daily_streak": {
-    "day_num": "Day {}"
+    "day_num": "Day {}",
+    "freeze_used": "Your streak was saved! {} freeze(s) used.",
+    "freezes_owned": "Freezes: {}/{}",
+    "play_to_claim": "Solve 1 quiz today to claim your reward and keep your streak!",
+    "play_now": "Play a quiz"
   },
   "friends": {
     "title": "Friends",
@@ -883,7 +961,8 @@
     "friend_req_received_title": "New Friend Request! 👥",
     "friend_req_received_body": "{} sent you a friend request!",
     "request_received": "Request Received! ⚡",
-    "accept_request": "Accept"
+    "accept_request": "Accept",
+    "accept": "Accept"
   },
   "review": {
     "card_title": "Rate on Google Play",
@@ -900,7 +979,7 @@
   },
   "referral": {
     "title": "Invite Friends",
-    "desc": "Enter a friend's invite code to earn 500 Tokens! Share your code and invite your friends.",
+    "desc": "Enter a friend's invite code and earn 500 Tokens after your first quiz! Share your code and invite your friends.",
     "your_code": "YOUR INVITE CODE",
     "enter_code": "Enter Invite Code (+500 Tokens)",
     "hint": "ENTER CODE",
@@ -909,10 +988,64 @@
     "share_button": "Share",
     "copy_button": "Copy",
     "code_copied": "Invite code copied! 📋",
-    "share_msg": "🏆 Join me in Quiz Arena! Use my invite code to get 500 Tokens instantly:\n👉 Code: {}\n📲 Download App: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "share_msg": "🏆 Join me in Quiz Arena! Use my invite code to get 500 Tokens after your first quiz:\n👉 Code: {}\n📲 Download App: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
     "success": "Congratulations! {} Tokens added to your account! 🎉",
     "already_used": "You have already used an invite code.",
     "own_code": "You cannot use your own invite code.",
-    "invalid_code": "Invalid or non-existent invite code."
+    "invalid_code": "Invalid or non-existent invite code.",
+    "pending": "Invite code saved! You and your friend get your Tokens when you finish your first quiz."
+  },
+  "share": {
+    "button": "Share",
+    "copied": "Copied to clipboard",
+    "quiz_result": "I scored {}/{} in the {} quiz on {}! 🧠 Can you beat me?",
+    "duel_win": "I beat {} {}-{} in a 1v1 quiz duel on {}! ⚔️ Think you can take me on?",
+    "duel_played": "I just played a 1v1 quiz duel against {} on {}! ⚔️ Challenge me next!",
+    "achievement": "I unlocked the \"{}\" badge on {}! 🏅"
+  },
+  "league": {
+    "title": "Weekly League",
+    "bronze": "Bronze League",
+    "silver": "Silver League",
+    "gold": "Gold League",
+    "platinum": "Platinum League",
+    "diamond": "Diamond League",
+    "ends_in": "Ends in {}d {}h",
+    "how_it_works": "Earn points from quizzes and duels. At the end of the week the top {}% move up a league and the bottom players move down.",
+    "empty": "No one has scored in this league yet this week. Play a quiz and take the lead!",
+    "points": "pts",
+    "promoted_title": "Promoted!",
+    "promoted_desc": "Great week! You moved up to the {} and earned {} tokens.",
+    "demoted_title": "League changed",
+    "demoted_desc": "You're in the {} this week. Play a few quizzes to climb back up!",
+    "view": "View league",
+    "result_promoted_sub": "Your hard work paid off. Keep the momentum going in your new league!",
+    "result_demoted_sub": "Every champion has had a tough week. A few quizzes and you'll be back on top!",
+    "result_rank": "Last week's rank: #{}",
+    "result_reward": "+{} tokens",
+    "share": "Share",
+    "continue": "Continue",
+    "share_text": "I'm now in the {} on Quiz Arena! Can you beat me?"
+  },
+  "daily_challenge": {
+    "title": "Daily Challenge",
+    "badge": "NEW",
+    "card_sub": "Same 5 questions for everyone · daily ranking",
+    "rules": "Everyone gets the same {} questions today. One attempt only — each correct answer earns {} tokens. Be fast: time breaks ties!",
+    "start": "Start today's challenge",
+    "leaderboard": "Today's ranking",
+    "empty": "Nobody has played yet today — be the first!",
+    "rank": "Rank #{} of {} · {}s",
+    "come_back": "A new challenge unlocks tomorrow. Share your result and challenge your friends!",
+    "reward": "Daily challenge complete! +{} tokens",
+    "share_text": "{} · Daily Challenge {}\n{}/{} {}\n🏆 {}"
+  },
+  "streak_rescue": {
+    "title": "Your streak is about to end!",
+    "body": "You missed a day and lost your {} day streak. You can still save it today!",
+    "watch_ad": "Watch an ad to save it",
+    "pay_tokens": "Save with {} tokens",
+    "no_thanks": "No thanks, start over",
+    "not_enough_tokens": "Not enough tokens."
   }
 }

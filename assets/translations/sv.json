@@ -222,7 +222,8 @@
     "guest_user": "Gästanvändare",
     "more": "Mer",
     "new": "NY",
-    "see_all": "Se alla"
+    "see_all": "Se alla",
+    "ad_not_ready": "Annonsen är inte redo än. Försök igen om en stund."
   },
   "account": {
     "title": "Min profil",
@@ -255,7 +256,9 @@
     "full_screen": "Helskärm",
     "full_screen_desc": "Startar appen i helskärmsläge (döljer navigeringsfältet)",
     "language": "Språk",
-    "language_desc": "Ändra appens språk"
+    "language_desc": "Ändra appens språk",
+    "privacy_options": "Integritetsalternativ",
+    "privacy_options_desc": "Hantera ditt annonssamtycke"
   },
   "quiz": {
     "question_progress": "Fråga {}/{}",
@@ -311,7 +314,10 @@
     "msg_poor": "Du kan göra bättre! 🤔",
     "msg_fail": "Försök igen! 😅",
     "won_by_speed": "Vann av Speed! 🏎️",
-    "lost_by_speed": "Motståndaren var snabbare! ⚠️"
+    "lost_by_speed": "Motståndaren var snabbare! ⚠️",
+    "double_reward_desc": "Titta på en kort video och få +{} tokens till!",
+    "double_reward_done": "Belöningen fördubblad! +{} tokens tillagda.",
+    "double_reward_button": "2x"
   },
   "edit_profile": {
     "title": "Redigera profil",
@@ -436,7 +442,19 @@
     "tap_to_preview": "Tryck för att förhandsgranska",
     "Avatar 10": "Avatar 10",
     "mystery_avatar": "Mystisk avatar",
-    "title_none": "Ingen"
+    "title_none": "Ingen",
+    "powerups": "Power-ups",
+    "streak_freeze_title": "Sviefrysning",
+    "streak_freeze_desc": "Missade du en dag? En frysning används automatiskt och din svit lever vidare. Du kan ha upp till {}.",
+    "streak_freeze_owned": "Ägda: {}/{}",
+    "streak_freeze_max": "Gränsen nådd ({})",
+    "frame_mint": "Mint",
+    "frame_coral": "Korall",
+    "booster_title": "Tokenboost",
+    "booster_desc": "Fördubblar tokens från dina nästa {} quiz.",
+    "booster_active": "Aktiv: {} quiz kvar",
+    "booster_inactive": "Inte aktiv",
+    "booster_applied": "⚡ Boost: +{} extra tokens!"
   },
   "past_tests": {
     "title": "Testhistorik",
@@ -546,7 +564,13 @@
     "reengage_3d_title": "🔥 Bryt inte din strimma!",
     "reengage_3d_body": "Kom tillbaka och upptäck nya frågor!",
     "reengage_7d_title": "💎 Vi saknar dig!",
-    "reengage_7d_body": "Särskilda överraskningar väntar återvändande spelare!"
+    "reengage_7d_body": "Särskilda överraskningar väntar återvändande spelare!",
+    "league_ending_title": "⏳ Veckoligan slutar i kväll",
+    "league_ending_body": "Några quiz kan ge dig uppflyttning. Missa den inte!",
+    "streak_risk_title": "🔥 Din svit är på väg att brytas!",
+    "streak_risk_body": "Lös ett quiz i dag för att behålla din svit på {} dagar!",
+    "social_channel_name": "Vänner & dueller",
+    "social_channel_desc": "Vänförfrågningar, duellinbjudningar och puffar"
   },
   "level_system": {
     "level": "Nivå",
@@ -614,7 +638,16 @@
     "quizzes_to_next": "{} frågesporter till nästa nivå",
     "category_mastery": "Kategori Mastery",
     "your_rank": "Din rang",
-    "climb_higher": "Klättra högre!"
+    "climb_higher": "Klättra högre!",
+    "day1_body": "Din dagliga svitbelöning på {} tokens väntar. Spela ett quiz och hämta den!",
+    "teaser_title": "🎁 Kom tillbaka imorgon!",
+    "teaser_body": "Håll din svit vid liv: hämta {} tokens, snurra lyckohjulet och klara de dagliga uppdragen.",
+    "winback_3d_title": "🔥 Tappa inte farten!",
+    "winback_3d_body": "Det har gått några dagar. Kom tillbaka, spela ett quiz och starta din svit igen!",
+    "winback_7d_title": "🏆 Dina vänner klättrar i ligan!",
+    "winback_7d_body": "Dina vänner fortsätter spela. Hoppa in igen och klättra i ligan du också!",
+    "winback_14d_title": "💎 Vi saknar dig!",
+    "winback_14d_body": "Nya frågor och belöningar väntar. Kom tillbaka och se vad som är nytt!"
   },
   "quests": {
     "title": "Uppdrag och belöningar",
@@ -669,7 +702,27 @@
     "quiz_category": "Frågesporter",
     "duel_category": "Dueller",
     "social_category": "Social",
-    "total_unlocked": "{}/{} upplåst"
+    "total_unlocked": "{}/{} upplåst",
+    "platinum_scholar_title": "Platinalärd",
+    "platinum_scholar_desc": "Slutför totalt 500 quiz",
+    "duel_champion_title": "Duellmästare",
+    "duel_champion_desc": "Vinn totalt 50 dueller",
+    "duel_legend_title": "Duellegend",
+    "duel_legend_desc": "Vinn totalt 100 dueller",
+    "level_ten_title": "Nivå 10-expert",
+    "level_ten_desc": "Nå nivå 10",
+    "level_twenty_title": "Nivå 20-mästare",
+    "level_twenty_desc": "Nå nivå 20",
+    "streak_week_title": "I farten",
+    "streak_week_desc": "Nå en svit på 7 dagar",
+    "streak_month_title": "Ostoppbar",
+    "streak_month_desc": "Nå en svit på 30 dagar",
+    "recruiter_title": "Rekryterare",
+    "recruiter_desc": "Bjud in en vän med din kod",
+    "ambassador_title": "Ambassadör",
+    "ambassador_desc": "Bjud in 5 vänner med din kod",
+    "collector_title": "Storsamlare",
+    "collector_desc": "Samla 10 föremål från butiken"
   },
   "duel": {
     "race_track": "DUELLÖP",
@@ -811,7 +864,26 @@
     "kick_confirm_msg": "Är du säker på att du vill sparka {} från rummet?",
     "kicked_from_room": "Du blev sparkad från rummet av värden.",
     "special_bet_badge": "SPECIAL 🔥",
-    "fee_info": "{} % avgift"
+    "fee_info": "{} % avgift",
+    "category": "Kategori",
+    "difficulty": "Svårighet",
+    "challenge_friend_title": "Utmana {}",
+    "challenge_sent": "Utmaning skickad till {}!",
+    "challenge_failed": "Utmaningen kunde inte skickas, men ditt rum är klart. Dela rumskoden i stället.",
+    "free_tickets": "{}/{} gratis duellbiljetter i dag · för insatser upp till {}",
+    "friendly": "Vänskap",
+    "friendly_desc": "Vänskapsmatch: inga tokens insatta. Du får ändå topplista- och ligapoäng.",
+    "high_bet_real_only": "Bara riktiga spelare går med i rum med hög insats — dela din rumskod!",
+    "host_no_response": "Värden svarade inte. Prova ett annat rum.",
+    "result_cta_title": "Redo för en riktig motståndare?",
+    "result_cta_desc": "Du fick {} % i {}. Testa en 1v1-duell i den här kategorin!",
+    "result_cta_button": "Duell",
+    "share_room_text": "⚡ Gå med i min 1v1-quizduell! Rumskod: {}",
+    "ticket_used": "Gratisbiljett använd",
+    "quick_match": "Snabbmatch",
+    "quick_match_sub": "Ett tryck · motståndare på sekunder",
+    "quick_match_searching": "Letar efter motståndare…",
+    "quick_match_hint": "Med gratisbiljett om du har en, annars vänskapsmatch."
   },
   "errors": {
     "no_internet_ai": "Du behöver en aktiv internetanslutning för att nå vår AI. 📡",
@@ -836,10 +908,16 @@
     "wheel_spin_button": "Snurra hjul 🔥",
     "wheel_done_today": "Klart för idag",
     "streak_claim_today": "Hämta dagens belöning 🎉",
-    "streak_ok": "OK"
+    "streak_ok": "OK",
+    "wheel_freeze_prize": "Sviefrysning ❄️",
+    "wheel_freeze_short": "Frysning"
   },
   "daily_streak": {
-    "day_num": "Dag {}"
+    "day_num": "Dag {}",
+    "freeze_used": "Din svit räddades! {} frysning(ar) användes.",
+    "freezes_owned": "Frysningar: {}/{}",
+    "play_to_claim": "Lös 1 quiz i dag för att hämta belöningen och behålla din svit!",
+    "play_now": "Spela ett quiz"
   },
   "friends": {
     "title": "Vänner",
@@ -879,7 +957,8 @@
     "friend_req_received_title": "Ny vänförfrågan! 👥",
     "friend_req_received_body": "{} skickade en vänförfrågan till dig!",
     "request_received": "Förfrågan mottagen! ⚡",
-    "accept_request": "Acceptera"
+    "accept_request": "Acceptera",
+    "accept": "Acceptera"
   },
   "review": {
     "card_title": "Betygsätt på Google Play",
@@ -896,7 +975,7 @@
   },
   "referral": {
     "title": "Bjud in vänner",
-    "desc": "Ange en väns inbjudningskod för att tjäna 500 tokens! Dela din kod och bjud in dina vänner.",
+    "desc": "Ange en väns inbjudningskod och få 500 tokens efter ditt första quiz! Dela din kod och bjud in dina vänner.",
     "your_code": "DIN INBJUDNINGSKOD",
     "enter_code": "Ange inbjudningskod (+500 tokens)",
     "hint": "SKRIV IN KOD",
@@ -905,10 +984,64 @@
     "share_button": "Dela",
     "copy_button": "Kopiera",
     "code_copied": "Inbjudningskoden har kopierats! 📋",
-    "share_msg": "🏆 Följ med mig i Quiz Arena! Använd min inbjudningskod för att få 500 tokens direkt:\n👉 Kod: {}\n📲 Ladda ner appen: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "share_msg": "🏆 Följ med mig i Quiz Arena! Använd min inbjudningskod och få 500 tokens efter ditt första quiz:\n👉 Kod: {}\n📲 Ladda ner appen: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
     "success": "Grattis! {} Tokens har lagts till på ditt konto! 🎉",
     "already_used": "Du har redan använt en inbjudningskod.",
     "own_code": "Du kan inte använda din egen inbjudningskod.",
-    "invalid_code": "Ogiltig eller obefintlig inbjudningskod."
+    "invalid_code": "Ogiltig eller obefintlig inbjudningskod.",
+    "pending": "Inbjudningskod sparad! Du och din vän får era tokens när ni avslutar ert första quiz."
+  },
+  "share": {
+    "button": "Dela",
+    "copied": "Kopierat till urklipp",
+    "quiz_result": "Jag fick {}/{} i {}-quizet på {}! 🧠 Kan du slå mig?",
+    "duel_win": "Jag slog {} med {}-{} i en 1v1-quizduell på {}! ⚔️ Vågar du utmana mig?",
+    "duel_played": "Jag spelade precis en 1v1-quizduell mot {} på {}! ⚔️ Utmana mig!",
+    "achievement": "Jag låste upp märket \"{}\" på {}! 🏅"
+  },
+  "league": {
+    "title": "Veckoliga",
+    "bronze": "Bronsligan",
+    "silver": "Silverligan",
+    "gold": "Guldligan",
+    "platinum": "Platinaligan",
+    "diamond": "Diamantligan",
+    "ends_in": "Slutar om {} d {} h",
+    "how_it_works": "Samla poäng i quiz och dueller. I slutet av veckan flyttas de bästa {} % upp och de sista ner.",
+    "empty": "Ingen har fått poäng i den här ligan än den här veckan. Spela ett quiz och ta ledningen!",
+    "points": "p",
+    "promoted_title": "Uppflyttad!",
+    "promoted_desc": "Grym vecka! Du flyttades upp till {} och fick {} tokens.",
+    "demoted_title": "Ligan ändrad",
+    "demoted_desc": "Den här veckan är du i {}. Spela några quiz för att klättra upp igen!",
+    "view": "Visa ligan",
+    "result_promoted_sub": "Ditt hårda arbete lönade sig. Behåll farten i din nya liga!",
+    "result_demoted_sub": "Alla mästare har haft en tuff vecka. Några quiz till så är du tillbaka på toppen!",
+    "result_rank": "Placering förra veckan: #{}",
+    "result_reward": "+{} tokens",
+    "share": "Dela",
+    "continue": "Fortsätt",
+    "share_text": "Jag är nu i {} på Quiz Arena! Kan du slå mig?"
+  },
+  "daily_challenge": {
+    "title": "Dagens utmaning",
+    "badge": "NY",
+    "card_sub": "Samma 5 frågor för alla · daglig topplista",
+    "rules": "I dag får alla samma {} frågor. Bara ett försök — varje rätt svar ger {} tokens. Var snabb: tiden avgör vid lika!",
+    "start": "Starta dagens utmaning",
+    "leaderboard": "Dagens topplista",
+    "empty": "Ingen har spelat än i dag — bli först!",
+    "rank": "Placering #{} av {} · {} s",
+    "come_back": "En ny utmaning låses upp i morgon. Dela ditt resultat och utmana dina vänner!",
+    "reward": "Dagens utmaning klar! +{} tokens",
+    "share_text": "{} · Dagens utmaning {}\n{}/{} {}\n🏆 {}"
+  },
+  "streak_rescue": {
+    "title": "Din svit håller på att ta slut!",
+    "body": "Du missade en dag och förlorade din svit på {} dagar. Du kan fortfarande rädda den idag!",
+    "watch_ad": "Titta på en annons för att rädda den",
+    "pay_tokens": "Rädda med {} tokens",
+    "no_thanks": "Nej tack, börja om",
+    "not_enough_tokens": "Inte tillräckligt med tokens."
   }
 }

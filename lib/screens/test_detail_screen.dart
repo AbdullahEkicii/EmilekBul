@@ -1,3 +1,4 @@
+import '../services/performance_service.dart';
 import 'package:emilekbul/models/test_result.dart';
 import 'package:flutter/material.dart';
 import '../widgets/my_native_ad.dart';
@@ -25,7 +26,10 @@ class _TestDetailScreenState extends State<TestDetailScreen>
     _orbController = AnimationController(
       duration: const Duration(seconds: 15),
       vsync: this,
-    )..repeat(reverse: true);
+    );
+    if (!PerformanceService.isPerformanceMode) {
+      _orbController.repeat(reverse: true);
+    }
 
     _orbAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _orbController, curve: Curves.easeInOut),
@@ -117,8 +121,6 @@ class _TestDetailScreenState extends State<TestDetailScreen>
                   padding: EdgeInsets.symmetric(horizontal: 20, vertical: 5),
                   child: MyNativeAd(
                     height: 65,
-                    factoryId: 'adFactorySmall',
-                    refreshInterval: 30,
                   ),
                 ),
               ],

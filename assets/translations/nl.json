@@ -222,7 +222,8 @@
     "guest_user": "Gastgebruiker",
     "more": "Meer",
     "new": "NIEUW",
-    "see_all": "Bekijk alles"
+    "see_all": "Bekijk alles",
+    "ad_not_ready": "De advertentie is nog niet klaar. Probeer het zo opnieuw."
   },
   "account": {
     "title": "Mijn profiel",
@@ -255,7 +256,9 @@
     "full_screen": "Volledig scherm",
     "full_screen_desc": "Start de app op volledig scherm (verbergt de navigatiebalk)",
     "language": "Taal",
-    "language_desc": "Wijzig de app-taal"
+    "language_desc": "Wijzig de app-taal",
+    "privacy_options": "Privacyopties",
+    "privacy_options_desc": "Beheer je advertentietoestemming"
   },
   "quiz": {
     "question_progress": "Vraag {}/{}",
@@ -311,7 +314,10 @@
     "msg_poor": "Je kunt het beter doen! 🤔",
     "msg_fail": "Probeer het opnieuw! 😅",
     "won_by_speed": "Gewonnen door snelheid! 🏎️",
-    "lost_by_speed": "Tegenstander was sneller! ⚠️"
+    "lost_by_speed": "Tegenstander was sneller! ⚠️",
+    "double_reward_desc": "Bekijk een korte video en krijg +{} extra tokens!",
+    "double_reward_done": "Beloning verdubbeld! +{} tokens toegevoegd.",
+    "double_reward_button": "2x"
   },
   "edit_profile": {
     "title": "Profiel bewerken",
@@ -436,7 +442,19 @@
     "tap_to_preview": "Tik om een ​​voorbeeld te bekijken",
     "Avatar 10": "Avatar10",
     "mystery_avatar": "Mysterieuze avatar",
-    "title_none": "Geen"
+    "title_none": "Geen",
+    "powerups": "Power-ups",
+    "streak_freeze_title": "Reeksbevriezing",
+    "streak_freeze_desc": "Een dag gemist? Een bevriezing wordt automatisch gebruikt en je dagelijkse reeks blijft staan. Je kunt er maximaal {} hebben.",
+    "streak_freeze_owned": "In bezit: {}/{}",
+    "streak_freeze_max": "Limiet bereikt ({})",
+    "frame_mint": "Munt",
+    "frame_coral": "Koraal",
+    "booster_title": "Tokenbooster",
+    "booster_desc": "Verdubbelt de tokens van je volgende {} quizzen.",
+    "booster_active": "Actief: nog {} quizzen",
+    "booster_inactive": "Niet actief",
+    "booster_applied": "⚡ Booster: +{} extra tokens!"
   },
   "past_tests": {
     "title": "Testgeschiedenis",
@@ -546,7 +564,13 @@
     "reengage_3d_title": "🔥Breek je streak niet!",
     "reengage_3d_body": "Kom terug en ontdek nieuwe vragen!",
     "reengage_7d_title": "💎 Wij missen je!",
-    "reengage_7d_body": "Er staan ​​speciale verrassingen te wachten op terugkerende spelers!"
+    "reengage_7d_body": "Er staan ​​speciale verrassingen te wachten op terugkerende spelers!",
+    "league_ending_title": "⏳ De weekcompetitie eindigt vanavond",
+    "league_ending_body": "Een paar quizzen kunnen je laten promoveren. Mis het niet!",
+    "streak_risk_title": "🔥 Je reeks staat op het punt te breken!",
+    "streak_risk_body": "Los vandaag één quiz op om je reeks van {} dagen te houden!",
+    "social_channel_name": "Vrienden & duels",
+    "social_channel_desc": "Vriendschapsverzoeken, duelluitnodigingen en porren"
   },
   "level_system": {
     "level": "Niveau",
@@ -614,7 +638,16 @@
     "quizzes_to_next": "{} quizzen naar het volgende niveau",
     "category_mastery": "Categorie Meesterschap",
     "your_rank": "Jouw rang",
-    "climb_higher": "Klim hoger!"
+    "climb_higher": "Klim hoger!",
+    "day1_body": "Je dagelijkse reeksbeloning van {} tokens wacht op je. Speel een quiz en claim hem!",
+    "teaser_title": "🎁 Kom morgen terug!",
+    "teaser_body": "Houd je reeks vol: claim {} tokens, draai aan het rad van fortuin en voltooi de dagelijkse missies.",
+    "winback_3d_title": "🔥 Verlies je momentum niet!",
+    "winback_3d_body": "Het is een paar dagen geleden. Kom terug, speel een quiz en start je reeks opnieuw!",
+    "winback_7d_title": "🏆 Je vrienden klimmen in de competitie!",
+    "winback_7d_body": "Je vrienden blijven spelen. Stap weer in en klim ook in de competitie!",
+    "winback_14d_title": "💎 We missen je!",
+    "winback_14d_body": "Nieuwe vragen en beloningen wachten op je. Kom terug en ontdek wat er nieuw is!"
   },
   "quests": {
     "title": "Quests en beloningen",
@@ -669,7 +702,27 @@
     "quiz_category": "Quizzen",
     "duel_category": "Duels",
     "social_category": "Sociaal",
-    "total_unlocked": "{}/{} Ontgrendeld"
+    "total_unlocked": "{}/{} Ontgrendeld",
+    "platinum_scholar_title": "Platina geleerde",
+    "platinum_scholar_desc": "Voltooi in totaal 500 quizzen",
+    "duel_champion_title": "Duelkampioen",
+    "duel_champion_desc": "Win in totaal 50 duels",
+    "duel_legend_title": "Duellegende",
+    "duel_legend_desc": "Win in totaal 100 duels",
+    "level_ten_title": "Level 10-expert",
+    "level_ten_desc": "Bereik level 10",
+    "level_twenty_title": "Level 20-meester",
+    "level_twenty_desc": "Bereik level 20",
+    "streak_week_title": "On fire",
+    "streak_week_desc": "Bereik een reeks van 7 dagen",
+    "streak_month_title": "Niet te stoppen",
+    "streak_month_desc": "Bereik een reeks van 30 dagen",
+    "recruiter_title": "Werver",
+    "recruiter_desc": "Laat een vriend meedoen met je code",
+    "ambassador_title": "Ambassadeur",
+    "ambassador_desc": "Laat 5 vrienden meedoen met je code",
+    "collector_title": "Grootverzamelaar",
+    "collector_desc": "Verzamel 10 items uit de winkel"
   },
   "duel": {
     "race_track": "DUEL RAS",
@@ -811,7 +864,26 @@
     "kick_confirm_msg": "Weet je zeker dat je {} uit de kamer wilt schoppen?",
     "kicked_from_room": "Je bent door de gastheer uit de kamer gezet.",
     "special_bet_badge": "SPECIAAL 🔥",
-    "fee_info": "{}% Tarief"
+    "fee_info": "{}% Tarief",
+    "category": "Categorie",
+    "difficulty": "Moeilijkheid",
+    "challenge_friend_title": "Daag {} uit",
+    "challenge_sent": "Uitdaging verstuurd naar {}!",
+    "challenge_failed": "De uitdaging kon niet worden verstuurd, maar je kamer is klaar. Deel de kamercode.",
+    "free_tickets": "{}/{} gratis duelltickets vandaag · voor inzetten tot {}",
+    "friendly": "Vriendschappelijk",
+    "friendly_desc": "Vriendschappelijke wedstrijd: geen tokens op het spel. Je verdient wel ranglijst- en competitiepunten.",
+    "high_bet_real_only": "Alleen echte spelers doen mee in kamers met hoge inzet — deel je kamercode!",
+    "host_no_response": "De host reageerde niet. Probeer een andere kamer.",
+    "result_cta_title": "Klaar voor een echte tegenstander?",
+    "result_cta_desc": "Je scoorde {}% in {}. Probeer een 1v1-duel in deze categorie!",
+    "result_cta_button": "Duel",
+    "share_room_text": "⚡ Doe mee aan mijn 1v1-quizduel! Kamercode: {}",
+    "ticket_used": "Gratis ticket gebruikt",
+    "quick_match": "Snelle match",
+    "quick_match_sub": "Eén tik · tegenstander in seconden",
+    "quick_match_searching": "Tegenstander zoeken…",
+    "quick_match_hint": "Met gratis ticket als je er een hebt, anders vriendschappelijk."
   },
   "errors": {
     "no_internet_ai": "Je hebt een actieve internetverbinding nodig om onze AI te bereiken. 📡",
@@ -836,10 +908,16 @@
     "wheel_spin_button": "Draaiwiel 🔥",
     "wheel_done_today": "Klaar voor vandaag",
     "streak_claim_today": "Claim de beloning van vandaag 🎉",
-    "streak_ok": "OK"
+    "streak_ok": "OK",
+    "wheel_freeze_prize": "Reeksbevriezing ❄️",
+    "wheel_freeze_short": "Bevriezing"
   },
   "daily_streak": {
-    "day_num": "Dag {}"
+    "day_num": "Dag {}",
+    "freeze_used": "Je reeks is gered! {} bevriezing(en) gebruikt.",
+    "freezes_owned": "Bevriezingen: {}/{}",
+    "play_to_claim": "Los vandaag 1 quiz op om je beloning te claimen en je reeks te houden!",
+    "play_now": "Speel een quiz"
   },
   "friends": {
     "title": "Vrienden",
@@ -879,7 +957,8 @@
     "friend_req_received_title": "Nieuw vriendschapsverzoek! 👥",
     "friend_req_received_body": "{} heeft je een vriendschapsverzoek gestuurd!",
     "request_received": "Verzoek ontvangen! ⚡",
-    "accept_request": "Accepteren"
+    "accept_request": "Accepteren",
+    "accept": "Accepteren"
   },
   "review": {
     "card_title": "Beoordeel op Google Play",
@@ -896,7 +975,7 @@
   },
   "referral": {
     "title": "Nodig vrienden uit",
-    "desc": "Voer de uitnodigingscode van een vriend in om 500 tokens te verdienen! Deel uw code en nodig uw vrienden uit.",
+    "desc": "Voer de uitnodigingscode van een vriend in en verdien 500 tokens na je eerste quiz! Deel je code en nodig je vrienden uit.",
     "your_code": "UW UITNODIGINGSCODE",
     "enter_code": "Voer de uitnodigingscode in (+500 tokens)",
     "hint": "VOER CODE IN",
@@ -905,10 +984,64 @@
     "share_button": "Deel",
     "copy_button": "Kopiëren",
     "code_copied": "Uitnodigingscode gekopieerd! 📋",
-    "share_msg": "🏆 Doe mee met Quiz Arena! Gebruik mijn uitnodigingscode om direct 500 tokens te ontvangen:\n👉Code: {}\n📲 App downloaden: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "share_msg": "🏆 Doe mee met Quiz Arena! Gebruik mijn uitnodigingscode en ontvang 500 tokens na je eerste quiz:\n👉Code: {}\n📲 App downloaden: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
     "success": "Gefeliciteerd! {} Tokens toegevoegd aan uw account! 🎉",
     "already_used": "Je hebt al een uitnodigingscode gebruikt.",
     "own_code": "U kunt uw eigen uitnodigingscode niet gebruiken.",
-    "invalid_code": "Ongeldige of niet-bestaande uitnodigingscode."
+    "invalid_code": "Ongeldige of niet-bestaande uitnodigingscode.",
+    "pending": "Uitnodigingscode opgeslagen! Jij en je vriend krijgen jullie tokens zodra jullie je eerste quiz afronden."
+  },
+  "share": {
+    "button": "Delen",
+    "copied": "Gekopieerd naar klembord",
+    "quiz_result": "Ik scoorde {}/{} in de {}-quiz op {}! 🧠 Kun jij me verslaan?",
+    "duel_win": "Ik versloeg {} met {}-{} in een 1v1-quizduel op {}! ⚔️ Durf jij de strijd aan?",
+    "duel_played": "Ik speelde net een 1v1-quizduel tegen {} op {}! ⚔️ Daag me uit!",
+    "achievement": "Ik heb de badge \"{}\" vrijgespeeld op {}! 🏅"
+  },
+  "league": {
+    "title": "Weekcompetitie",
+    "bronze": "Bronzen competitie",
+    "silver": "Zilveren competitie",
+    "gold": "Gouden competitie",
+    "platinum": "Platina competitie",
+    "diamond": "Diamanten competitie",
+    "ends_in": "Eindigt over {}d {}u",
+    "how_it_works": "Verdien punten met quizzen en duels. Aan het eind van de week promoveert de top {}% en degraderen de laatsten.",
+    "empty": "Nog niemand heeft deze week gescoord in deze competitie. Speel een quiz en neem de leiding!",
+    "points": "ptn",
+    "promoted_title": "Gepromoveerd!",
+    "promoted_desc": "Geweldige week! Je bent gepromoveerd naar de {} en verdiende {} tokens.",
+    "demoted_title": "Competitie gewijzigd",
+    "demoted_desc": "Deze week zit je in de {}. Speel een paar quizzen om weer omhoog te klimmen!",
+    "view": "Bekijk competitie",
+    "result_promoted_sub": "Je harde werk heeft zich uitbetaald. Houd het momentum vast in je nieuwe competitie!",
+    "result_demoted_sub": "Elke kampioen heeft weleens een zware week. Een paar quizzen en je staat weer bovenaan!",
+    "result_rank": "Positie vorige week: #{}",
+    "result_reward": "+{} tokens",
+    "share": "Delen",
+    "continue": "Doorgaan",
+    "share_text": "Ik zit nu in de {} op Quiz Arena! Kun jij me verslaan?"
+  },
+  "daily_challenge": {
+    "title": "Dagelijkse uitdaging",
+    "badge": "NIEUW",
+    "card_sub": "Dezelfde 5 vragen voor iedereen · dagranglijst",
+    "rules": "Vandaag krijgt iedereen dezelfde {} vragen. Maar één poging — elk goed antwoord levert {} tokens op. Wees snel: bij gelijkspel beslist de tijd!",
+    "start": "Start de uitdaging van vandaag",
+    "leaderboard": "Ranglijst van vandaag",
+    "empty": "Nog niemand heeft vandaag gespeeld — wees de eerste!",
+    "rank": "Plaats #{} van {} · {} s",
+    "come_back": "Morgen komt er een nieuwe uitdaging. Deel je resultaat en daag je vrienden uit!",
+    "reward": "Dagelijkse uitdaging voltooid! +{} tokens",
+    "share_text": "{} · Dagelijkse uitdaging {}\n{}/{} {}\n🏆 {}"
+  },
+  "streak_rescue": {
+    "title": "Je reeks eindigt bijna!",
+    "body": "Je hebt een dag gemist en je reeks van {} dagen verloren. Je kunt hem vandaag nog redden!",
+    "watch_ad": "Bekijk een advertentie om te redden",
+    "pay_tokens": "Redden met {} tokens",
+    "no_thanks": "Nee bedankt, opnieuw beginnen",
+    "not_enough_tokens": "Niet genoeg tokens."
   }
 }

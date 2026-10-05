@@ -4,13 +4,17 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'analytics_service.dart';
 
 class NotificationPermissionManager {
   static bool _hasCheckedCount = false;
   static bool _hasPromptedThisSession = false;
 
-  /// Sadece bildirim izni kontrolü (Android 13+)
-  static Future<bool> notificationPermissions(BuildContext context) async {
+  static const String _firstQuizPromptKey = 'notif_prompted_after_first_quiz';
+
+  /// Sadece bildirim izni kontrolü (Android 13+).
+  /// [afterFirstQuiz] true ise açılış sayısı kapısı atlanır (tek seferlik).
+  static Future<bool> notificationPermissions(BuildContext context, {bool afterFirstQuiz = false}) async {
     if (!Platform.isAndroid) return true;
 
     final androidInfo = await DeviceInfoPlugin().androidInfo;
@@ -33,11 +37,14 @@ class NotificationPermissionManager {
 
     int currentLaunchCount = prefs.getInt('app_notification_prompt_launch_count') ?? 1;
     final List<int> targetLaunches = [5, 15, 30, 45];
+    final bool firstQuizPrompt = afterFirstQuiz && !(prefs.getBool(_firstQuizPromptKey) ?? false);
 
-    // Belirlenen giriş sayıları dışında izin isteme
-    if (!targetLaunches.contains(currentLaunchCount)) {
-      return false; 
+    // İlk test sonrası (tek sefer) veya belirlenen giriş sayılarında izin iste
+    if (!firstQuizPrompt && !targetLaunches.contains(currentLaunchCount)) {
+      return false;
     }
+    if (firstQuizPrompt) await prefs.setBool(_firstQuizPromptKey, true);
+    final trigger = firstQuizPrompt ? 'first_quiz' : 'launch_$currentLaunchCount';
 
     // Bu oturumda soruldu olarak işaretle
     _hasPromptedThisSession = true;
@@ -72,6 +79,10 @@ class NotificationPermissionManager {
       }
     }
 
+    AnalyticsService.logNotificationPermission(
+      result: allPermissionsGranted ? 'granted' : 'denied',
+      trigger: trigger,
+    );
     return allPermissionsGranted;
   }
 

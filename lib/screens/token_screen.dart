@@ -84,11 +84,14 @@ class _TokenScreenState extends State<TokenScreen>
     setState(() {
       _isAdLoading = true;
     });
-    _rewardedAdManager.loadAd(onAdLoaded: () {
-      setState(() {
-        _isAdLoading = false;
-      });
-    });
+    _rewardedAdManager.loadAd(
+      onAdLoaded: () {
+        if (mounted) setState(() => _isAdLoading = false);
+      },
+      onFailed: () {
+        if (mounted) setState(() => _isAdLoading = false);
+      },
+    );
   }
 
   void _initAnimations() {
@@ -179,9 +182,22 @@ class _TokenScreenState extends State<TokenScreen>
       return;
     }
 
+    if (!_rewardedAdManager.isReady) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('common.ad_not_ready'.tr()),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      _loadRewardedAd();
+      return;
+    }
+
     _rewardedAdManager.showAd(onRewarded: () async {
       await RewardedAdManager.recordAdWatched();
-      await TokenService.addTokens(50);
+      await TokenService.addTokens(50, source: 'rewarded_ad');
       final newTokenAmount = await TokenService.getTokenAmount();
 
       if (mounted) {
@@ -306,6 +322,7 @@ class _TokenScreenState extends State<TokenScreen>
     _referralController.dispose();
     _orbController.dispose();
     _pulseController.dispose();
+    _rewardedAdManager.dispose();
     super.dispose();
   }
 
@@ -408,7 +425,6 @@ class _TokenScreenState extends State<TokenScreen>
                         const SizedBox(height: 16),
                         const MyNativeAd(
                           height: 70,
-                          factoryId: 'adFactorySmall',
                         ),
                         const SizedBox(height: 16),
                         _buildReviewRewardCard(),

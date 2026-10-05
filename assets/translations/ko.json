@@ -222,7 +222,8 @@
     "guest_user": "게스트 사용자",
     "more": "더",
     "new": "새로운",
-    "see_all": "모두 보기"
+    "see_all": "모두 보기",
+    "ad_not_ready": "광고가 아직 준비되지 않았어요. 잠시 후 다시 시도해 주세요."
   },
   "account": {
     "title": "내 프로필",
@@ -255,7 +256,9 @@
     "full_screen": "전체 화면",
     "full_screen_desc": "전체 화면 모드에서 앱을 시작합니다(탐색 모음 숨김).",
     "language": "언어",
-    "language_desc": "앱 언어 변경"
+    "language_desc": "앱 언어 변경",
+    "privacy_options": "개인정보 옵션",
+    "privacy_options_desc": "광고 동의 선택 관리"
   },
   "quiz": {
     "question_progress": "질문 {}/{}",
@@ -311,7 +314,10 @@
     "msg_poor": "당신은 더 잘할 수 있습니다! 🤔",
     "msg_fail": "다시 시도해 보세요! 😅",
     "won_by_speed": "속도로 승리했습니다! 🏎️",
-    "lost_by_speed": "상대가 더 빨랐어요! ⚠️"
+    "lost_by_speed": "상대가 더 빨랐어요! ⚠️",
+    "double_reward_desc": "짧은 영상을 보고 토큰 +{}개를 더 받으세요!",
+    "double_reward_done": "보상 2배! 토큰 +{}개가 추가됐어요.",
+    "double_reward_button": "2배"
   },
   "edit_profile": {
     "title": "프로필 편집",
@@ -436,7 +442,19 @@
     "tap_to_preview": "미리 보려면 탭하세요.",
     "Avatar 10": "아바타 10",
     "mystery_avatar": "미스터리 아바타",
-    "title_none": "없음"
+    "title_none": "없음",
+    "powerups": "파워업",
+    "streak_freeze_title": "연속 기록 보호권",
+    "streak_freeze_desc": "하루를 놓쳤나요? 보호권이 자동으로 사용되어 연속 기록이 유지돼요. 최대 {}개까지 보유할 수 있어요.",
+    "streak_freeze_owned": "보유: {}/{}",
+    "streak_freeze_max": "최대 보유 ({})",
+    "frame_mint": "민트",
+    "frame_coral": "코랄",
+    "booster_title": "토큰 부스터",
+    "booster_desc": "다음 퀴즈 {}회 동안 얻는 토큰이 2배가 돼요.",
+    "booster_active": "활성: {}회 남음",
+    "booster_inactive": "비활성",
+    "booster_applied": "⚡ 부스터: 토큰 +{}개 추가!"
   },
   "past_tests": {
     "title": "테스트 기록",
@@ -546,7 +564,13 @@
     "reengage_3d_title": "🔥 연승을 깨지 마세요!",
     "reengage_3d_body": "돌아와서 새로운 질문을 발견하십시오!",
     "reengage_7d_title": "💎 우리는 당신이 그리워요!",
-    "reengage_7d_body": "복귀 플레이어를 위해 특별한 놀라움이 기다리고 있습니다!"
+    "reengage_7d_body": "복귀 플레이어를 위해 특별한 놀라움이 기다리고 있습니다!",
+    "league_ending_title": "⏳ 주간 리그가 오늘 밤 끝나요",
+    "league_ending_body": "퀴즈 몇 판이면 승급할 수 있어요. 기회를 놓치지 마세요!",
+    "streak_risk_title": "🔥 연속 기록이 끊기기 직전이에요!",
+    "streak_risk_body": "오늘 퀴즈 하나를 풀어 {}일 연속 기록을 지키세요!",
+    "social_channel_name": "친구 & 대결",
+    "social_channel_desc": "친구 요청, 대결 초대, 콕 찌르기"
   },
   "level_system": {
     "level": "수준",
@@ -614,7 +638,16 @@
     "quizzes_to_next": "다음 레벨로 가는 {} 퀴즈",
     "category_mastery": "카테고리 마스터리",
     "your_rank": "당신의 순위",
-    "climb_higher": "더 높이 올라가세요!"
+    "climb_higher": "더 높이 올라가세요!",
+    "day1_body": "{} 토큰의 일일 연속 보상이 기다리고 있어요. 퀴즈를 풀고 받아가세요!",
+    "teaser_title": "🎁 내일 또 오세요!",
+    "teaser_body": "연속 기록을 이어가세요: {} 토큰을 받고, 행운의 룰렛을 돌리고, 일일 퀘스트를 완료하세요.",
+    "winback_3d_title": "🔥 기세를 잃지 마세요!",
+    "winback_3d_body": "며칠이 지났어요. 돌아와서 퀴즈를 풀고 연속 기록을 다시 시작하세요!",
+    "winback_7d_title": "🏆 친구들이 리그에서 올라가고 있어요!",
+    "winback_7d_body": "친구들은 계속 플레이 중이에요. 돌아와서 리그에서 함께 올라가 보세요!",
+    "winback_14d_title": "💎 보고 싶어요!",
+    "winback_14d_body": "새로운 문제와 보상이 기다리고 있어요. 돌아와서 확인해 보세요!"
   },
   "quests": {
     "title": "퀘스트 및 보상",
@@ -669,7 +702,27 @@
     "quiz_category": "퀴즈",
     "duel_category": "결투",
     "social_category": "사회의",
-    "total_unlocked": "{}/{} 잠금 해제됨"
+    "total_unlocked": "{}/{} 잠금 해제됨",
+    "platinum_scholar_title": "플래티넘 학자",
+    "platinum_scholar_desc": "퀴즈를 총 500번 완료하기",
+    "duel_champion_title": "대결 챔피언",
+    "duel_champion_desc": "대결에서 총 50번 승리하기",
+    "duel_legend_title": "대결 전설",
+    "duel_legend_desc": "대결에서 총 100번 승리하기",
+    "level_ten_title": "레벨 10 전문가",
+    "level_ten_desc": "레벨 10 달성하기",
+    "level_twenty_title": "레벨 20 마스터",
+    "level_twenty_desc": "레벨 20 달성하기",
+    "streak_week_title": "불타는 중",
+    "streak_week_desc": "7일 연속 접속 달성하기",
+    "streak_month_title": "멈출 수 없는",
+    "streak_month_desc": "30일 연속 접속 달성하기",
+    "recruiter_title": "초대왕",
+    "recruiter_desc": "초대 코드로 친구 1명 초대하기",
+    "ambassador_title": "홍보대사",
+    "ambassador_desc": "초대 코드로 친구 5명 초대하기",
+    "collector_title": "그랜드 컬렉터",
+    "collector_desc": "상점 아이템 10개 모으기"
   },
   "duel": {
     "race_track": "결투 레이스",
@@ -811,7 +864,26 @@
     "kick_confirm_msg": "정말로 {}을(를) 방에서 쫓아내시겠습니까?",
     "kicked_from_room": "당신은 호스트에 의해 방에서 쫓겨났습니다.",
     "special_bet_badge": "특별 🔥",
-    "fee_info": "{}% 요금"
+    "fee_info": "{}% 요금",
+    "category": "카테고리",
+    "difficulty": "난이도",
+    "challenge_friend_title": "{}에게 도전",
+    "challenge_sent": "{}에게 도전장을 보냈어요!",
+    "challenge_failed": "도전장을 보내지 못했지만 방은 준비됐어요. 방 코드를 공유해 주세요.",
+    "free_tickets": "오늘 무료 대결 티켓 {}/{} · {} 이하 베팅에 사용",
+    "friendly": "친선",
+    "friendly_desc": "친선전: 토큰을 걸지 않아요. 순위표와 리그 점수는 그대로 얻어요.",
+    "high_bet_real_only": "고액 방에는 실제 플레이어만 참가해요 — 방 코드를 공유하세요!",
+    "host_no_response": "방장이 응답하지 않았어요. 다른 방을 찾아보세요.",
+    "result_cta_title": "진짜 상대와 붙어 볼까요?",
+    "result_cta_desc": "{}% 정답률({}). 이 카테고리에서 1대1 대결에 도전해 보세요!",
+    "result_cta_button": "대결",
+    "share_room_text": "⚡ 1대1 퀴즈 대결에 참가해! 방 코드: {}",
+    "ticket_used": "무료 티켓 사용",
+    "quick_match": "빠른 대결",
+    "quick_match_sub": "한 번 탭 · 몇 초 안에 상대 매칭",
+    "quick_match_searching": "상대를 찾는 중…",
+    "quick_match_hint": "무료 티켓이 있으면 사용하고, 없으면 친선전으로 진행돼요."
   },
   "errors": {
     "no_internet_ai": "AI에 접근하려면 활성 인터넷 연결이 필요합니다. 📡",
@@ -836,10 +908,16 @@
     "wheel_spin_button": "스핀 휠 🔥",
     "wheel_done_today": "오늘은 완료",
     "streak_claim_today": "오늘의 보상을 받으세요 🎉",
-    "streak_ok": "좋아요"
+    "streak_ok": "좋아요",
+    "wheel_freeze_prize": "연속 기록 보호 ❄️",
+    "wheel_freeze_short": "보호"
   },
   "daily_streak": {
-    "day_num": "낮 {}"
+    "day_num": "낮 {}",
+    "freeze_used": "연속 기록이 지켜졌어요! 보호권 {}개를 사용했어요.",
+    "freezes_owned": "보호권: {}/{}",
+    "play_to_claim": "오늘 퀴즈 1개를 풀고 보상을 받아 연속 기록을 지키세요!",
+    "play_now": "퀴즈 풀기"
   },
   "friends": {
     "title": "친구",
@@ -879,7 +957,8 @@
     "friend_req_received_title": "새로운 친구 요청! 👥",
     "friend_req_received_body": "{}님이 친구 요청을 보냈습니다!",
     "request_received": "요청이 접수되었습니다! ⚡",
-    "accept_request": "수용하다"
+    "accept_request": "수용하다",
+    "accept": "수락"
   },
   "review": {
     "card_title": "Google Play에서 평가하기",
@@ -896,7 +975,7 @@
   },
   "referral": {
     "title": "친구 초대",
-    "desc": "친구 초대 코드를 입력하면 토큰 500개를 얻을 수 있습니다! 코드를 공유하고 친구를 초대하세요.",
+    "desc": "친구의 초대 코드를 입력하면 첫 퀴즈를 마친 후 500개의 토큰을 받아요! 내 코드를 공유하고 친구를 초대하세요.",
     "your_code": "귀하의 초대 코드",
     "enter_code": "초대 코드 입력(+500토큰)",
     "hint": "코드를 입력하세요",
@@ -905,10 +984,64 @@
     "share_button": "공유하다",
     "copy_button": "복사",
     "code_copied": "초대코드가 복사되었습니다! 📋",
-    "share_msg": "🏆 퀴즈 아레나에 참여해보세요! 내 초대 코드를 사용하여 즉시 500개의 토큰을 받으세요:\n👉 코드: {}\n📲 앱 다운로드: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "share_msg": "🏆 퀴즈 아레나에 참여해보세요! 내 초대 코드를 사용하면 첫 퀴즈를 마친 후 500개의 토큰을 받아요:\n👉 코드: {}\n📲 앱 다운로드: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
     "success": "축하해요! {} 귀하의 계정에 토큰이 추가되었습니다! 🎉",
     "already_used": "이미 초대 코드를 사용하셨습니다.",
     "own_code": "본인의 초대코드를 사용할 수 없습니다.",
-    "invalid_code": "초대 코드가 잘못되었거나 존재하지 않습니다."
+    "invalid_code": "초대 코드가 잘못되었거나 존재하지 않습니다.",
+    "pending": "초대 코드가 저장되었어요! 첫 퀴즈를 마치면 나와 친구 모두 토큰을 받아요."
+  },
+  "share": {
+    "button": "공유",
+    "copied": "클립보드에 복사됨",
+    "quiz_result": "{}/{}점을 받았어요! ({} 퀴즈 · {}) 🧠 나를 이길 수 있나요?",
+    "duel_win": "{}님을 {}-{}로 1대1 퀴즈 대결에서 이겼어요! ({}) ⚔️ 도전해 볼래요?",
+    "duel_played": "{}님과 1대1 퀴즈 대결을 했어요! ({}) ⚔️ 다음은 나에게 도전해요!",
+    "achievement": "\"{}\" 배지를 획득했어요! ({}) 🏅"
+  },
+  "league": {
+    "title": "주간 리그",
+    "bronze": "브론즈 리그",
+    "silver": "실버 리그",
+    "gold": "골드 리그",
+    "platinum": "플래티넘 리그",
+    "diamond": "다이아몬드 리그",
+    "ends_in": "{}일 {}시간 후 종료",
+    "how_it_works": "퀴즈와 대결로 점수를 모으세요. 주말에 상위 {}%는 승급하고 하위권은 강등돼요.",
+    "empty": "이번 주 이 리그에서 아직 아무도 점수를 얻지 않았어요. 퀴즈를 풀고 선두에 서세요!",
+    "points": "점",
+    "promoted_title": "승급!",
+    "promoted_desc": "멋진 한 주였어요! {}(으)로 승급하고 토큰 {}개를 받았어요.",
+    "demoted_title": "리그 변경",
+    "demoted_desc": "이번 주는 {}에 있어요. 퀴즈를 풀고 다시 올라가세요!",
+    "view": "리그 보기",
+    "result_promoted_sub": "노력이 결실을 맺었어요. 새 리그에서도 기세를 이어가세요!",
+    "result_demoted_sub": "모든 챔피언에게도 힘든 한 주는 있어요. 퀴즈 몇 번이면 다시 정상이에요!",
+    "result_rank": "지난주 순위: {}위",
+    "result_reward": "+{} 토큰",
+    "share": "공유",
+    "continue": "계속",
+    "share_text": "Quiz Arena에서 {}에 올랐어요! 저를 이길 수 있나요?"
+  },
+  "daily_challenge": {
+    "title": "오늘의 도전",
+    "badge": "NEW",
+    "card_sub": "모두에게 같은 5문제 · 일일 순위",
+    "rules": "오늘은 모두 같은 {}문제를 풀어요. 기회는 한 번 — 정답마다 토큰 {}개. 동점이면 시간이 빠른 사람이 이겨요!",
+    "start": "오늘의 도전 시작",
+    "leaderboard": "오늘의 순위",
+    "empty": "오늘 아직 아무도 플레이하지 않았어요 — 첫 번째가 되세요!",
+    "rank": "순위 #{} / {} · {}초",
+    "come_back": "내일 새로운 도전이 열려요. 결과를 공유하고 친구에게 도전하세요!",
+    "reward": "오늘의 도전 완료! 토큰 +{}개",
+    "share_text": "{} · 오늘의 도전 {}\n{}/{} {}\n🏆 {}"
+  },
+  "streak_rescue": {
+    "title": "연속 기록이 곧 끊어집니다!",
+    "body": "하루를 놓쳐서 {}일 연속 기록이 끊겼어요. 오늘 아직 살릴 수 있어요!",
+    "watch_ad": "광고 보고 살리기",
+    "pay_tokens": "{} 토큰으로 살리기",
+    "no_thanks": "아니요, 처음부터 다시 시작",
+    "not_enough_tokens": "토큰이 부족합니다."
   }
 }

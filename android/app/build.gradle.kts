@@ -25,8 +25,8 @@ android {
         applicationId = "com.abdullahekici.emilekbul"
         minSdk = 26
         targetSdk = 36
-        versionCode = 48
-        versionName = "1.5.20"
+        versionCode = 52
+        versionName = "1.5.24"
     }
 
     signingConfigs {

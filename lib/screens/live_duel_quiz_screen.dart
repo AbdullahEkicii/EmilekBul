@@ -1,11 +1,12 @@
+import '../services/performance_service.dart';
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../models/duel_room_model.dart';
 import '../models/question.dart';
 import '../services/duel_service.dart';
+import '../services/interstitial_ad_manager.dart';
 import '../services/sound_service.dart';
 import '../services/user_service.dart';
 import '../services/token_service.dart';
@@ -169,15 +170,22 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (context) => LiveDuelResultScreen(
-            roomCode: widget.room.roomCode,
-            isHost: widget.isHost,
-            initialRoom: _liveRoom ?? widget.room,
-          ),
-        ),
-        (route) => route.isFirst,
+      // Sonuç ekranından önce (uygunsa) geçiş reklamı
+      InterstitialAdManager.onTestFinished(
+        source: 'duel',
+        onDone: () {
+          if (!mounted) return;
+          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (context) => LiveDuelResultScreen(
+                roomCode: widget.room.roomCode,
+                isHost: widget.isHost,
+                initialRoom: _liveRoom ?? widget.room,
+              ),
+            ),
+            (route) => route.isFirst,
+          );
+        },
       );
     });
   }
@@ -211,7 +219,7 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
       }
       return false;
     }
-    await TokenService.spendTokens(cost);
+    await TokenService.spendTokens(cost, reason: 'joker');
     await _loadUserTokens();
     return true;
   }
@@ -468,7 +476,6 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     child: MyNativeAd(
                       height: 65,
-                      factoryId: 'adFactorySmall',
                     ),
                   ),
                 ] else ...[
@@ -529,8 +536,8 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
   Widget _buildTransitionOverlay() {
     return Positioned.fill(
       child: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: PerformanceService.blur(
+          sigma: 10,
           child: Container(
             color: const Color(0xFF0F172A).withValues(alpha: 0.8),
             child: Center(

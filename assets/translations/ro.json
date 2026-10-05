@@ -222,7 +222,8 @@
     "guest_user": "Utilizator invitat",
     "more": "Mai mult",
     "new": "NOU",
-    "see_all": "Vezi toate"
+    "see_all": "Vezi toate",
+    "ad_not_ready": "Reclama nu este încă pregătită. Încearcă din nou peste puțin timp."
   },
   "account": {
     "title": "Profilul meu",
@@ -255,7 +256,9 @@
     "full_screen": "Ecran complet",
     "full_screen_desc": "Pornește aplicația în modul ecran complet (ascunde bara de navigare)",
     "language": "Limbă",
-    "language_desc": "Schimbați limba aplicației"
+    "language_desc": "Schimbați limba aplicației",
+    "privacy_options": "Opțiuni de confidențialitate",
+    "privacy_options_desc": "Gestionează consimțământul pentru reclame"
   },
   "quiz": {
     "question_progress": "Întrebare {}/{}",
@@ -311,7 +314,10 @@
     "msg_poor": "Poți face mai bine! 🤔",
     "msg_fail": "Încearcă din nou! 😅",
     "won_by_speed": "Câștigat de Speed! 🏎️",
-    "lost_by_speed": "Adversarul a fost mai rapid! ⚠️"
+    "lost_by_speed": "Adversarul a fost mai rapid! ⚠️",
+    "double_reward_desc": "Urmărește un clip scurt și primești încă +{} jetoane!",
+    "double_reward_done": "Recompensă dublată! +{} jetoane adăugate.",
+    "double_reward_button": "2x"
   },
   "edit_profile": {
     "title": "Editați profilul",
@@ -436,7 +442,19 @@
     "tap_to_preview": "Atingeți pentru a previzualiza",
     "Avatar 10": "Avatarul 10",
     "mystery_avatar": "Avatar mister",
-    "title_none": "Nici unul"
+    "title_none": "Nici unul",
+    "powerups": "Bonusuri",
+    "streak_freeze_title": "Înghețare serie",
+    "streak_freeze_desc": "Ai ratat o zi? O înghețare se folosește automat și seria ta rămâne activă. Poți avea cel mult {}.",
+    "streak_freeze_owned": "Deținute: {}/{}",
+    "streak_freeze_max": "Limită atinsă ({})",
+    "frame_mint": "Mentă",
+    "frame_coral": "Coral",
+    "booster_title": "Amplificator de jetoane",
+    "booster_desc": "Dublează jetoanele câștigate la următoarele {} quizuri.",
+    "booster_active": "Activ: au rămas {} quizuri",
+    "booster_inactive": "Inactiv",
+    "booster_applied": "⚡ Amplificator: +{} jetoane în plus!"
   },
   "past_tests": {
     "title": "Istoricul testelor",
@@ -546,7 +564,13 @@
     "reengage_3d_title": "🔥 Nu-ți întrerupe șirul!",
     "reengage_3d_body": "Revino și descoperă noi întrebări!",
     "reengage_7d_title": "💎 Ne este dor de tine!",
-    "reengage_7d_body": "Surprize speciale îi așteaptă pe jucătorii care revin!"
+    "reengage_7d_body": "Surprize speciale îi așteaptă pe jucătorii care revin!",
+    "league_ending_title": "⏳ Liga săptămânală se încheie diseară",
+    "league_ending_body": "Câteva quizuri te pot promova. Nu rata promovarea!",
+    "streak_risk_title": "🔥 Seria ta e pe cale să se rupă!",
+    "streak_risk_body": "Rezolvă azi un quiz ca să păstrezi seria de {} zile!",
+    "social_channel_name": "Prieteni și dueluri",
+    "social_channel_desc": "Cereri de prietenie, invitații la duel și atenționări"
   },
   "level_system": {
     "level": "Nivel",
@@ -614,7 +638,16 @@
     "quizzes_to_next": "{} chestionare la nivelul următor",
     "category_mastery": "Maestria categoriei",
     "your_rank": "Rangul tău",
-    "climb_higher": "Urcă mai sus!"
+    "climb_higher": "Urcă mai sus!",
+    "day1_body": "Recompensa zilnică pentru serie, de {} jetoane, te așteaptă. Joacă un quiz și revendic-o!",
+    "teaser_title": "🎁 Revino mâine!",
+    "teaser_body": "Ține seria în viață: revendică {} jetoane, învârte roata norocului și finalizează misiunile zilnice.",
+    "winback_3d_title": "🔥 Nu-ți pierde elanul!",
+    "winback_3d_body": "Au trecut câteva zile. Revino, joacă un quiz și repornește-ți seria!",
+    "winback_7d_title": "🏆 Prietenii tăi urcă în ligă!",
+    "winback_7d_body": "Prietenii tăi continuă să joace. Revino și urcă și tu în ligă!",
+    "winback_14d_title": "💎 Ne e dor de tine!",
+    "winback_14d_body": "Întrebări și recompense noi te așteaptă. Revino și vezi ce e nou!"
   },
   "quests": {
     "title": "Misiuni și recompense",
@@ -669,7 +702,27 @@
     "quiz_category": "Chestionare",
     "duel_category": "Dueluri",
     "social_category": "Social",
-    "total_unlocked": "{}/{} Deblocat"
+    "total_unlocked": "{}/{} Deblocat",
+    "platinum_scholar_title": "Savant de platină",
+    "platinum_scholar_desc": "Finalizează 500 de quizuri în total",
+    "duel_champion_title": "Campion al duelurilor",
+    "duel_champion_desc": "Câștigă 50 de dueluri în total",
+    "duel_legend_title": "Legenda duelurilor",
+    "duel_legend_desc": "Câștigă 100 de dueluri în total",
+    "level_ten_title": "Expert nivel 10",
+    "level_ten_desc": "Atinge nivelul 10",
+    "level_twenty_title": "Maestru nivel 20",
+    "level_twenty_desc": "Atinge nivelul 20",
+    "streak_week_title": "În flăcări",
+    "streak_week_desc": "Atinge o serie de 7 zile",
+    "streak_month_title": "De neoprit",
+    "streak_month_desc": "Atinge o serie de 30 de zile",
+    "recruiter_title": "Recrutor",
+    "recruiter_desc": "Adu un prieten cu codul tău",
+    "ambassador_title": "Ambasador",
+    "ambassador_desc": "Adu 5 prieteni cu codul tău",
+    "collector_title": "Mare colecționar",
+    "collector_desc": "Colectează 10 obiecte din magazin"
   },
   "duel": {
     "race_track": "CURSA DE DUEL",
@@ -811,7 +864,26 @@
     "kick_confirm_msg": "Sigur vrei să-l dai cu piciorul pe {} din cameră?",
     "kicked_from_room": "Ai fost dat afară din cameră de gazdă.",
     "special_bet_badge": "SPECIAL 🔥",
-    "fee_info": "Taxă de {}%."
+    "fee_info": "Taxă de {}%.",
+    "category": "Categorie",
+    "difficulty": "Dificultate",
+    "challenge_friend_title": "Provoacă-l pe {}",
+    "challenge_sent": "Provocare trimisă lui {}!",
+    "challenge_failed": "Provocarea nu a putut fi trimisă, dar camera ta e gata. Distribuie codul camerei.",
+    "free_tickets": "{}/{} bilete gratuite azi · pentru mize de până la {}",
+    "friendly": "Amical",
+    "friendly_desc": "Meci amical: fără jetoane în joc. Câștigi totuși puncte de clasament și ligă.",
+    "high_bet_real_only": "În camerele cu miză mare intră doar jucători reali — distribuie codul!",
+    "host_no_response": "Gazda nu a răspuns. Încearcă altă cameră.",
+    "result_cta_title": "Gata pentru un rival adevărat?",
+    "result_cta_desc": "Ai obținut {}% la {}. Încearcă un duel 1v1 în această categorie!",
+    "result_cta_button": "Duel",
+    "share_room_text": "⚡ Intră în duelul meu de quiz 1v1! Cod cameră: {}",
+    "ticket_used": "Bilet gratuit folosit",
+    "quick_match": "Meci rapid",
+    "quick_match_sub": "O atingere · adversar în câteva secunde",
+    "quick_match_searching": "Se caută un adversar…",
+    "quick_match_hint": "Cu bilet gratuit dacă ai, altfel meci amical."
   },
   "errors": {
     "no_internet_ai": "Aveți nevoie de o conexiune activă la internet pentru a ajunge la AI-ul nostru. 📡",
@@ -836,10 +908,16 @@
     "wheel_spin_button": "Roata de învârtire 🔥",
     "wheel_done_today": "Gata pentru azi",
     "streak_claim_today": "Revendicați recompensa de azi 🎉",
-    "streak_ok": "Bine"
+    "streak_ok": "Bine",
+    "wheel_freeze_prize": "Înghețare serie ❄️",
+    "wheel_freeze_short": "Înghețare"
   },
   "daily_streak": {
-    "day_num": "Ziua {}"
+    "day_num": "Ziua {}",
+    "freeze_used": "Seria ta a fost salvată! S-au folosit {} înghețări.",
+    "freezes_owned": "Înghețări: {}/{}",
+    "play_to_claim": "Rezolvă azi 1 quiz ca să iei recompensa și să păstrezi seria!",
+    "play_now": "Joacă un quiz"
   },
   "friends": {
     "title": "Prieteni",
@@ -879,7 +957,8 @@
     "friend_req_received_title": "Noua cerere de prietenie! 👥",
     "friend_req_received_body": "{} v-a trimis o cerere de prietenie!",
     "request_received": "Solicitare primită! ⚡",
-    "accept_request": "Accepta"
+    "accept_request": "Accepta",
+    "accept": "Acceptă"
   },
   "review": {
     "card_title": "Evaluați pe Google Play",
@@ -896,7 +975,7 @@
   },
   "referral": {
     "title": "Invitați prieteni",
-    "desc": "Introdu codul de invitație al unui prieten pentru a câștiga 500 de jetoane! Distribuie codul și invită-ți prietenii.",
+    "desc": "Introdu codul de invitație al unui prieten și primești 500 de jetoane după primul tău quiz! Distribuie-ți codul și invită-ți prietenii.",
     "your_code": "CODUL DVS. DE INVITARE",
     "enter_code": "Introdu codul de invitație (+500 de jetoane)",
     "hint": "INTRODUCE CODUL",
@@ -905,10 +984,64 @@
     "share_button": "Distribuie",
     "copy_button": "Copie",
     "code_copied": "Codul de invitație a fost copiat! 📋",
-    "share_msg": "🏆 Alătură-te mie în Quiz Arena! Folosește codul meu de invitație pentru a obține instantaneu 500 de jetoane:\n👉 Cod: {}\n📲 Descărcați aplicația: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "share_msg": "🏆 Alătură-te mie în Quiz Arena! Folosește codul meu de invitație și primești 500 de jetoane după primul tău quiz:\n👉 Cod: {}\n📲 Descărcați aplicația: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
     "success": "Felicitări! {} Jetoane adăugate în contul dvs.! 🎉",
     "already_used": "Ați folosit deja un cod de invitație.",
     "own_code": "Nu vă puteți folosi propriul cod de invitație.",
-    "invalid_code": "Cod de invitație nevalid sau inexistent."
+    "invalid_code": "Cod de invitație nevalid sau inexistent.",
+    "pending": "Cod de invitație salvat! Tu și prietenul tău primiți jetoanele după ce terminați primul quiz."
+  },
+  "share": {
+    "button": "Distribuie",
+    "copied": "Copiat în clipboard",
+    "quiz_result": "Am obținut {}/{} la quizul {} în {}! 🧠 Mă poți întrece?",
+    "duel_win": "L-am învins pe {} cu {}-{} într-un duel de quiz 1v1 în {}! ⚔️ Îndrăznești să mă provoci?",
+    "duel_played": "Tocmai am jucat un duel de quiz 1v1 cu {} în {}! ⚔️ Provoacă-mă!",
+    "achievement": "Am deblocat insigna „{}” în {}! 🏅"
+  },
+  "league": {
+    "title": "Liga săptămânală",
+    "bronze": "Liga de bronz",
+    "silver": "Liga de argint",
+    "gold": "Liga de aur",
+    "platinum": "Liga de platină",
+    "diamond": "Liga de diamant",
+    "ends_in": "Se încheie în {} z {} h",
+    "how_it_works": "Câștigă puncte din quizuri și dueluri. La final de săptămână, primii {}% promovează, iar ultimii retrogradează.",
+    "empty": "Nimeni nu a punctat încă în această ligă săptămâna aceasta. Joacă un quiz și preia conducerea!",
+    "points": "pct",
+    "promoted_title": "Ai promovat!",
+    "promoted_desc": "Săptămână grozavă! Ai urcat în {} și ai câștigat {} jetoane.",
+    "demoted_title": "Liga s-a schimbat",
+    "demoted_desc": "Săptămâna aceasta ești în {}. Joacă câteva quizuri ca să urci din nou!",
+    "view": "Vezi liga",
+    "result_promoted_sub": "Munca ta a dat roade. Păstrează elanul în noua ta ligă!",
+    "result_demoted_sub": "Orice campion a avut o săptămână grea. Câteva quizuri și ești din nou în frunte!",
+    "result_rank": "Locul de săptămâna trecută: #{}",
+    "result_reward": "+{} jetoane",
+    "share": "Distribuie",
+    "continue": "Continuă",
+    "share_text": "Acum sunt în {} pe Quiz Arena! Mă poți învinge?"
+  },
+  "daily_challenge": {
+    "title": "Provocarea zilei",
+    "badge": "NOU",
+    "card_sub": "Aceleași 5 întrebări pentru toți · clasament zilnic",
+    "rules": "Azi toată lumea primește aceleași {} întrebări. O singură încercare — fiecare răspuns corect aduce {} jetoane. Fii rapid: la egalitate decide timpul!",
+    "start": "Începe provocarea de azi",
+    "leaderboard": "Clasamentul de azi",
+    "empty": "Nimeni nu a jucat încă azi — fii primul!",
+    "rank": "Locul #{} din {} · {} s",
+    "come_back": "Mâine se deblochează o nouă provocare. Distribuie rezultatul și provoacă-ți prietenii!",
+    "reward": "Provocarea zilei finalizată! +{} jetoane",
+    "share_text": "{} · Provocarea zilei {}\n{}/{} {}\n🏆 {}"
+  },
+  "streak_rescue": {
+    "title": "Seria ta este pe cale să se încheie!",
+    "body": "Ai ratat o zi și ți-ai pierdut seria de {} zile. Încă o poți salva astăzi!",
+    "watch_ad": "Urmărește o reclamă pentru a o salva",
+    "pay_tokens": "Salvează cu {} jetoane",
+    "no_thanks": "Nu, mulțumesc, o iau de la capăt",
+    "not_enough_tokens": "Nu ai suficiente jetoane."
   }
 }

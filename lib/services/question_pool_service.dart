@@ -10,6 +10,38 @@ class QuestionPoolService {
   static const String _collectionName = 'question_bank';
   static final Random _random = Random();
 
+  // Kısa süreli bellek içi havuz önbelleği (aynı partition için tekrar okumayı önler)
+  static const Duration _poolCacheTtl = Duration(minutes: 10);
+  static const int _poolCacheMaxEntries = 8;
+  static final Map<String, _PoolCacheEntry> _poolCache = {};
+
+  /// Okuma maliyeti: count*3 yerine count*2 (en az count+2)
+  static int _poolLimit(int count) => max(count * 2, count + 2);
+
+  static Future<List<Map<String, dynamic>>> _cachedPoolDocs(
+    String cacheKey,
+    int limit,
+    Future<List<Map<String, dynamic>>> Function() fetch,
+  ) async {
+    final now = DateTime.now();
+    final hit = _poolCache[cacheKey];
+    if (hit != null &&
+        now.difference(hit.fetchedAt) < _poolCacheTtl &&
+        hit.limit >= limit &&
+        hit.docs.isNotEmpty) {
+      return List<Map<String, dynamic>>.from(hit.docs);
+    }
+    final docs = await fetch();
+    if (docs.isNotEmpty) {
+      _poolCache.remove(cacheKey);
+      while (_poolCache.length >= _poolCacheMaxEntries) {
+        _poolCache.remove(_poolCache.keys.first); // en eski
+      }
+      _poolCache[cacheKey] = _PoolCacheEntry(docs, limit, now);
+    }
+    return List<Map<String, dynamic>>.from(docs);
+  }
+
   /// Hibrit Soru Getirici (Yerel Önbellek -> Bulut Havuzu -> AI Üretimi -> Aralıklı Tekrar)
   static Future<List<Question>> getHybridQuestions({
     required String category,
@@ -199,31 +231,34 @@ class QuestionPoolService {
     required int count,
   }) async {
     final partitionKey = '${category}_$difficulty'.replaceAll('/', '_');
-    var querySnap = await _firestore
-        .collection(_collectionName)
-        .doc(partitionKey)
-        .collection('questions')
-        .where('languages', arrayContains: languageCode)
-        .limit(count * 3)
-        .get();
-
-    // Eğer languages array indeksinde bulunamadıysa genel belgeleri çek ve translations map'ini kontrol et
-    if (querySnap.docs.isEmpty) {
-      querySnap = await _firestore
+    final limit = _poolLimit(count);
+    final fetched = await _cachedPoolDocs('s|$partitionKey|$languageCode', limit, () async {
+      var querySnap = await _firestore
           .collection(_collectionName)
           .doc(partitionKey)
           .collection('questions')
-          .limit(count * 3)
+          .where('languages', arrayContains: languageCode)
+          .limit(limit)
           .get();
-    }
 
-    if (querySnap.docs.isEmpty) return [];
+      // Eğer languages array indeksinde bulunamadıysa genel belgeleri çek ve translations map'ini kontrol et
+      if (querySnap.docs.isEmpty) {
+        querySnap = await _firestore
+            .collection(_collectionName)
+            .doc(partitionKey)
+            .collection('questions')
+            .limit(limit)
+            .get();
+      }
+      return querySnap.docs.map((d) => d.data()).toList();
+    });
 
-    final docs = List<QueryDocumentSnapshot>.from(querySnap.docs)..shuffle(_random);
+    if (fetched.isEmpty) return [];
+
+    final docs = fetched..shuffle(_random);
     List<Question> questions = [];
 
-    for (final doc in docs) {
-      final data = doc.data() as Map<String, dynamic>;
+    for (final data in docs) {
       final translations = data['translations'] as Map<String, dynamic>?;
       if (translations != null && translations.containsKey(languageCode)) {
         final langData = translations[languageCode] as Map<String, dynamic>;
@@ -255,20 +290,23 @@ class QuestionPoolService {
     final partitionKey = '${category}_$difficulty'.replaceAll('/', '_');
     final primaryLang = languageCodes.isNotEmpty ? languageCodes.first : 'tr';
 
-    final querySnap = await _firestore
-        .collection(_collectionName)
-        .doc(partitionKey)
-        .collection('questions')
-        .limit(count * 3)
-        .get();
+    final limit = _poolLimit(count);
+    final fetched = await _cachedPoolDocs('m|$partitionKey', limit, () async {
+      final querySnap = await _firestore
+          .collection(_collectionName)
+          .doc(partitionKey)
+          .collection('questions')
+          .limit(limit)
+          .get();
+      return querySnap.docs.map((d) => d.data()).toList();
+    });
 
-    if (querySnap.docs.isEmpty) return [];
+    if (fetched.isEmpty) return [];
 
     List<Question> validQuestions = [];
-    final docs = List<QueryDocumentSnapshot>.from(querySnap.docs)..shuffle(_random);
+    final docs = fetched..shuffle(_random);
 
-    for (final doc in docs) {
-      final data = doc.data() as Map<String, dynamic>;
+    for (final data in docs) {
       final translations = data['translations'] as Map<String, dynamic>?;
       if (translations == null) continue;
 
@@ -429,4 +467,11 @@ class QuestionPoolService {
       }
     });
   }
+}
+
+class _PoolCacheEntry {
+  final List<Map<String, dynamic>> docs;
+  final int limit;
+  final DateTime fetchedAt;
+  _PoolCacheEntry(this.docs, this.limit, this.fetchedAt);
 }

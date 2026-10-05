@@ -1,14 +1,18 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 import '../constants/ad_constants.dart';
+import '../services/ads_service.dart';
+import '../services/analytics_service.dart';
 
+/// Eski native reklam yerleşimlerinde gösterilen inline adaptif banner.
+/// Yükseklik [height] ile sınırlanır (kırpılma olmaz); yenileme AdMob konsolundaki
+/// otomatik yenileme ile yapılır.
 class MyNativeAd extends StatefulWidget {
   final double height;
   final double width;
-  final String factoryId;
-  final int? refreshInterval; // seconds
 
   static bool get adsEnabled => AdConstants.adsEnabled;
 
@@ -16,8 +20,6 @@ class MyNativeAd extends StatefulWidget {
     super.key,
     this.height = 100,
     this.width = double.infinity,
-    this.factoryId = 'adFactorySmall',
-    this.refreshInterval,
   });
 
   @override
@@ -25,68 +27,122 @@ class MyNativeAd extends StatefulWidget {
 }
 
 class _MyNativeAdState extends State<MyNativeAd> {
-  NativeAd? _nativeAd;
-  bool _isAdLoaded = false;
+  BannerAd? _bannerAd;
+  AdSize? _loadedSize;
+  bool _isLoading = false;
+  bool _isVisible = false;
+  int _failCount = 0;
+  int? _slotWidth;
+  Timer? _retryTimer;
+  late final Key _visibilityKey = UniqueKey();
 
-  @override
-  void initState() {
-    super.initState();
-    _loadAd();
+  void _onVisibilityChanged(VisibilityInfo info) {
+    _isVisible = info.visibleFraction > 0.05;
+    if (_isVisible) _loadIfNeeded();
   }
 
-  void _loadAd() {
-    if (!MyNativeAd.adsEnabled) return;
-    if (kIsWeb || (defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS)) {
+  Future<void> _loadIfNeeded() async {
+    if (!MyNativeAd.adsEnabled || !AdsService.isSupportedPlatform) return;
+    if (_bannerAd != null || _isLoading || _retryTimer != null) return;
+    final width = _slotWidth;
+    if (width == null || width <= 0) return;
+    _isLoading = true;
+
+    final canRequestAds = await AdsService.ready;
+    if (!mounted || !canRequestAds) {
+      _isLoading = false;
       return;
     }
 
-    final String adUnitId = AdConstants.nativeAdUnitId;
+    // Önce standart anchored adaptif boyut (telefonda ~50-60dp); alana sığmazsa yüksekliği sınırlı inline boyut.
+    final anchored = await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(width);
+    if (!mounted) {
+      _isLoading = false;
+      return;
+    }
+    final AdSize requestSize = (anchored != null && anchored.height <= widget.height)
+        ? anchored
+        : AdSize.getInlineAdaptiveBannerAdSize(width, widget.height.floor());
 
-    _nativeAd = NativeAd(
-      adUnitId: adUnitId,
-      factoryId: widget.factoryId,
+    final ad = BannerAd(
+      adUnitId: AdConstants.nativeBannerAdUnitId,
+      size: requestSize,
       request: const AdRequest(),
-      listener: NativeAdListener(
-        onAdLoaded: (ad) {
-          if (mounted) {
-            setState(() {
-              _isAdLoaded = true;
-            });
+      listener: BannerAdListener(
+        onAdLoaded: (ad) async {
+          final banner = ad as BannerAd;
+          final platformSize = await banner.getPlatformAdSize();
+          if (!mounted) {
+            banner.dispose();
+            return;
           }
+          setState(() {
+            _bannerAd = banner;
+            _loadedSize = platformSize ?? banner.size;
+            _isLoading = false;
+            _failCount = 0;
+          });
         },
+        onAdImpression: (_) => AnalyticsService.logAdImpression(format: 'banner', placement: 'inline'),
         onAdFailedToLoad: (ad, error) {
-          debugPrint('NativeAd failed to load: $error');
+          debugPrint('Inline banner failed to load: $error');
           ad.dispose();
-          if (mounted) {
-            setState(() {
-              _nativeAd = null;
-              _isAdLoaded = false;
-            });
-          }
+          _isLoading = false;
+          _failCount++;
+          _scheduleRetry();
         },
       ),
     );
+    ad.load();
+  }
 
-    _nativeAd!.load();
+  void _scheduleRetry() {
+    if (!mounted) return;
+    final delay = Duration(seconds: (30 * _failCount).clamp(30, 300));
+    _retryTimer = Timer(delay, () {
+      _retryTimer = null;
+      if (mounted && _isVisible) _loadIfNeeded();
+    });
   }
 
   @override
   void dispose() {
-    _nativeAd?.dispose();
+    _retryTimer?.cancel();
+    _bannerAd?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!MyNativeAd.adsEnabled || !_isAdLoaded || _nativeAd == null) {
-      return const SizedBox.shrink();
-    }
+    if (!MyNativeAd.adsEnabled) return const SizedBox.shrink();
 
     return SizedBox(
-      height: widget.height,
       width: widget.width,
-      child: AdWidget(ad: _nativeAd!),
+      height: widget.height,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final available = constraints.maxWidth.isFinite
+              ? constraints.maxWidth
+              : MediaQuery.sizeOf(context).width;
+          _slotWidth = available.floor();
+
+          final ad = _bannerAd;
+          final size = _loadedSize;
+          return VisibilityDetector(
+            key: _visibilityKey,
+            onVisibilityChanged: _onVisibilityChanged,
+            child: ad != null && size != null
+                ? Center(
+                    child: SizedBox(
+                      width: size.width.toDouble(),
+                      height: size.height.toDouble(),
+                      child: AdWidget(key: ObjectKey(ad), ad: ad),
+                    ),
+                  )
+                : const SizedBox.expand(),
+          );
+        },
+      ),
     );
   }
 }
-

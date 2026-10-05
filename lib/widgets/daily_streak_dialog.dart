@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../services/streak_service.dart';
 import '../services/sound_service.dart';
+import '../services/achievement_service.dart';
 import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'glass_container.dart';
 
@@ -9,12 +10,18 @@ class DailyStreakDialog extends StatefulWidget {
   final int currentStreak;
   final bool canClaimToday;
   final VoidCallback onClaimed;
+  final int freezes;
+  final int freezesUsed;
+  final bool playedToday;
 
   const DailyStreakDialog({
     super.key,
     required this.currentStreak,
     required this.canClaimToday,
     required this.onClaimed,
+    this.freezes = 0,
+    this.freezesUsed = 0,
+    this.playedToday = true,
   });
 
   static Future<void> show(
@@ -22,6 +29,9 @@ class DailyStreakDialog extends StatefulWidget {
     required int currentStreak,
     required bool canClaimToday,
     required VoidCallback onClaimed,
+    int freezes = 0,
+    int freezesUsed = 0,
+    bool playedToday = true,
   }) async {
     await showGeneralDialog(
       context: context,
@@ -45,6 +55,9 @@ class DailyStreakDialog extends StatefulWidget {
                   currentStreak: currentStreak,
                   canClaimToday: canClaimToday,
                   onClaimed: onClaimed,
+                  freezes: freezes,
+                  freezesUsed: freezesUsed,
+                  playedToday: playedToday,
                 ),
               ),
             ),
@@ -96,6 +109,7 @@ class _DailyStreakDialogState extends State<DailyStreakDialog> with SingleTicker
         _earnedTokens = earned;
       });
       widget.onClaimed();
+      await AchievementService.checkAndUnlockStreakAchievements(widget.currentStreak + 1, context);
     }
   }
 
@@ -169,7 +183,35 @@ class _DailyStreakDialogState extends State<DailyStreakDialog> with SingleTicker
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 24),
+          if (widget.freezesUsed > 0) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0EA5E9).withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.6)),
+              ),
+              child: Text(
+                'daily_streak.freeze_used'.tr(args: [widget.freezesUsed.toString()]),
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Color(0xFFBAE6FD), fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('❄️', style: TextStyle(fontSize: 16)),
+              const SizedBox(width: 6),
+              Text(
+                'daily_streak.freezes_owned'.tr(args: [widget.freezes.toString(), StreakService.maxFreezes.toString()]),
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
 
           // 7-day reward roadmap
           SingleChildScrollView(
@@ -236,6 +278,25 @@ class _DailyStreakDialogState extends State<DailyStreakDialog> with SingleTicker
           ),
           const SizedBox(height: 24),
 
+          if (widget.canClaimToday && !_claimed && !widget.playedToday) ...[
+            Text(
+              'daily_streak.play_to_claim'.tr(),
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 13.5, height: 1.35),
+            ),
+            const SizedBox(height: 14),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.play_arrow_rounded),
+              label: Text('daily_streak.play_now'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orangeAccent,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+            ),
+          ] else
           // Action Button
           if (widget.canClaimToday && !_claimed)
             ElevatedButton(

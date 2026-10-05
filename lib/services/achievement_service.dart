@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'analytics_service.dart';
 import 'database_helper.dart';
 import 'token_service.dart';
+import '../widgets/achievement_celebration.dart';
 
 class Achievement {
   final String id;
@@ -73,6 +75,16 @@ class AchievementService {
       maxProgress: 200,
     ),
     const Achievement(
+      id: 'platinum_scholar',
+      titleKey: 'achievements.platinum_scholar_title',
+      descKey: 'achievements.platinum_scholar_desc',
+      icon: Icons.diamond_rounded,
+      color: Color(0xFFE5E4E2),
+      tokenReward: 500,
+      category: 'quiz',
+      maxProgress: 500,
+    ),
+    const Achievement(
       id: 'perfect_score',
       titleKey: 'achievements.perfect_score_title',
       descKey: 'achievements.perfect_score_desc',
@@ -114,6 +126,26 @@ class AchievementService {
       category: 'duel',
       maxProgress: 10,
     ),
+    const Achievement(
+      id: 'duel_champion',
+      titleKey: 'achievements.duel_champion_title',
+      descKey: 'achievements.duel_champion_desc',
+      icon: Icons.emoji_events_rounded,
+      color: Color(0xFFEAB308),
+      tokenReward: 300,
+      category: 'duel',
+      maxProgress: 50,
+    ),
+    const Achievement(
+      id: 'duel_legend',
+      titleKey: 'achievements.duel_legend_title',
+      descKey: 'achievements.duel_legend_desc',
+      icon: Icons.local_fire_department_rounded,
+      color: Color(0xFFDC2626),
+      tokenReward: 600,
+      category: 'duel',
+      maxProgress: 100,
+    ),
 
     // Sosyal & Seviye Başarımları
     const Achievement(
@@ -146,6 +178,76 @@ class AchievementService {
       category: 'social',
       maxProgress: 5,
     ),
+    const Achievement(
+      id: 'level_ten',
+      titleKey: 'achievements.level_ten_title',
+      descKey: 'achievements.level_ten_desc',
+      icon: Icons.auto_awesome_rounded,
+      color: Color(0xFFFB923C),
+      tokenReward: 200,
+      category: 'social',
+      maxProgress: 10,
+    ),
+    const Achievement(
+      id: 'level_twenty',
+      titleKey: 'achievements.level_twenty_title',
+      descKey: 'achievements.level_twenty_desc',
+      icon: Icons.bolt_rounded,
+      color: Color(0xFFF43F5E),
+      tokenReward: 400,
+      category: 'social',
+      maxProgress: 20,
+    ),
+    const Achievement(
+      id: 'streak_week',
+      titleKey: 'achievements.streak_week_title',
+      descKey: 'achievements.streak_week_desc',
+      icon: Icons.whatshot_rounded,
+      color: Color(0xFFF97316),
+      tokenReward: 70,
+      category: 'social',
+      maxProgress: 7,
+    ),
+    const Achievement(
+      id: 'streak_month',
+      titleKey: 'achievements.streak_month_title',
+      descKey: 'achievements.streak_month_desc',
+      icon: Icons.local_fire_department_rounded,
+      color: Color(0xFFEF4444),
+      tokenReward: 300,
+      category: 'social',
+      maxProgress: 30,
+    ),
+    const Achievement(
+      id: 'recruiter',
+      titleKey: 'achievements.recruiter_title',
+      descKey: 'achievements.recruiter_desc',
+      icon: Icons.person_add_alt_1_rounded,
+      color: Color(0xFF22D3EE),
+      tokenReward: 100,
+      category: 'social',
+      maxProgress: 1,
+    ),
+    const Achievement(
+      id: 'ambassador',
+      titleKey: 'achievements.ambassador_title',
+      descKey: 'achievements.ambassador_desc',
+      icon: Icons.campaign_rounded,
+      color: Color(0xFF8B5CF6),
+      tokenReward: 400,
+      category: 'social',
+      maxProgress: 5,
+    ),
+    const Achievement(
+      id: 'collector',
+      titleKey: 'achievements.collector_title',
+      descKey: 'achievements.collector_desc',
+      icon: Icons.collections_rounded,
+      color: Color(0xFFEC4899),
+      tokenReward: 250,
+      category: 'social',
+      maxProgress: 10,
+    ),
   ];
 
   static const String _unseenKey = 'unseen_achievements';
@@ -156,6 +258,29 @@ class AchievementService {
     final db = await DatabaseHelper.instance.database;
     final List<Map<String, dynamic>> maps = await db.query('achievements');
     return maps.map((map) => map['id'] as String).toList();
+  }
+
+  /// Firestore'daki açılmış/ödülü alınmış rozetleri yerel kayıtlarla birleştirir.
+  static Future<void> importState({required List<String> unlocked, required List<String> claimed}) async {
+    if (unlocked.isNotEmpty) {
+      final db = await DatabaseHelper.instance.database;
+      final localUnlocked = (await getUnlockedAchievements()).toSet();
+      for (final id in unlocked) {
+        if (localUnlocked.contains(id)) continue;
+        await db.insert('achievements', {
+          'id': id,
+          'unlocked_at': DateTime.now().toIso8601String(),
+        });
+      }
+    }
+    if (claimed.isNotEmpty) {
+      final prefs = await SharedPreferences.getInstance();
+      final localClaimed = prefs.getStringList(_claimedKey) ?? [];
+      final merged = {...localClaimed, ...claimed}.toList();
+      if (merged.length != localClaimed.length) {
+        await prefs.setStringList(_claimedKey, merged);
+      }
+    }
   }
 
   /// Ödülü alınmış tüm başarımların ID'lerini çeker
@@ -195,6 +320,8 @@ class AchievementService {
       }
     }
 
+    AnalyticsService.logAchievementUnlocked(achievementId: id);
+
     // Unseen (Yeni) olarak SharedPreferences'a ekle
     final prefs = await SharedPreferences.getInstance();
     final unseenList = prefs.getStringList(_unseenKey) ?? [];
@@ -208,36 +335,7 @@ class AchievementService {
       final achievement = achievementsList.firstWhere((a) => a.id == id);
       if (context.mounted) {
         HapticFeedback.mediumImpact();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(achievement.icon, color: achievement.color, size: 28),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'achievements.unlocked_toast'.tr(),
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.amberAccent),
-                      ),
-                      Text(
-                        achievement.titleKey.tr(),
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: const Color(0xFF1E293B),
-            duration: const Duration(seconds: 4),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          ),
-        );
+        AchievementCelebration.show(context, achievement);
       }
     } catch (_) {}
   }
@@ -252,7 +350,7 @@ class AchievementService {
       if (claimedList.contains(id)) return false;
 
       // Jeton ekle
-      await TokenService.addTokens(achievement.tokenReward);
+      await TokenService.addTokens(achievement.tokenReward, source: 'achievement');
 
       // Claimed listesine ekle
       claimedList.add(id);
@@ -317,6 +415,10 @@ class AchievementService {
       if (!context.mounted) return;
       await unlockAchievement('gold_scholar', context);
     }
+    if (count >= 500) {
+      if (!context.mounted) return;
+      await unlockAchievement('platinum_scholar', context);
+    }
   }
 
   /// Kusursuz test başarımı
@@ -346,6 +448,14 @@ class AchievementService {
       if (!context.mounted) return;
       await unlockAchievement('duel_warrior', context);
     }
+    if (wins >= 50) {
+      if (!context.mounted) return;
+      await unlockAchievement('duel_champion', context);
+    }
+    if (wins >= 100) {
+      if (!context.mounted) return;
+      await unlockAchievement('duel_legend', context);
+    }
   }
 
   /// Arkadaş sayısına göre başarımları kontrol eder
@@ -361,6 +471,36 @@ class AchievementService {
     if (level >= 5) {
       if (!context.mounted) return;
       await unlockAchievement('level_five', context);
+    }
+    if (level >= 10) {
+      if (!context.mounted) return;
+      await unlockAchievement('level_ten', context);
+    }
+    if (level >= 20) {
+      if (!context.mounted) return;
+      await unlockAchievement('level_twenty', context);
+    }
+  }
+
+  static Future<void> checkAndUnlockStreakAchievements(int streak, BuildContext context) async {
+    if (streak >= 7) {
+      if (!context.mounted) return;
+      await unlockAchievement('streak_week', context);
+    }
+    if (streak >= 30) {
+      if (!context.mounted) return;
+      await unlockAchievement('streak_month', context);
+    }
+  }
+
+  static Future<void> checkAndUnlockReferralAchievements(int referralCount, BuildContext context) async {
+    if (referralCount >= 1) {
+      if (!context.mounted) return;
+      await unlockAchievement('recruiter', context);
+    }
+    if (referralCount >= 5) {
+      if (!context.mounted) return;
+      await unlockAchievement('ambassador', context);
     }
   }
 
@@ -382,6 +522,10 @@ class AchievementService {
         if (totalOwned >= 3) {
           if (!context.mounted) return;
           await unlockAchievement('smart_shopper', context);
+        }
+        if (totalOwned >= 10) {
+          if (!context.mounted) return;
+          await unlockAchievement('collector', context);
         }
       }
     } catch (e) {

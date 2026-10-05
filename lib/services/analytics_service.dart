@@ -148,6 +148,70 @@ class AnalyticsService {
     }
   }
 
+  static Future<void> logTokenEarned({required int amount, required String source}) =>
+      logCustomEvent(name: 'token_earned', parameters: {'amount': amount, 'source': source});
+
+  static Future<void> logTokenSpent({required int amount, required String reason}) =>
+      logCustomEvent(name: 'token_spent', parameters: {'amount': amount, 'reason': reason});
+
+  static Future<void> logShopPurchase({required String category, required String itemId, required int price}) =>
+      logCustomEvent(name: 'shop_purchase', parameters: {'category': category, 'item_id': itemId, 'price': price});
+
+  static Future<void> logQuestCompleted({required String questId, required int reward}) =>
+      logCustomEvent(name: 'quest_claimed', parameters: {'quest_id': questId, 'reward': reward});
+
+  static Future<void> logStreakClaimed({required int streak, required int reward}) =>
+      logCustomEvent(name: 'streak_claimed', parameters: {'streak': streak, 'reward': reward});
+
+  static Future<void> logStreakRescueOffered({required int streak, required int missed}) =>
+      logCustomEvent(name: 'streak_rescue_offered', parameters: {'streak': streak, 'missed': missed});
+
+  static Future<void> logStreakRescued({required int streak, required String method}) =>
+      logCustomEvent(name: 'streak_rescued', parameters: {'streak': streak, 'method': method});
+
+  static Future<void> logStreakFreezeUsed({required int count}) =>
+      logCustomEvent(name: 'streak_freeze_used', parameters: {'count': count});
+
+  static Future<void> logWheelSpin({required String prize, required bool isAdSpin}) =>
+      logCustomEvent(name: 'wheel_spin', parameters: {'prize': prize, 'is_ad_spin': isAdSpin ? 1 : 0});
+
+  static Future<void> logReferralRedeemed() => logCustomEvent(name: 'referral_redeemed');
+
+  static Future<void> logAchievementUnlocked({required String achievementId}) =>
+      logCustomEvent(name: 'achievement_unlocked', parameters: {'achievement_id': achievementId});
+
+  static Future<void> logShare({required String contentType}) async {
+    try {
+      await _analytics.logShare(contentType: contentType, itemId: contentType, method: 'system_share');
+    } catch (e) {
+      debugPrint('Analytics logShare error: $e');
+    }
+  }
+
+  static Future<void> logAdImpression({required String format, required String placement}) =>
+      logCustomEvent(name: 'ad_impression_app', parameters: {'ad_format': format, 'placement': placement});
+
+  static Future<void> logDuelFunnel(String step, {Map<String, Object>? parameters}) =>
+      logCustomEvent(name: 'duel_$step', parameters: parameters);
+
+  static Future<void> logNotificationPermission({required String result, required String trigger}) =>
+      logCustomEvent(name: 'notif_permission', parameters: {'result': result, 'trigger': trigger});
+
+  static Future<void> logNotificationOpen({required String type}) =>
+      logCustomEvent(name: 'notification_open', parameters: {'type': type});
+
+  static Future<void> logQuestionsLoaded({required String category, required int latencyMs, required int count}) =>
+      logCustomEvent(name: 'questions_loaded', parameters: {'category': category, 'latency_ms': latencyMs, 'count': count});
+
+  static Future<void> logQuizAbandoned({required String category, required int answered, required int total}) =>
+      logCustomEvent(name: 'quiz_abandoned', parameters: {'category': category, 'answered': answered, 'total': total});
+
+  /// Açılış süresi (main başlangıcından ilk frame'e, ms)
+  static Future<void> logAppStartup(int ms) =>
+      logCustomEvent(name: 'app_startup', parameters: {'duration_ms': ms});
+
+  static Future<void> logDuelChallengeSent() => logCustomEvent(name: 'duel_challenge_sent');
+
   /// Özel Event Kaydı
   static Future<void> logCustomEvent({
     required String name,

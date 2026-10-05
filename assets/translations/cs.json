@@ -222,7 +222,8 @@
     "guest_user": "Hostující uživatel",
     "more": "Více",
     "new": "NOVÝ",
-    "see_all": "Zobrazit vše"
+    "see_all": "Zobrazit vše",
+    "ad_not_ready": "Reklama ještě není připravená. Zkus to za chvíli znovu."
   },
   "account": {
     "title": "Můj profil",
@@ -255,7 +256,9 @@
     "full_screen": "Celá obrazovka",
     "full_screen_desc": "Spustí aplikaci v režimu celé obrazovky (skryje navigační lištu)",
     "language": "Jazyk",
-    "language_desc": "Změňte jazyk aplikace"
+    "language_desc": "Změňte jazyk aplikace",
+    "privacy_options": "Možnosti ochrany soukromí",
+    "privacy_options_desc": "Spravuj souhlas s reklamami"
   },
   "quiz": {
     "question_progress": "Otázka {}/{}",
@@ -311,7 +314,10 @@
     "msg_poor": "Můžete to udělat lépe! 🤔",
     "msg_fail": "Zkuste to znovu! 😅",
     "won_by_speed": "Vyhráno rychlostí! 🏎️",
-    "lost_by_speed": "Soupeř byl rychlejší! ⚠️"
+    "lost_by_speed": "Soupeř byl rychlejší! ⚠️",
+    "double_reward_desc": "Podívej se na krátké video a získej dalších +{} žetonů!",
+    "double_reward_done": "Odměna zdvojnásobena! Přidáno +{} žetonů.",
+    "double_reward_button": "2x"
   },
   "edit_profile": {
     "title": "Upravit profil",
@@ -436,7 +442,19 @@
     "tap_to_preview": "Klepnutím zobrazíte náhled",
     "Avatar 10": "Avatar 10",
     "mystery_avatar": "Mystery Avatar",
-    "title_none": "Žádný"
+    "title_none": "Žádný",
+    "powerups": "Vylepšení",
+    "streak_freeze_title": "Zmrazení série",
+    "streak_freeze_desc": "Vynechal jsi den? Zmrazení se použije automaticky a tvoje denní série zůstane. Můžeš mít nejvýše {}.",
+    "streak_freeze_owned": "Vlastníš: {}/{}",
+    "streak_freeze_max": "Limit dosažen ({})",
+    "frame_mint": "Mátová",
+    "frame_coral": "Korálová",
+    "booster_title": "Posilovač žetonů",
+    "booster_desc": "Zdvojnásobí žetony z tvých dalších {} kvízů.",
+    "booster_active": "Aktivní: zbývá {} kvízů",
+    "booster_inactive": "Neaktivní",
+    "booster_applied": "⚡ Posilovač: +{} žetonů navíc!"
   },
   "past_tests": {
     "title": "Historie testů",
@@ -546,7 +564,13 @@
     "reengage_3d_title": "🔥 Nezlomte svou sérii!",
     "reengage_3d_body": "Vraťte se a objevte nové otázky!",
     "reengage_7d_title": "💎 Chybíš nám!",
-    "reengage_7d_body": "Na vracející se hráče čekají speciální překvapení!"
+    "reengage_7d_body": "Na vracející se hráče čekají speciální překvapení!",
+    "league_ending_title": "⏳ Týdenní liga dnes večer končí",
+    "league_ending_body": "Pár kvízů tě může posunout o ligu výš. Nenech si ujít postup!",
+    "streak_risk_title": "🔥 Tvoje série se brzy přeruší!",
+    "streak_risk_body": "Vyřeš dnes jeden kvíz a udrž sérii {} dní!",
+    "social_channel_name": "Přátelé a souboje",
+    "social_channel_desc": "Žádosti o přátelství, pozvánky k soubojům a šťouchnutí"
   },
   "level_system": {
     "level": "Úroveň",
@@ -614,7 +638,16 @@
     "quizzes_to_next": "{} kvízy na další úroveň",
     "category_mastery": "Kategorie Mistrovství",
     "your_rank": "Vaše hodnost",
-    "climb_higher": "Vylézt výš!"
+    "climb_higher": "Vylézt výš!",
+    "day1_body": "Čeká na tebe denní odměna za sérii: {} žetonů. Zahraj si kvíz a vyzvedni si ji!",
+    "teaser_title": "🎁 Vrať se zítra!",
+    "teaser_body": "Udrž si sérii: vyzvedni {} žetonů, zatoč kolem štěstí a splň denní úkoly.",
+    "winback_3d_title": "🔥 Neztrať tempo!",
+    "winback_3d_body": "Uplynulo pár dní. Vrať se, zahraj si kvíz a začni sérii znovu!",
+    "winback_7d_title": "🏆 Tvoji přátelé stoupají v lize!",
+    "winback_7d_body": "Tvoji přátelé stále hrají. Vrať se a stoupej v lize také!",
+    "winback_14d_title": "💎 Chybíš nám!",
+    "winback_14d_body": "Čekají na tebe nové otázky a odměny. Vrať se a podívej se, co je nového!"
   },
   "quests": {
     "title": "Úkoly a odměny",
@@ -669,7 +702,27 @@
     "quiz_category": "Kvízy",
     "duel_category": "Souboje",
     "social_category": "Sociální",
-    "total_unlocked": "{}/{} odemčeno"
+    "total_unlocked": "{}/{} odemčeno",
+    "platinum_scholar_title": "Platinový učenec",
+    "platinum_scholar_desc": "Dokonči celkem 500 kvízů",
+    "duel_champion_title": "Šampion soubojů",
+    "duel_champion_desc": "Vyhraj celkem 50 soubojů",
+    "duel_legend_title": "Legenda soubojů",
+    "duel_legend_desc": "Vyhraj celkem 100 soubojů",
+    "level_ten_title": "Expert úrovně 10",
+    "level_ten_desc": "Dosáhni úrovně 10",
+    "level_twenty_title": "Mistr úrovně 20",
+    "level_twenty_desc": "Dosáhni úrovně 20",
+    "streak_week_title": "V ohni",
+    "streak_week_desc": "Dosáhni série přihlášení 7 dní",
+    "streak_month_title": "Nezastavitelný",
+    "streak_month_desc": "Dosáhni série přihlášení 30 dní",
+    "recruiter_title": "Náborář",
+    "recruiter_desc": "Přiveď kamaráda pomocí svého kódu",
+    "ambassador_title": "Ambasador",
+    "ambassador_desc": "Přiveď 5 kamarádů pomocí svého kódu",
+    "collector_title": "Velký sběratel",
+    "collector_desc": "Získej 10 předmětů z obchodu"
   },
   "duel": {
     "race_track": "DOUELOVÝ ZÁVOD",
@@ -811,7 +864,26 @@
     "kick_confirm_msg": "Opravdu chcete vyhodit uživatele {} z místnosti?",
     "kicked_from_room": "Hostitel vás vyhodil z místnosti.",
     "special_bet_badge": "SPECIÁLNÍ 🔥",
-    "fee_info": "Poplatek {} %."
+    "fee_info": "Poplatek {} %.",
+    "category": "Kategorie",
+    "difficulty": "Obtížnost",
+    "challenge_friend_title": "Vyzvi hráče {}",
+    "challenge_sent": "Výzva odeslána hráči {}!",
+    "challenge_failed": "Výzvu se nepodařilo odeslat, ale místnost je připravená. Sdílej kód místnosti.",
+    "free_tickets": "Dnes {}/{} volných vstupenek · pro sázky do {}",
+    "friendly": "Přátelák",
+    "friendly_desc": "Přátelský zápas: žádné žetony v sázce. Body do žebříčku a ligy stále získáš.",
+    "high_bet_real_only": "Do místností s vysokou sázkou se přidávají jen skuteční hráči — sdílej kód!",
+    "host_no_response": "Hostitel neodpověděl. Zkus jinou místnost.",
+    "result_cta_title": "Připraven na skutečného soupeře?",
+    "result_cta_desc": "Měl jsi {} % v kategorii {}. Zkus souboj 1 na 1!",
+    "result_cta_button": "Souboj",
+    "share_room_text": "⚡ Přidej se k mému souboji 1 na 1! Kód místnosti: {}",
+    "ticket_used": "Použita volná vstupenka",
+    "quick_match": "Rychlý zápas",
+    "quick_match_sub": "Jedno klepnutí · soupeř za pár sekund",
+    "quick_match_searching": "Hledám soupeře…",
+    "quick_match_hint": "S volnou vstupenkou, pokud ji máš, jinak přátelský zápas."
   },
   "errors": {
     "no_internet_ai": "K dosažení naší AI potřebujete aktivní připojení k internetu. 📡",
@@ -836,10 +908,16 @@
     "wheel_spin_button": "Kolovrat 🔥",
     "wheel_done_today": "Pro dnešek hotovo",
     "streak_claim_today": "Získejte dnešní odměnu 🎉",
-    "streak_ok": "OK"
+    "streak_ok": "OK",
+    "wheel_freeze_prize": "Zmrazení série ❄️",
+    "wheel_freeze_short": "Zmrazení"
   },
   "daily_streak": {
-    "day_num": "den {}"
+    "day_num": "den {}",
+    "freeze_used": "Tvoje série je zachráněna! Použito zmrazení: {}.",
+    "freezes_owned": "Zmrazení: {}/{}",
+    "play_to_claim": "Vyřeš dnes 1 kvíz, vyzvedni si odměnu a udrž sérii!",
+    "play_now": "Hrát kvíz"
   },
   "friends": {
     "title": "Přátelé",
@@ -879,7 +957,8 @@
     "friend_req_received_title": "Nová žádost o přátelství! 👥",
     "friend_req_received_body": "{} vám poslal žádost o přátelství!",
     "request_received": "Žádost přijata! ⚡",
-    "accept_request": "Přijmout"
+    "accept_request": "Přijmout",
+    "accept": "Přijmout"
   },
   "review": {
     "card_title": "Ohodnoťte na Google Play",
@@ -896,7 +975,7 @@
   },
   "referral": {
     "title": "Pozvěte přátele",
-    "desc": "Zadejte zvací kód přítele a získejte 500 tokenů! Sdílejte svůj kód a pozvěte své přátele.",
+    "desc": "Zadej zvací kód kamaráda a získej 500 žetonů po prvním kvízu! Sdílej svůj kód a pozvi přátele.",
     "your_code": "VÁŠ ZVACÍ KÓD",
     "enter_code": "Zadejte zvací kód (+500 tokenů)",
     "hint": "ZADEJTE KÓD",
@@ -905,10 +984,64 @@
     "share_button": "Podíl",
     "copy_button": "Kopie",
     "code_copied": "Kód pozvánky zkopírován! 📋",
-    "share_msg": "🏆 Přidejte se ke mně v Quiz Areně! Použijte můj zvací kód a získejte okamžitě 500 tokenů:\n👉 Kód: {}\n📲 Stáhněte si aplikaci: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
+    "share_msg": "🏆 Přidej se ke mně v Quiz Areně! Použij můj zvací kód a získej 500 žetonů po prvním kvízu:\n👉 Kód: {}\n📲 Stáhněte si aplikaci: https://play.google.com/store/apps/details?id=com.abdullahekici.emilekbul",
     "success": "Gratuluji! Do vašeho účtu bylo přidáno {} tokenů! 🎉",
     "already_used": "Zvací kód jste již použili.",
     "own_code": "Nemůžete použít svůj vlastní zvací kód.",
-    "invalid_code": "Neplatný nebo neexistující zvací kód."
+    "invalid_code": "Neplatný nebo neexistující zvací kód.",
+    "pending": "Pozvánkový kód uložen! Ty i tvůj přítel dostanete žetony po dokončení prvního kvízu."
+  },
+  "share": {
+    "button": "Sdílet",
+    "copied": "Zkopírováno do schránky",
+    "quiz_result": "Získal jsem {}/{} v kvízu {} v aplikaci {}! 🧠 Dokážeš mě porazit?",
+    "duel_win": "Porazil jsem {} {}-{} v kvízovém souboji 1 na 1 v aplikaci {}! ⚔️ Troufneš si na mě?",
+    "duel_played": "Právě jsem odehrál kvízový souboj 1 na 1 proti {} v aplikaci {}! ⚔️ Vyzvi mě!",
+    "achievement": "Odemkl jsem odznak „{}“ v aplikaci {}! 🏅"
+  },
+  "league": {
+    "title": "Týdenní liga",
+    "bronze": "Bronzová liga",
+    "silver": "Stříbrná liga",
+    "gold": "Zlatá liga",
+    "platinum": "Platinová liga",
+    "diamond": "Diamantová liga",
+    "ends_in": "Končí za {} d {} h",
+    "how_it_works": "Získávej body z kvízů a soubojů. Na konci týdne postoupí nejlepších {} % o ligu výš a nejhorší sestoupí.",
+    "empty": "V této lize tento týden zatím nikdo nebodoval. Zahraj si kvíz a ujmi se vedení!",
+    "points": "b.",
+    "promoted_title": "Postup!",
+    "promoted_desc": "Skvělý týden! Postoupil jsi do ligy {} a získal {} žetonů.",
+    "demoted_title": "Změna ligy",
+    "demoted_desc": "Tento týden jsi v lize {}. Zahraj si pár kvízů a vyšplhej zpět!",
+    "view": "Zobrazit ligu",
+    "result_promoted_sub": "Tvoje píle se vyplatila. Udrž tempo v nové lize!",
+    "result_demoted_sub": "Každý šampion zažil těžký týden. Pár kvízů a jsi zpět na vrcholu!",
+    "result_rank": "Pořadí minulý týden: #{}",
+    "result_reward": "+{} žetonů",
+    "share": "Sdílet",
+    "continue": "Pokračovat",
+    "share_text": "Teď jsem v lize {} v Quiz Arena! Dokážeš mě porazit?"
+  },
+  "daily_challenge": {
+    "title": "Denní výzva",
+    "badge": "NOVÉ",
+    "card_sub": "Stejných 5 otázek pro všechny · denní žebříček",
+    "rules": "Dnes mají všichni stejných {} otázek. Jen jeden pokus — každá správná odpověď dává {} žetonů. Buď rychlý: při shodě rozhoduje čas!",
+    "start": "Spustit dnešní výzvu",
+    "leaderboard": "Dnešní žebříček",
+    "empty": "Dnes ještě nikdo nehrál — buď první!",
+    "rank": "Pořadí #{} z {} · {} s",
+    "come_back": "Zítra se odemkne nová výzva. Sdílej výsledek a vyzvi přátele!",
+    "reward": "Denní výzva splněna! +{} žetonů",
+    "share_text": "{} · Denní výzva {}\n{}/{} {}\n🏆 {}"
+  },
+  "streak_rescue": {
+    "title": "Tvoje série se chýlí ke konci!",
+    "body": "Vynechal jsi jeden den a přišel o sérii {} dní. Dnes ji ještě můžeš zachránit!",
+    "watch_ad": "Zhlédni reklamu a zachraň ji",
+    "pay_tokens": "Zachránit za {} žetonů",
+    "no_thanks": "Ne, děkuji, začít znovu",
+    "not_enough_tokens": "Nedostatek žetonů."
   }
 }

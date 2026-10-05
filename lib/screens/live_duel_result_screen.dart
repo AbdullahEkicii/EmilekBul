@@ -6,6 +6,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/duel_room_model.dart';
 import '../constants/app_categories.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/share_service.dart';
+import '../services/review_service.dart';
+import '../services/notification_service.dart';
+import '../services/streak_service.dart';
+import '../services/duel_ticket_service.dart';
 import '../services/achievement_service.dart';
 import '../services/duel_service.dart';
 import '../services/token_service.dart';
@@ -151,10 +156,12 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
     // 1. Token Ödül Dağıtımı
     if (isWinner) {
       final prize = room.prizeTokens;
-      await TokenService.addTokens(prize);
+      await TokenService.addTokens(prize, source: 'duel_prize');
     } else if (isTie) {
       // Refund bet tokens
-      await TokenService.addTokens(room.config.betTokens);
+      if (!DuelTicketService.paidWithTicket(widget.roomCode)) {
+        await TokenService.addTokens(room.config.betTokens, source: 'duel_refund');
+      }
     }
 
     // 2. Genel & Aylık Puanlama ve Sıralama Entegrasyonu
@@ -197,6 +204,8 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
       });
     }
 
+    NotificationService.markPlayedToday();
+    StreakService.markQuizPlayedToday();
     try {
       await UserService.addPointsToUser(
         uid: user.uid,
@@ -212,6 +221,10 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
         if (mounted) {
           await AchievementService.checkAndUnlockDuelAchievements(currentWins, context);
         }
+        // Galibiyet anında (pozitif an) değerlendirme önerisi
+        Future.delayed(const Duration(milliseconds: 3500), () {
+          if (mounted) ReviewService.checkAndPromptAutoReview(context);
+        });
       }
     } catch (e) {
       debugPrint('Error saving friend duel leaderboard points: $e');
@@ -322,7 +335,6 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
                         const SizedBox(height: 16),
                         const MyNativeAd(
                           height: 70,
-                          factoryId: 'adFactorySmall',
                         ),
                         const SizedBox(height: 16),
                         _buildPrizeBreakdownCard(
@@ -441,9 +453,40 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
               letterSpacing: 0.5,
             ),
           ),
+          const SizedBox(height: 10),
+          TextButton.icon(
+            onPressed: () => _shareDuelResult(isWinner: isWinner, myUid: myUid),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white,
+              backgroundColor: Colors.white.withValues(alpha: 0.08),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: const Icon(Icons.ios_share_rounded, size: 18),
+            label: Text('share.button'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
         ],
       ),
     );
+  }
+
+  void _shareDuelResult({required bool isWinner, required String myUid}) {
+    final room = _room;
+    if (room == null) return;
+    final bool amHost = room.host.uid == myUid;
+    final me = amHost ? room.host : room.guest;
+    final opponent = amHost ? room.guest : room.host;
+    if (me == null || opponent == null) return;
+
+    final String text = isWinner
+        ? 'share.duel_win'.tr(args: [
+            opponent.username,
+            me.score.toString(),
+            opponent.score.toString(),
+            'app_title'.tr(),
+          ])
+        : 'share.duel_played'.tr(args: [opponent.username, 'app_title'.tr()]);
+    ShareService.shareText(context, text: text, contentType: 'duel_result');
   }
 
   Widget _buildPointsEarnedCard({required DuelRoom room, required bool isWinner}) {
@@ -576,15 +619,19 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
               Text(
                 isWinner
                     ? '+$prize $tokenUnit 🔥'
-                    : isTie
-                        ? '$betTokens $tokenUnit (${'duel.refund'.tr()})'
-                        : '-$betTokens $tokenUnit',
+                    : DuelTicketService.paidWithTicket(widget.roomCode)
+                        ? '🎟️ ${'duel.ticket_used'.tr()}'
+                        : isTie
+                            ? '$betTokens $tokenUnit (${'duel.refund'.tr()})'
+                            : '-$betTokens $tokenUnit',
                 style: TextStyle(
                   color: isWinner
                       ? const Color(0xFF10B981)
-                      : isTie
-                          ? const Color(0xFF60A5FA)
-                          : const Color(0xFFEF4444),
+                      : DuelTicketService.paidWithTicket(widget.roomCode)
+                          ? const Color(0xFFFFD56B)
+                          : isTie
+                              ? const Color(0xFF60A5FA)
+                              : const Color(0xFFEF4444),
                   fontWeight: FontWeight.w900,
                   fontSize: 16,
                 ),
@@ -853,7 +900,7 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
 
   Widget _buildBottomButtons() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
       decoration: BoxDecoration(
         color: const Color(0xFF0F172A),
         border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
@@ -861,40 +908,63 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
       child: Row(
         children: [
           Expanded(
+            flex: 1,
             child: OutlinedButton(
               onPressed: _handleExit,
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                 side: const BorderSide(color: Colors.white24),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
-              child: Text(
-                'duel.leave'.tr(),
-                style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 14),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'duel.leave'.tr(),
+                  style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 13),
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             flex: 2,
             child: ElevatedButton(
               onPressed: _handleRematch,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFF9F43),
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 4,
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.replay_rounded, color: Colors.black, size: 20),
+                  const Icon(Icons.replay_rounded, color: Colors.black, size: 18),
+                  const SizedBox(width: 6),
                   Flexible(
-                    child: Text(
-                      '${'duel.return_to_room'.tr()} ($_secondsLeft s)',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 13.5),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'duel.return_to_room'.tr(),
+                            style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 13),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${_secondsLeft}s',
+                              style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],

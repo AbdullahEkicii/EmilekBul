@@ -1,3 +1,4 @@
+import '../services/performance_service.dart';
 import 'package:flutter/material.dart';
 import '../models/question.dart';
 import '../widgets/my_native_ad.dart';
@@ -10,13 +11,17 @@ import '../services/notification_service.dart';
 import '../services/quest_service.dart';
 import '../services/achievement_service.dart';
 import '../services/review_service.dart';
+import '../services/share_service.dart';
+import '../services/streak_service.dart';
+import '../services/analytics_service.dart';
+import '../widgets/friend_race_dialog.dart';
+import '../widgets/rewarded_ad_manager.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/app_categories.dart';
 import '../services/notification_permission_manager.dart'; // Added for permission handling
-import 'dart:ui'; // For BackdropFilter
 
 class TestSonucuScreen extends StatefulWidget {
   final List<Question> questions;
@@ -77,6 +82,13 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
   bool _bonusTokenClaimed = false;
   bool _showWelcomeBonusCard = false;
 
+  // "Ödülü 2x yap" ödüllü reklamı
+  final RewardedAdManager _doubleRewardAd = RewardedAdManager();
+  int _quizTokensEarned = 0;
+  bool _doubleRewardReady = false;
+  bool _doubleRewardClaimed = false;
+  bool _doubleRewardLoading = false;
+
   @override
   void initState() {
     super.initState();
@@ -99,7 +111,10 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
     _orbController = AnimationController(
       duration: const Duration(seconds: 15),
       vsync: this,
-    )..repeat(reverse: true);
+    );
+    if (!PerformanceService.isPerformanceMode) {
+      _orbController.repeat(reverse: true);
+    }
 
     _orbAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _orbController, curve: Curves.easeInOut),
@@ -135,7 +150,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
         final quizzes = profile['completedQuizzes'] ?? 0;
         final level = UserService.calculateLevel(quizzes);
         // Quizzes needed for level L→L+1 is 10*(L+1)+10
-        final nextLevelQuizzes = 10 * (level + 1) + 10;
+        final nextLevelQuizzes = UserService.getQuizzesNeededForNextLevel(level);
         setState(() {
           _userLevel = level;
           _completedQuizzes = quizzes;
@@ -191,6 +206,8 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
       // Cancel existing re-engagement notifications and schedule new ones
       await NotificationService.cancelReEngagementNotifications();
       await NotificationService.scheduleReEngagementNotifications();
+      await NotificationService.markPlayedToday();
+      await StreakService.markQuizPlayedToday();
 
       // Görev ilerlemesini güncelle
       await QuestService.onTestCompleted(
@@ -208,8 +225,11 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
             importNotificationManagerThenCheck();
           }
         });
-      } else if (!widget.isOnboarding && !widget.isDuel) {
-        // Belirli aralıklarla ve test sonrasında Google Play değerlendirme önerisi
+      } else if (!widget.isOnboarding &&
+          !widget.isDuel &&
+          widget.questions.isNotEmpty &&
+          widget.score / widget.questions.length >= 0.7) {
+        // Sadece başarılı bir testten sonra (pozitif an) değerlendirme önerisi
         Future.delayed(const Duration(milliseconds: 3500), () {
           if (mounted) {
             ReviewService.checkAndPromptAutoReview(context);
@@ -224,7 +244,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
   void importNotificationManagerThenCheck() async {
     try {
       // We already have the NotificationPermissionManager imported at top
-      await NotificationPermissionManager.notificationPermissions(context);
+      await NotificationPermissionManager.notificationPermissions(context, afterFirstQuiz: true);
     } catch (e) {
       debugPrint(e.toString());
     }
@@ -355,22 +375,113 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
           _showWelcomeBonusCard = true;
         });
       }
-      await TokenService.addTokens(100);
+      await TokenService.addTokens(100, source: 'welcome_bonus');
     } else {
       final bool isWeeklyBonus = AppCategories.isCategoryWeeklyBonus(widget.category);
+      final tokensPerAnswer = TokenService.getTokensForCorrectAnswer(widget.difficulty);
       if (isWeeklyBonus) {
         // 2X Token Ödülü
-        final tokensPerAnswer = TokenService.getTokensForCorrectAnswer(widget.difficulty);
         final totalTokens = widget.score * tokensPerAnswer * 2;
-        await TokenService.addTokens(totalTokens);
+        await TokenService.addTokens(totalTokens, source: 'quiz_weekly_bonus');
+        _quizTokensEarned = totalTokens;
       } else {
         await TokenService.awardTokensForQuiz(widget.difficulty, widget.score);
+        _quizTokensEarned = widget.score * tokensPerAnswer;
       }
+      final boosterBonus = await TokenService.applyBooster(_quizTokensEarned);
+      if (boosterBonus > 0 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('shop.booster_applied'.tr(args: [boosterBonus.toString()])),
+            backgroundColor: const Color(0xFF7C3AED),
+          ),
+        );
+      }
+      if (_quizTokensEarned > 0 && !widget.isDuel) _preloadDoubleReward();
       final bool playerWonDuel = widget.isDuel && (widget.score > widget.botScore);
       if (playerWonDuel) {
-        await TokenService.addTokens(50);
+        await TokenService.addTokens(50, source: 'bot_duel_win');
       }
     }
+  }
+
+  void _preloadDoubleReward() {
+    _doubleRewardAd.loadAd(
+      onAdLoaded: () {
+        if (mounted) setState(() => _doubleRewardReady = true);
+      },
+      onFailed: () {},
+    );
+  }
+
+  void _claimDoubleReward() {
+    if (_doubleRewardClaimed || _doubleRewardLoading) return;
+    if (!_doubleRewardAd.isReady) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('common.ad_not_ready'.tr())));
+      _preloadDoubleReward();
+      return;
+    }
+    setState(() => _doubleRewardLoading = true);
+    _doubleRewardAd.showAd(onRewarded: () async {
+      await TokenService.addTokens(_quizTokensEarned, source: 'rewarded_double');
+      AnalyticsService.logCustomEvent(name: 'reward_doubled', parameters: {'amount': _quizTokensEarned});
+      if (!mounted) return;
+      setState(() {
+        _doubleRewardClaimed = true;
+        _doubleRewardLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('result.double_reward_done'.tr(args: [_quizTokensEarned.toString()])),
+          backgroundColor: Colors.green,
+        ),
+      );
+    });
+    // Reklam kapanınca (ödül alınmadan) butonu tekrar etkinleştir
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted && !_doubleRewardClaimed) setState(() => _doubleRewardLoading = false);
+    });
+  }
+
+  Widget _buildDoubleRewardCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [const Color(0xFFFFD56B).withValues(alpha: 0.22), const Color(0xFFFF9F43).withValues(alpha: 0.12)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFFFD56B).withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.ondemand_video_rounded, color: Color(0xFFFFD56B), size: 28),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _doubleRewardClaimed
+                  ? 'result.double_reward_done'.tr(args: [_quizTokensEarned.toString()])
+                  : 'result.double_reward_desc'.tr(args: [_quizTokensEarned.toString()]),
+              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600, height: 1.3),
+            ),
+          ),
+          if (!_doubleRewardClaimed) ...[
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: _doubleRewardLoading ? null : _claimDoubleReward,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFD56B),
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: Text('result.double_reward_button'.tr(), style: const TextStyle(fontWeight: FontWeight.w900)),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   void _levelKontrol() async {
@@ -379,6 +490,11 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
 
     try {
       final result = await UserService.incrementCompletedQuizzes(user.uid);
+      final int levelReward = (result['reward'] as int?) ?? 0;
+      if (result['levelUp'] == true && levelReward > 0) {
+        // Ödül Firestore'a increment ile yazıldı; yerel jeton önbelleğini de güncelle ki sonraki mutlak yazım silmesin
+        await TokenService.updateTokenAmount(await TokenService.getTokenAmount() + levelReward);
+      }
       if (result['levelUp'] == true && mounted) {
         _showLevelUpDialog(result['newLevel'], result['reward']);
       }
@@ -401,8 +517,8 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
           scale: curve,
           child: Opacity(
             opacity: anim1.value,
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+            child: PerformanceService.blur(
+              sigma: 8,
               child: Dialog(
                 backgroundColor: Colors.transparent,
                 elevation: 0,
@@ -659,6 +775,16 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
 
                           _buildContinueCard(successRate),
                           const SizedBox(height: 20),
+
+                          if (!widget.isOnboarding && !widget.isDuel && _quizTokensEarned > 0 && _doubleRewardReady) ...[
+                            _buildDoubleRewardCard(),
+                            const SizedBox(height: 20),
+                          ],
+
+                          if (!widget.isOnboarding && !widget.isDuel) ...[
+                            _buildDuelCtaCard(successRate),
+                            const SizedBox(height: 20),
+                          ],
 
                           _buildGamificationSection(),
                           const SizedBox(height: 24),
@@ -1201,7 +1327,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
               onPressed: () async {
                 if (showBonus && !_bonusTokenClaimed) {
                   setState(() => _bonusTokenClaimed = true);
-                  await TokenService.addTokens(5);
+                  await TokenService.addTokens(5, source: 'result_bonus');
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -1500,8 +1626,6 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
               child: MyNativeAd(
                 height: 65,
-                factoryId: 'adFactorySmall',
-                refreshInterval: 30,
               ),
             ),
             Row(
@@ -1526,12 +1650,124 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
                     icon: Icons.home_rounded,
                   ),
                 ),
+                if (!widget.isOnboarding) ...[
+                  const SizedBox(width: 12),
+                  _buildShareButton(),
+                ],
               ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildDuelCtaCard(double successRate) {
+    final categoryName = _getTranslatedCategory(widget.category);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF6366F1).withValues(alpha: 0.28),
+            const Color(0xFFFF5252).withValues(alpha: 0.18),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFF818CF8).withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.bolt_rounded, color: Color(0xFFFFD56B), size: 28),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'duel.result_cta_title'.tr(),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'duel.result_cta_desc'.tr(args: [successRate.round().toString(), categoryName]),
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 12, height: 1.3),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () {
+              AnalyticsService.logDuelFunnel('result_cta_tap', parameters: {'category': widget.category});
+              FriendRaceEntryDialog.show(context, presetCategory: widget.category);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF9F43),
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            child: Text('duel.result_cta_button'.tr(), style: const TextStyle(fontWeight: FontWeight.w900)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShareButton() {
+    return SizedBox(
+      width: 52,
+      height: 52,
+      child: OutlinedButton(
+        onPressed: _shareResult,
+        style: OutlinedButton.styleFrom(
+          padding: EdgeInsets.zero,
+          backgroundColor: Colors.white.withValues(alpha: 0.05),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+        child: Tooltip(
+          message: 'share.button'.tr(),
+          child: const Icon(Icons.ios_share_rounded, color: Colors.white, size: 22),
+        ),
+      ),
+    );
+  }
+
+  void _shareResult() {
+    final total = widget.questions.length;
+    final String text;
+    final String contentType;
+    if (widget.isDuel && widget.score > widget.botScore) {
+      text = 'share.duel_win'.tr(args: [
+        widget.botName,
+        widget.score.toString(),
+        widget.botScore.toString(),
+        'app_title'.tr(),
+      ]);
+      contentType = 'duel_result';
+    } else {
+      text = 'share.quiz_result'.tr(args: [
+        widget.score.toString(),
+        total.toString(),
+        _getTranslatedCategory(widget.category),
+        'app_title'.tr(),
+      ]);
+      contentType = 'quiz_result';
+    }
+    ShareService.shareText(context, text: text, contentType: contentType);
   }
 
   Widget _buildButton({
