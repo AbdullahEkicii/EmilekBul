@@ -7,16 +7,19 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/ad_constants.dart';
+import 'ad_grace.dart';
 import 'ads_service.dart';
 import 'analytics_service.dart';
+import 'remote_flags.dart';
 
 /// Test/düello bitişinde sonuç ekranından önce gösterilen geçiş reklamı.
 /// Kural: tekli + düello toplam ilk [freeTests] testte gösterilmez, sonra her
 /// [everyNTests] testte bir ve iki gösterim arasında en az [minInterval] geçer.
+/// Değerler Remote Config'ten gelir (RemoteFlags); varsayılanlar: 6 / 3 / 180 sn.
 class InterstitialAdManager {
-  static const int freeTests = 5;
-  static const int everyNTests = 2;
-  static const Duration minInterval = Duration(minutes: 2);
+  static int get freeTests => RemoteFlags.interstitialFreeTests;
+  static int get everyNTests => RemoteFlags.interstitialEveryN;
+  static Duration get minInterval => Duration(seconds: RemoteFlags.interstitialMinIntervalSeconds);
 
   static const String _countKey = 'ads_completed_tests';
   static const String _lastShownKey = 'ads_interstitial_last_shown';
@@ -60,6 +63,7 @@ class InterstitialAdManager {
         },
         onAdFailedToLoad: (error) {
           debugPrint('Interstitial failed to load: $error');
+          AnalyticsService.logAdLoadFailed(format: 'interstitial', placement: 'interstitial', code: error.code);
           _loading = false;
           _retryAttempt++;
           final delay = Duration(seconds: (30 * _retryAttempt).clamp(30, 300));
@@ -83,6 +87,11 @@ class InterstitialAdManager {
       final prefs = await SharedPreferences.getInstance();
       final count = (prefs.getInt(_countKey) ?? 0) + 1;
       await prefs.setInt(_countKey, count);
+
+      if (await AdGrace.isActive()) {
+        finish();
+        return;
+      }
 
       final lastShown = DateTime.fromMillisecondsSinceEpoch(prefs.getInt(_lastShownKey) ?? 0);
       final dueByCount = count > freeTests && (count - freeTests) % everyNTests == 0;

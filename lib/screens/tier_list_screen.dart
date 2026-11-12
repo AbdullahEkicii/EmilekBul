@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/glass_surface.dart';
 import '../services/user_service.dart';
 import '../services/achievement_service.dart';
 import '../widgets/my_native_ad.dart';
@@ -355,18 +356,15 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
         return FutureBuilder<List<Map<String, dynamic>>>(
           future: UserService.getPastMonthsChampions(count: 3),
           builder: (context, snapshot) {
-            final bool loading = snapshot.connectionState == ConnectionState.waiting;
+            final bool loading =
+                snapshot.connectionState == ConnectionState.waiting;
             final champions = snapshot.data ?? [];
 
-            return Container(
+            return GlassSurface(
               height: MediaQuery.of(context).size.height * 0.7,
-              decoration: const BoxDecoration(
-                color: bgElevated,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                border: Border(
-                  top: BorderSide(color: Color(0x2EFFFFFF), width: 1),
-                ),
-              ),
+              tint: bgElevated,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(28)),
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
               child: Column(
                 children: [
@@ -385,7 +383,8 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.stars_rounded, color: accentGold, size: 24),
+                      const Icon(Icons.stars_rounded,
+                          color: accentGold, size: 24),
                       const SizedBox(width: 8),
                       Text(
                         'welcome_screen.past_champions_title'.tr(),
@@ -420,7 +419,8 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Icon(Icons.military_tech_outlined,
-                                        color: Colors.white.withValues(alpha: 0.3),
+                                        color:
+                                            Colors.white.withValues(alpha: 0.3),
                                         size: 48),
                                     const SizedBox(height: 12),
                                     Text(
@@ -456,9 +456,11 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
                                       ),
-                                      borderRadius: BorderRadius.circular(radiusMd),
+                                      borderRadius:
+                                          BorderRadius.circular(radiusMd),
                                       border: Border.all(
-                                        color: accentGold.withValues(alpha: 0.3),
+                                        color:
+                                            accentGold.withValues(alpha: 0.3),
                                         width: 1,
                                       ),
                                     ),
@@ -469,48 +471,62 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
                                           alignment: Alignment.topCenter,
                                           children: [
                                             Padding(
-                                              padding: const EdgeInsets.only(top: 8.0),
+                                              padding: const EdgeInsets.only(
+                                                  top: 8.0),
                                               child: Container(
                                                 width: 58,
                                                 height: 58,
                                                 decoration: BoxDecoration(
                                                   shape: BoxShape.circle,
                                                   border: Border.all(
-                                                    color: UserService.getFrameColor(
-                                                        item['equippedFrame']?.toString()),
+                                                    color: UserService
+                                                        .getFrameColor(item[
+                                                                'equippedFrame']
+                                                            ?.toString()),
                                                     width: 2.5,
                                                   ),
                                                 ),
                                                 child: Builder(
-                                                   builder: (context) {
-                                                     final hasTopAvatar = UserService.hasAvatar(item['avatarIndex']?.toString());
-                                                     return CircleAvatar(
-                                                       radius: 26,
-                                                       backgroundColor: bgElevated,
-                                                       backgroundImage: hasTopAvatar
-                                                           ? ResizeImage(
-                                                               AssetImage(UserService.getAvatarPath(
-                                                                   item['avatarIndex']?.toString() ?? '0')),
-                                                               width: 104,
-                                                               height: 104,
-                                                             )
-                                                           : null,
-                                                       child: hasTopAvatar
-                                                           ? null
-                                                           : const Icon(
-                                                               Icons.person_rounded,
-                                                               color: Colors.white70,
-                                                               size: 24,
-                                                             ),
-                                                     );
-                                                   },
-                                                 ),
+                                                  builder: (context) {
+                                                    final hasTopAvatar =
+                                                        UserService.hasAvatar(
+                                                            item['avatarIndex']
+                                                                ?.toString());
+                                                    return CircleAvatar(
+                                                      radius: 26,
+                                                      backgroundColor:
+                                                          bgElevated,
+                                                      backgroundImage:
+                                                          hasTopAvatar
+                                                              ? ResizeImage(
+                                                                  AssetImage(UserService.getAvatarPath(
+                                                                      item['avatarIndex']
+                                                                              ?.toString() ??
+                                                                          '0')),
+                                                                  width: 104,
+                                                                  height: 104,
+                                                                )
+                                                              : null,
+                                                      child: hasTopAvatar
+                                                          ? null
+                                                          : const Icon(
+                                                              Icons
+                                                                  .person_rounded,
+                                                              color: Colors
+                                                                  .white70,
+                                                              size: 24,
+                                                            ),
+                                                    );
+                                                  },
+                                                ),
                                               ),
                                             ),
                                             Positioned(
                                               top: -2,
-                                              child: Icon(Icons.emoji_events_rounded,
-                                                  color: rankGold, size: 20),
+                                              child: Icon(
+                                                  Icons.emoji_events_rounded,
+                                                  color: rankGold,
+                                                  size: 20),
                                             ),
                                           ],
                                         ),
@@ -523,10 +539,13 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Container(
-                                                padding: const EdgeInsets.symmetric(
-                                                    horizontal: 8, vertical: 2),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 2),
                                                 decoration: BoxDecoration(
-                                                  color: accentGold.withValues(alpha: 0.2),
+                                                  color: accentGold.withValues(
+                                                      alpha: 0.2),
                                                   borderRadius:
                                                       BorderRadius.circular(6),
                                                 ),
@@ -541,20 +560,27 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
                                               ),
                                               const SizedBox(height: 6),
                                               Text(
-                                                AppUtils.localizeUsername(item['username']),
+                                                AppUtils.localizeUsername(
+                                                    item['username']),
                                                 style: const TextStyle(
                                                   color: textPrimary,
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.w800,
                                                 ),
                                               ),
-                                              if (item['equippedTitle'] != null &&
-                                                  item['equippedTitle'] != '0' &&
-                                                  item['equippedTitle'] != 'yok') ...[
+                                              if (item['equippedTitle'] !=
+                                                      null &&
+                                                  item['equippedTitle'] !=
+                                                      '0' &&
+                                                  item['equippedTitle'] !=
+                                                      'yok') ...[
                                                 const SizedBox(height: 2),
                                                 Text(
-                                                  AppConstants.titleKeys[item['equippedTitle']]?.tr() ??
-                                                      item['equippedTitle'].toString(),
+                                                  AppConstants.titleKeys[item[
+                                                              'equippedTitle']]
+                                                          ?.tr() ??
+                                                      item['equippedTitle']
+                                                          .toString(),
                                                   style: const TextStyle(
                                                     color: accentGold,
                                                     fontSize: 11.5,
@@ -567,7 +593,8 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
                                         ),
 
                                         const SizedBox(width: 8),
-                                        const Icon(Icons.stars_rounded, color: accentGold, size: 28),
+                                        const Icon(Icons.stars_rounded,
+                                            color: accentGold, size: 28),
                                       ],
                                     ),
                                   );
@@ -798,7 +825,8 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
   Widget _buildUserCard(Map<String, dynamic> user, int index) {
     final style = _rankStyleFor(index, user);
     final bool isTop3 = index < 3;
-    final Color frameColor = UserService.getFrameColor(user['equippedFrame']?.toString());
+    final Color frameColor =
+        UserService.getFrameColor(user['equippedFrame']?.toString());
 
     // Top 3 özel arka plan gradyanı
     final List<Color> cardGradientColors = isTop3
@@ -842,7 +870,8 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
               boxShadow: isTop3
                   ? [
                       BoxShadow(
-                        color: style.color.withValues(alpha: index == 0 ? 0.20 : 0.12),
+                        color: style.color
+                            .withValues(alpha: index == 0 ? 0.20 : 0.12),
                         blurRadius: 16,
                         spreadRadius: 1,
                         offset: const Offset(0, 6),
@@ -934,7 +963,8 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
                                 fit: BoxFit.cover,
                                 cacheWidth: 160,
                                 cacheHeight: 160,
-                                errorBuilder: (context, error, stackTrace) => Icon(
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Icon(
                                   style.icon,
                                   color: textSecondary,
                                   size: 22,
@@ -986,7 +1016,9 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
                                 child: Text(
                                   AppUtils.localizeUsername(user['username']),
                                   style: TextStyle(
-                                    fontWeight: isTop3 ? FontWeight.w800 : FontWeight.w700,
+                                    fontWeight: isTop3
+                                        ? FontWeight.w800
+                                        : FontWeight.w700,
                                     fontSize: isTop3 ? 15.5 : 14.5,
                                     color: isTop3 ? Colors.white : textPrimary,
                                     letterSpacing: -0.2,
@@ -1044,8 +1076,8 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
 
                   // Points (Puan alanı)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: isTop3
                           ? style.color.withValues(alpha: 0.16)

@@ -16,8 +16,8 @@ class PresenceService {
     _heartbeatTimer?.cancel();
     updatePresence(true);
 
-    // Her 60 saniyede bir son görülme zaman damgasını tazele
-    _heartbeatTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+    // Her 90 saniyede bir son görülme zaman damgasını tazele (çevrimiçi eşiği 3 dk; pil/yazma tasarrufu)
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 90), (_) {
       updatePresence(true);
     });
   }

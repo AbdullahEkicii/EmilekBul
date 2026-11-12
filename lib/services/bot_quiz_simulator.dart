@@ -2,32 +2,54 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../models/duel_room_model.dart';
+import 'bot_persona.dart';
 import 'duel_service.dart';
 
+/// Bot rakibin soru çözme simülasyonu.
+/// Kararlar [BotDifficultyCurve] üzerinden verilir: zorluk, bot kişiliği,
+/// seri (momentum) ve insan rakibin anlık skoru birlikte etkiler.
 class BotQuizSimulator {
   final String roomCode;
   final DuelRoom room;
   final bool isHostBot;
 
   final Random _random = Random();
+  late final BotPersona _persona;
   bool _isCancelled = false;
   Timer? _stepTimer;
+  StreamSubscription<DuelRoom?>? _roomSub;
   final Stopwatch _stopwatch = Stopwatch();
+  int _humanScore = 0;
 
   BotQuizSimulator({
     required this.roomCode,
     required this.room,
     required this.isHostBot,
-  });
+  }) {
+    final botUid = isHostBot ? room.host.uid : (room.guest?.uid ?? room.hostUid);
+    _persona = BotPersona.fromSeed(botUid);
+    _humanScore = (isHostBot ? room.guest?.score : room.host.score) ?? 0;
+  }
 
   /// Botun Soru Çözme Simülasyonunu Başlat
   void start() {
     _isCancelled = false;
     _stopwatch.start();
-    _simulateNextQuestion(0, 0, 0, []);
+    // Rakibin (insan) canlı skorunu izle: bot buna göre tempo ayarlar
+    _roomSub = DuelService.streamRoom(roomCode).listen((latest) {
+      final human = latest == null ? null : (isHostBot ? latest.guest : latest.host);
+      if (human != null) _humanScore = human.score;
+    });
+    _simulateNextQuestion(0, 0, 0, [], false);
   }
 
-  void _simulateNextQuestion(int index, int currentScore, int currentCombo, List<int?> answers) {
+  void _simulateNextQuestion(
+    int index,
+    int currentScore,
+    int currentStreak,
+    List<int?> answers,
+    bool lastAnswerWrong,
+  ) {
     if (_isCancelled) return;
 
     final questions = room.questions;
@@ -37,50 +59,22 @@ class BotQuizSimulator {
     }
 
     final question = questions[index];
-    final difficulty = room.config.difficulty;
-
-    // Gerçekçi insan okuma ve düşünme süreleri (Her soru 7-20 sn aralığında çözülür)
-    int delayMs;
-    double accuracyChance;
-    final int initialBuffer = (index == 0) ? 2000 : 0;
-
-    final diffLower = difficulty.toLowerCase().trim();
-    switch (diffLower) {
-      case 'kolay':
-      case 'easy':
-        // Kolay: Ortalama 5'te 4 doğru (bazen 5/5, bazen 3/5) -> %75 - %88
-        accuracyChance = 0.75 + (_random.nextDouble() * 0.13);
-        delayMs = 7000 + initialBuffer + _random.nextInt(6000); // 7.0s - 13.0s (+2s ilk soru)
-        break;
-      case 'zor':
-      case 'hard':
-        // Zor: Ortalama 2.5 - 2.75 doğru (5'te 2 ya da 3 doğru) -> %48 - %58
-        accuracyChance = 0.48 + (_random.nextDouble() * 0.10);
-        delayMs = 13000 + initialBuffer + _random.nextInt(8000); // 13.0s - 21.0s (+2s ilk soru)
-        break;
-      case 'imkansız':
-      case 'imkansiz':
-      case 'impossible':
-        // İmkansız: Ortalama 1.75 - 2 doğru (5'te 1 ya da 2 doğru) -> %33 - %42
-        accuracyChance = 0.33 + (_random.nextDouble() * 0.09);
-        delayMs = 15000 + initialBuffer + _random.nextInt(8000); // 15.0s - 23.0s (+2s ilk soru)
-        break;
-      case 'orta':
-      case 'medium':
-      default:
-        // Orta: Ortalama 3.5 - 4 doğru -> %68 - %80
-        accuracyChance = 0.68 + (_random.nextDouble() * 0.12);
-        delayMs = 10000 + initialBuffer + _random.nextInt(8000); // 10.0s - 18.0s (+2s ilk soru)
-        break;
-    }
-
-    // Maksimum 24 saniye ile sınırla (Süre aşımı olmaması için)
-    delayMs = min(delayMs, 24000);
+    final tuning = BotDifficultyCurve.decide(
+      difficulty: room.config.difficulty,
+      persona: _persona,
+      botStreak: currentStreak,
+      scoreGap: _humanScore - currentScore,
+      questionIndex: index,
+      totalQuestions: questions.length,
+      lastAnswerWrong: lastAnswerWrong,
+      random: _random,
+    );
+    final int delayMs = tuning.delayMs;
 
     _stepTimer = Timer(Duration(milliseconds: delayMs), () async {
       if (_isCancelled) return;
 
-      final isCorrect = _random.nextDouble() < accuracyChance;
+      final isCorrect = _random.nextDouble() < tuning.accuracy;
       int selectedAnswer;
 
       if (isCorrect) {
@@ -92,17 +86,17 @@ class BotQuizSimulator {
       }
 
       int newScore = currentScore;
-      int nextCombo = currentCombo;
+      int nextStreak = currentStreak;
       if (isCorrect) {
-        nextCombo++;
+        nextStreak++;
         // Hızlı doğru cevap için hız bonuslu maç içi puanlama:
         // Taban 50 puan + (Kalan saniye * 4) + Kombo bonusu
         final remainingSec = max(0, 25 - (delayMs ~/ 1000));
         final speedBonus = remainingSec * 4;
-        final comboBonus = (nextCombo > 1 ? (nextCombo * 10) : 0);
+        final comboBonus = (nextStreak > 1 ? (nextStreak * 10) : 0);
         newScore += 50 + speedBonus + comboBonus;
       } else {
-        nextCombo = 0;
+        nextStreak = 0;
       }
 
       final updatedAnswers = List<int?>.from(answers)..add(selectedAnswer);
@@ -127,7 +121,13 @@ class BotQuizSimulator {
       }
 
       if (!isLast && !_isCancelled) {
-        _simulateNextQuestion(index + 1, newScore, nextCombo, updatedAnswers);
+        _simulateNextQuestion(
+          index + 1,
+          newScore,
+          nextStreak,
+          updatedAnswers,
+          !isCorrect,
+        );
       }
     });
   }
@@ -153,6 +153,8 @@ class BotQuizSimulator {
   void cancel() {
     _isCancelled = true;
     _stepTimer?.cancel();
+    _roomSub?.cancel();
+    _roomSub = null;
     _stopwatch.stop();
   }
 }

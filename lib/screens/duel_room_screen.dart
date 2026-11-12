@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../widgets/glass_alert_dialog.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -16,15 +17,19 @@ import '../services/duel_ticket_service.dart';
 import '../services/share_service.dart';
 import '../services/question_pool_service.dart';
 import '../services/bot_room_service.dart';
+import '../services/bot_persona.dart';
 import '../services/friend_service.dart';
 import '../services/analytics_service.dart';
 import '../models/friend_model.dart';
 import '../utils/app_utils.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/user_card.dart';
+import '../widgets/glass_surface.dart';
 import '../widgets/token_widget.dart';
 import '../widgets/my_native_ad.dart';
 import 'live_duel_quiz_screen.dart';
 import 'loading_screen.dart';
+import 'package:emilekbul/services/haptic_service.dart';
 
 class DuelRoomScreen extends StatefulWidget {
   final String roomCode;
@@ -70,6 +75,7 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
   late Animation<double> _pulseAnimation;
   final TextEditingController _chatTextController = TextEditingController();
   final ScrollController _chatScrollController = ScrollController();
+  final Map<String, Stream<FriendshipStatus>> _friendshipStreams = {};
 
   @override
   void initState() {
@@ -103,7 +109,8 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
   }
 
   // Hızlı Maç'ta bot gecikmeleri kısaltılır
-  Duration _botDelay(int ms) => Duration(milliseconds: widget.quickMatch ? (ms * 0.45).round() : ms);
+  Duration _botDelay(int ms) =>
+      Duration(milliseconds: widget.quickMatch ? (ms * 0.45).round() : ms);
 
   void _startBotApplicantTimer() {
     _botApplicantTimer?.cancel();
@@ -113,36 +120,37 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
       _botFirstTimer?.cancel();
       _botFirstTimer = Timer(firstDelay, _botApplicantTick);
     }
-    _botApplicantTimer = Timer.periodic(const Duration(seconds: 10), (_) => _botApplicantTick());
+    _botApplicantTimer =
+        Timer.periodic(const Duration(seconds: 10), (_) => _botApplicantTick());
   }
 
   Future<void> _botApplicantTick() async {
-      if (!mounted || !widget.isHost || _hasNavigatedToQuiz || _isStarting) {
-        return;
-      }
-      // Arkadaşa davet gönderilen odaya bot katılmaz
-      if (widget.invitedFriendUid != null) return;
-      final room = _currentRoom;
-      if (room == null ||
-          room.guest != null ||
-          room.pendingGuest != null ||
-          room.status != 'waiting') {
-        return;
-      }
+    if (!mounted || !widget.isHost || _hasNavigatedToQuiz || _isStarting) {
+      return;
+    }
+    // Arkadaşa davet gönderilen odaya bot katılmaz
+    if (widget.invitedFriendUid != null) return;
+    final room = _currentRoom;
+    if (room == null ||
+        room.guest != null ||
+        room.pendingGuest != null ||
+        room.status != 'waiting') {
+      return;
+    }
 
-      // Özel yüksek bahisli odalara (100 Token üstü) botlar KESİNLİKLE katılmaz
-      if (DuelRoom.isSpecialHighBet(room.config.betTokens)) {
-        return;
-      }
+    // Özel yüksek bahisli odalara (100 Token üstü) botlar KESİNLİKLE katılmaz
+    if (DuelRoom.isSpecialHighBet(room.config.betTokens)) {
+      return;
+    }
 
-      // Kullanıcının boş odasına her 10 sn'de bir gerçekçi bot katılma isteği atsın
-      final bot = BotRoomService.generateRandomBotPlayer(
-        preferredLang: context.locale.languageCode,
-      );
-      await DuelService.requestJoinRoom(
-        roomCode: widget.roomCode,
-        guestPlayer: bot,
-      );
+    // Kullanıcının boş odasına her 10 sn'de bir gerçekçi bot katılma isteği atsın
+    final bot = BotRoomService.generateRandomBotPlayer(
+      preferredLang: context.locale.languageCode,
+    );
+    await DuelService.requestJoinRoom(
+      roomCode: widget.roomCode,
+      guestPlayer: bot,
+    );
   }
 
   @override
@@ -153,6 +161,8 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
     _botNudgeTimer?.cancel();
     _botApplicantTimer?.cancel();
     _botFirstTimer?.cancel();
+    _joinRequestTicker?.cancel();
+    _botIdleChatTimer?.cancel();
     _backgroundLeaveTimer?.cancel();
     _botChatReactionSub?.cancel();
     _roomSubscription.cancel();
@@ -182,7 +192,8 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
       _backgroundLeaveTimer?.cancel();
       _backgroundLeaveTimer = Timer(_backgroundGrace, () {
         if (_hasNavigatedToQuiz) return;
-        DuelService.leaveRoom(widget.roomCode, isHost: widget.isHost, uid: myUid);
+        DuelService.leaveRoom(widget.roomCode,
+            isHost: widget.isHost, uid: myUid);
       });
     } else if (state == AppLifecycleState.resumed) {
       _backgroundLeaveTimer?.cancel();
@@ -198,9 +209,11 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
     }
   }
 
-  bool _isShowingJoinRequestDialog = false;
-  String? _lastShownPendingGuestUid;
+  String? _autoApprovedRequestUid;
   bool _isProcessingJoinRequest = false;
+  Timer? _joinRequestTicker;
+  Timer? _botIdleChatTimer;
+  DateTime _lastLobbyMessageAt = DateTime.now();
 
   void _listenToRoom() {
     _roomSubscription = DuelService.streamRoom(widget.roomCode).listen((room) {
@@ -235,7 +248,8 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
           room.guest?.isReady == false &&
           !_quickReadySent) {
         _quickReadySent = true;
-        DuelService.setPlayerReady(widget.roomCode, isHost: false, isReady: true);
+        DuelService.setPlayerReady(widget.roomCode,
+            isHost: false, isReady: true);
       }
 
       // Oyun başladıysa quiz ekranına yönlendir
@@ -245,32 +259,21 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
         return;
       }
 
-      // İstek durumu pending değilse veya pendingGuest boşsa son gösterilen UID'yi sıfırla
-      if (room.pendingGuest == null || room.joinRequestStatus != 'pending') {
-        _lastShownPendingGuestUid = null;
-      }
-
-      // Davet edilen arkadaşın ve botların katılma isteği otomatik onaylanır
+      // Davet edilen arkadaşın, botların ve hızlı maç isteklerinin katılımı otomatik onaylanır
       if (widget.isHost &&
           room.pendingGuest != null &&
           room.joinRequestStatus == 'pending' &&
           (widget.quickMatch ||
               room.pendingGuest!.uid == widget.invitedFriendUid ||
               room.pendingGuest!.uid.startsWith('bot_')) &&
-          _lastShownPendingGuestUid != room.pendingGuest!.uid) {
-        _lastShownPendingGuestUid = room.pendingGuest!.uid;
+          _autoApprovedRequestUid != room.pendingGuest!.uid) {
+        _autoApprovedRequestUid = room.pendingGuest!.uid;
         DuelService.approveJoinRequest(widget.roomCode);
         return;
       }
 
-      // Oda sahibi için gelen katılma isteğini göster (Tek seferlik ve yarış durumunu engelleyerek)
-      if (widget.isHost &&
-          room.pendingGuest != null &&
-          room.joinRequestStatus == 'pending' &&
-          !_isProcessingJoinRequest &&
-          _lastShownPendingGuestUid != room.pendingGuest!.uid) {
-        _showJoinRequestDialog(room.pendingGuest!);
-      }
+      // Diğer gerçek oyuncu istekleri kalıcı şeritte gösterilir ve süre başlar
+      _syncJoinRequestTicker(room);
 
       // 1. Durum: Oda sahibi bot, kullanıcı misafir
       final isHostBot =
@@ -435,6 +438,7 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
     _botChatReactionSub =
         DuelService.streamRoomMessages(widget.roomCode).listen((messages) {
       if (!mounted || _hasNavigatedToQuiz) return;
+      _lastLobbyMessageAt = DateTime.now();
       final botUid = room.host.uid;
 
       for (final msg in messages) {
@@ -445,14 +449,20 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
           debugPrint(
               '🤖 Bot Kullanıcı Mesajını Algıladı: "${msg.text}" (key: ${msg.phraseKey})');
           _handleBotReactionToUserMessage(msg, room);
+          _handleBotSmallTalk(msg, room);
         }
       }
     });
 
+    _startBotIdleChatter(room);
+
     // 4. Kullanıcı uzun süre hazır vermezse 25 saniye sonra hatırlatma yap
     _botNudgeTimer?.cancel();
     _botNudgeTimer = Timer(const Duration(seconds: 25), () async {
-      if (!mounted || _hasNavigatedToQuiz || _isStarting || _botStartTriggered) {
+      if (!mounted ||
+          _hasNavigatedToQuiz ||
+          _isStarting ||
+          _botStartTriggered) {
         return;
       }
       final msg = DuelChatMessage(
@@ -466,6 +476,68 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
         createdAt: DateTime.now(),
       );
       await DuelService.sendRoomMessage(widget.roomCode, msg);
+    });
+  }
+
+  /// Bot adına hazır bir sohbet ifadesi gönderir (metin yerelleştirilmiş anahtardan gelir).
+  Future<void> _sendBotPhrase(DuelPlayer bot, String key) async {
+    final msg = DuelChatMessage(
+      id: '',
+      senderUid: bot.uid,
+      senderName: bot.username,
+      senderAvatar: bot.avatarIndex,
+      text: key.tr(),
+      type: 'quick',
+      phraseKey: key,
+      createdAt: DateTime.now(),
+    );
+    await DuelService.sendRoomMessage(widget.roomCode, msg);
+  }
+
+  /// Lobi sessiz kaldığında botun kişiliğine göre aralıklı sohbet eder.
+  void _startBotIdleChatter(DuelRoom room) {
+    _botIdleChatTimer?.cancel();
+    final persona = BotPersona.fromSeed(room.host.uid);
+    final rnd = Random();
+
+    void scheduleNext() {
+      final wait = Duration(seconds: 25 + rnd.nextInt(25));
+      _botIdleChatTimer = Timer(wait, () async {
+        if (!mounted || _hasNavigatedToQuiz || _isStarting) return;
+        final quiet = DateTime.now().difference(_lastLobbyMessageAt) >=
+            const Duration(seconds: 20);
+        if (quiet && rnd.nextDouble() < persona.chattiness) {
+          final keys = <String>[
+            'duel.chat.hello',
+            'duel.chat.good_luck',
+            'duel.chat.start_game',
+            if (_currentRoom?.guest?.isReady != true) 'duel.chat.ready',
+          ];
+          await _sendBotPhrase(room.host, keys[rnd.nextInt(keys.length)]);
+        }
+        scheduleNext();
+      });
+    }
+
+    scheduleNext();
+  }
+
+  /// Basit sohbet: selam, "gg" ve iyi şans mesajlarına kısa gecikmeyle karşılık verir.
+  void _handleBotSmallTalk(DuelChatMessage userMsg, DuelRoom room) {
+    final t = userMsg.text.toLowerCase();
+    String? key;
+    if (RegExp(r'\b(merhaba|selam|hello|hey)\b').hasMatch(t)) {
+      key = 'duel.chat.hello';
+    } else if (RegExp(r'\b(gg|iyi oyun|good game)\b').hasMatch(t)) {
+      key = 'duel.chat.well_played';
+    } else if (RegExp(r'\b(iyi şans|iyi sans|good luck)\b').hasMatch(t)) {
+      key = 'duel.chat.good_luck';
+    }
+    if (key == null) return;
+    final replyKey = key;
+    Future.delayed(_botDelay(1200 + Random().nextInt(1200)), () {
+      if (!mounted || _hasNavigatedToQuiz) return;
+      _sendBotPhrase(room.host, replyKey);
     });
   }
 
@@ -767,7 +839,8 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
     final currentTokens = await TokenService.getTokenAmount();
     final tickets = await DuelTicketService.ticketsLeft();
     int activeBet = (_currentRoom?.config.betTokens ?? room.config.betTokens);
-    if (!DuelTicketService.canCover(bet: activeBet, tokens: currentTokens, tickets: tickets)) {
+    if (!DuelTicketService.canCover(
+        bet: activeBet, tokens: currentTokens, tickets: tickets)) {
       if (currentTokens >= 50) {
         activeBet = 50;
       } else if (currentTokens >= 25) {
@@ -832,174 +905,134 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
     }
   }
 
-  void _showJoinRequestDialog(DuelPlayer pendingPlayer) {
-    if (_isShowingJoinRequestDialog || _isProcessingJoinRequest) return;
-    _isShowingJoinRequestDialog = true;
-    _lastShownPendingGuestUid = pendingPlayer.uid;
-
-    final localizedName = AppUtils.localizeUsername(pendingPlayer.username);
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogCtx) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1E293B),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: Row(
+  /// Gelen gerçek oyuncu katılma isteğini kalıcı şerit olarak gösterir.
+  /// İstek oda belgesinde tutulduğu için kapatılsa bile kaybolmaz; süre dolunca otomatik reddedilir.
+  Widget _buildJoinRequestBanner(DuelRoom room) {
+    final guest = room.pendingGuest!;
+    final name = AppUtils.localizeUsername(guest.username);
+    final secondsLeft = (_joinRequestRemaining(room).inMilliseconds / 1000).ceil();
+    return GlassContainer(
+      padding: const EdgeInsets.all(12),
+      borderRadius: 16,
+      opacity: 0.12,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF9F43).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.person_add_rounded,
-                    color: Color(0xFFFF9F43), size: 24),
-              ),
-              const SizedBox(width: 12),
+              const Icon(Icons.person_add_alt_1_rounded,
+                  color: Color(0xFFFF9F43), size: 20),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'duel.join_request_title'.tr(),
+                  'duel.join_request_desc'.tr(args: [name]),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w900),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13),
                 ),
               ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 8),
-              // Player Card
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white12),
-                ),
-                child: Row(
-                  children: [
-                    Builder(
-                      builder: (context) {
-                        final hasAvatar =
-                            UserService.hasAvatar(pendingPlayer.avatarIndex);
-                        return CircleAvatar(
-                          radius: 24,
-                          backgroundColor: const Color(0xFF0F172A),
-                          backgroundImage: hasAvatar
-                              ? ResizeImage(
-                                  AssetImage(UserService.getAvatarPath(
-                                      pendingPlayer.avatarIndex)),
-                                  width: 96,
-                                  height: 96,
-                                )
-                              : null,
-                          child: hasAvatar
-                              ? null
-                              : const Icon(Icons.person_rounded,
-                                  size: 24, color: Colors.white70),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            localizedName,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(Icons.monetization_on_rounded,
-                                  color: Colors.orange, size: 14),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${pendingPlayer.tokens} ${'token.unit'.tr()}',
-                                style: const TextStyle(
-                                    color: Colors.orange,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
+              const SizedBox(width: 8),
               Text(
-                'duel.join_request_desc'.tr(args: [localizedName]),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8), fontSize: 13.5),
+                '${secondsLeft}s',
+                style: const TextStyle(
+                    color: Color(0xFFFFD56B),
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14),
               ),
             ],
           ),
-          actionsAlignment: MainAxisAlignment.spaceBetween,
-          actions: [
-            OutlinedButton(
-              onPressed: () async {
-                _isProcessingJoinRequest = true;
-                _isShowingJoinRequestDialog = false;
-                Navigator.of(dialogCtx).pop();
-                try {
-                  await DuelService.rejectJoinRequest(widget.roomCode);
-                } finally {
-                  _isProcessingJoinRequest = false;
-                }
-              },
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.redAccent),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _isProcessingJoinRequest
+                      ? null
+                      : () => _respondToJoinRequest(accept: false),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.redAccent),
+                  ),
+                  child: Text(
+                    'duel.reject'.tr(),
+                    style: const TextStyle(
+                        color: Colors.redAccent, fontWeight: FontWeight.bold),
+                  ),
+                ),
               ),
-              child: Text(
-                'duel.reject'.tr(),
-                style: const TextStyle(
-                    color: Colors.redAccent, fontWeight: FontWeight.bold),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _isProcessingJoinRequest
+                      ? null
+                      : () => _respondToJoinRequest(accept: true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                  ),
+                  child: Text(
+                    'duel.accept'.tr(),
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
               ),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                _isProcessingJoinRequest = true;
-                _isShowingJoinRequestDialog = false;
-                Navigator.of(dialogCtx).pop();
-                try {
-                  await DuelService.approveJoinRequest(widget.roomCode);
-                } finally {
-                  _isProcessingJoinRequest = false;
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              child: Text(
-                'duel.accept'.tr(),
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        );
-      },
-    ).then((_) {
-      _isShowingJoinRequestDialog = false;
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Duration _joinRequestRemaining(DuelRoom room) {
+    final startedAt = room.joinRequestAt ?? DateTime.now();
+    final left =
+        startedAt.add(DuelService.joinRequestWindow).difference(DateTime.now());
+    return left.isNegative ? Duration.zero : left;
+  }
+
+  /// Bekleyen gerçek oyuncu isteği varken saniyelik sayaç çalıştırır; süre dolunca isteği sonlandırır.
+  void _syncJoinRequestTicker(DuelRoom room) {
+    final hasPendingHuman = widget.isHost &&
+        room.pendingGuest != null &&
+        room.joinRequestStatus == 'pending';
+    if (!hasPendingHuman) {
+      _joinRequestTicker?.cancel();
+      _joinRequestTicker = null;
+      return;
+    }
+    if (_joinRequestTicker != null) return;
+    _joinRequestTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      final current = _currentRoom;
+      if (!mounted || current?.pendingGuest == null) {
+        _joinRequestTicker?.cancel();
+        _joinRequestTicker = null;
+        return;
+      }
+      if (_joinRequestRemaining(current!) == Duration.zero) {
+        _joinRequestTicker?.cancel();
+        _joinRequestTicker = null;
+        DuelService.expireJoinRequest(
+            widget.roomCode, current.pendingGuest!.uid);
+        return;
+      }
+      setState(() {});
     });
+  }
+
+  Future<void> _respondToJoinRequest({required bool accept}) async {
+    if (_isProcessingJoinRequest) return;
+    setState(() => _isProcessingJoinRequest = true);
+    try {
+      if (accept) {
+        await DuelService.approveJoinRequest(widget.roomCode);
+      } else {
+        await DuelService.rejectJoinRequest(widget.roomCode);
+      }
+    } finally {
+      if (mounted) setState(() => _isProcessingJoinRequest = false);
+    }
   }
 
   void _navigateToLiveQuiz(DuelRoom room) {
@@ -1011,13 +1044,17 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
     _botChatTimer?.cancel();
     _botNudgeTimer?.cancel();
     _botChatReactionSub?.cancel();
+    _botIdleChatTimer?.cancel();
 
     final bool isWithBot = room.guest?.uid.startsWith('bot_') == true ||
         room.host.uid.startsWith('bot_') == true;
 
     // Gerçek bir host'un odasında misafir de bahsini öder (bot-host yolunda zaten ödendi)
-    if (!widget.isHost && !room.host.uid.startsWith('bot_') && room.config.betTokens > 0) {
-      DuelTicketService.payBet(room.config.betTokens, roomCode: widget.roomCode);
+    if (!widget.isHost &&
+        !room.host.uid.startsWith('bot_') &&
+        room.config.betTokens > 0) {
+      DuelTicketService.payBet(room.config.betTokens,
+          roomCode: widget.roomCode);
     }
 
     AnalyticsService.logDuelMatchStart(
@@ -1050,7 +1087,7 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (context) => GlassAlertDialog(
         backgroundColor: const Color(0xFF1E293B),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('duel.room_closed'.tr(),
@@ -1096,7 +1133,8 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
     // 2. Check tokens for both players (10 ve altı bahiste ücretsiz bilet kullanılabilir)
     final bet = room.config.betTokens;
     final tickets = await DuelTicketService.ticketsLeft();
-    if (!DuelTicketService.canCover(bet: bet, tokens: _userTokens, tickets: tickets)) {
+    if (!DuelTicketService.canCover(
+        bet: bet, tokens: _userTokens, tickets: tickets)) {
       _showToast('duel.you_need_tokens'.tr(args: [bet.toString()]),
           isError: true);
       return;
@@ -1277,6 +1315,12 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
                           const SizedBox(height: 10),
                           _buildRoomCodeCard(room),
                           const SizedBox(height: 14),
+                          if (isHost &&
+                              room.pendingGuest != null &&
+                              room.joinRequestStatus == 'pending') ...[
+                            _buildJoinRequestBanner(room),
+                            const SizedBox(height: 14),
+                          ],
                           _buildVsMatchupSection(room),
                           const SizedBox(height: 14),
                           _buildRoomSettingsBar(room, prize, isHost),
@@ -1320,7 +1364,7 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
             onPressed: () {
               showDialog(
                 context: context,
-                builder: (context) => AlertDialog(
+                builder: (context) => GlassAlertDialog(
                   backgroundColor: const Color(0xFF1E293B),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20)),
@@ -1524,93 +1568,18 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
           ),
           const SizedBox(height: 10),
 
-          // Avatar + Frame + Online Indicator
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: UserService.getFrameColor(player.equippedFrame),
-                    width: 3,
-                  ),
-                ),
-                child: Builder(
-                  builder: (context) {
-                    final hasAvatar = UserService.hasAvatar(player.avatarIndex);
-                    return CircleAvatar(
-                      radius: 30,
-                      backgroundColor: const Color(0xFF1E293B),
-                      backgroundImage: hasAvatar
-                          ? ResizeImage(
-                              AssetImage(UserService.getAvatarPath(
-                                  player.avatarIndex)),
-                              width: 120,
-                              height: 120,
-                            )
-                          : null,
-                      child: hasAvatar
-                          ? null
-                          : const Icon(Icons.person_rounded,
-                              size: 30, color: Colors.white70),
-                    );
-                  },
-                ),
-              ),
-              Positioned(
-                bottom: 2,
-                right: 2,
-                child: Container(
-                  width: 13,
-                  height: 13,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF10B981),
-                    shape: BoxShape.circle,
-                    border:
-                        Border.all(color: const Color(0xFF1E293B), width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF10B981).withValues(alpha: 0.6),
-                        blurRadius: 4,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+          // Avatar + İsim: ortak UserCard şablonu (bot ayrımı UI'da yok)
+          UserCard(
+            avatarIndex: player.avatarIndex,
+            frameId: player.equippedFrame,
+            name: AppUtils.localizeUsername(player.username),
+            subtitle: (player.equippedTitle != '0' && player.equippedTitle != 'yok')
+                ? displayTitle
+                : null,
+            size: UserCardSize.large,
+            showFrameRing: true,
+            showOnlineDot: true,
           ),
-          const SizedBox(height: 8),
-
-          // Name
-          Text(
-            AppUtils.localizeUsername(player.username),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
-            ),
-          ),
-
-          // Title
-          if (player.equippedTitle != '0' && player.equippedTitle != 'yok') ...[
-            const SizedBox(height: 2),
-            Text(
-              displayTitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFFFFD56B),
-                fontSize: 10.5,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
           const SizedBox(height: 8),
 
           // Tokens Badge
@@ -1741,10 +1710,10 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
   }
 
   void _confirmKickGuest(DuelPlayer guest) {
-    HapticFeedback.mediumImpact();
+    HapticService.medium();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => GlassAlertDialog(
         backgroundColor: const Color(0xFF1E293B),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
@@ -1802,7 +1771,8 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
     }
 
     return StreamBuilder<FriendshipStatus>(
-      stream: FriendService.streamFriendshipStatus(otherUid),
+      stream: _friendshipStreams.putIfAbsent(
+          otherUid, () => FriendService.streamFriendshipStatus(otherUid)),
       builder: (context, snapshot) {
         final status = snapshot.data ?? FriendshipStatus.none;
 
@@ -1869,7 +1839,7 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
             padding: const EdgeInsets.only(top: 8),
             child: InkWell(
               onTap: () async {
-                HapticFeedback.lightImpact();
+                HapticService.light();
                 final res = await FriendService.acceptRequestFrom(otherUid);
                 final msgKey = res['message'] as String? ?? 'common.error';
                 _showToast(msgKey.tr(), isError: res['success'] != true);
@@ -1914,7 +1884,7 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
           padding: const EdgeInsets.only(top: 8),
           child: InkWell(
             onTap: () async {
-              HapticFeedback.lightImpact();
+              HapticService.light();
               final res = await FriendService.sendFriendRequest(otherUid);
               final msgKey = res['message'] as String? ?? 'common.error';
               _showToast(msgKey.tr(), isError: res['success'] != true);
@@ -2152,7 +2122,7 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
   }
 
   void _showRoomSettingsModal(DuelRoom room) {
-    HapticFeedback.lightImpact();
+    HapticService.light();
     final allCats = [
       ...AppCategories.categories,
       ...AppCategories.bonusPoolCategories
@@ -2201,13 +2171,11 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
             );
             final prize = DuelRoom.calculatePrize(tempBet);
 
-            return Container(
+            return GlassSurface(
               height: MediaQuery.of(context).size.height * 0.82,
-              decoration: const BoxDecoration(
-                color: Color(0xFF1E293B),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                border: Border(top: BorderSide(color: Colors.white24)),
-              ),
+              tint: const Color(0xFF1E293B),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(28)),
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
               child: Column(
                 children: [
@@ -2622,7 +2590,7 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
                     child: ElevatedButton(
                       onPressed: () async {
                         Navigator.pop(context);
-                        HapticFeedback.mediumImpact();
+                        HapticService.medium();
                         final newConfig = DuelConfig(
                           category: tempCategory,
                           difficulty: tempDifficulty,
@@ -2672,13 +2640,10 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
-        return Container(
+        return GlassSurface(
           height: MediaQuery.of(context).size.height * 0.65,
-          decoration: const BoxDecoration(
-            color: Color(0xFF0F172A),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            border: Border(top: BorderSide(color: Colors.white24)),
-          ),
+          tint: const Color(0xFF0F172A),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
@@ -3050,7 +3015,7 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
 
   Future<void> _sendQuickMessage(
       {required String text, required String type, String? phraseKey}) async {
-    HapticFeedback.lightImpact();
+    HapticService.light();
     final user = FirebaseAuth.instance.currentUser;
     final myUid = user?.uid ?? '';
 
@@ -3148,7 +3113,7 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
           textColor = Colors.white;
           buttonIcon = Icons.hourglass_top_rounded;
           onButtonTap = () {
-            HapticFeedback.lightImpact();
+            HapticService.light();
             DuelService.setHostWantsToStart(widget.roomCode,
                 wantsToStart: false);
           };
@@ -3158,7 +3123,7 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
           textColor = Colors.black;
           buttonIcon = Icons.play_arrow_rounded;
           onButtonTap = () {
-            HapticFeedback.mediumImpact();
+            HapticService.medium();
             DuelService.setHostWantsToStart(widget.roomCode,
                 wantsToStart: true);
           };
@@ -3262,7 +3227,7 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
               height: 54,
               child: ElevatedButton(
                 onPressed: () async {
-                  HapticFeedback.mediumImpact();
+                  HapticService.medium();
                   if (!amIReady) {
                     final hasInternet = await AppUtils.hasInternetConnection();
                     if (!hasInternet) {

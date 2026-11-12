@@ -1,5 +1,5 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../services/performance_service.dart';
 import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import '../services/analytics_service.dart';
 import '../services/streak_service.dart';
@@ -29,9 +29,7 @@ class StreakRescueDialog extends StatefulWidget {
           opacity: anim1.value,
           child: Transform.scale(
             scale: 0.9 + 0.1 * anim1.value,
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-              child: Dialog(
+            child: PerformanceService.blur(sigma: 8, child: Dialog(
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 child: StreakRescueDialog(lostStreak: lostStreak, missedDays: missedDays),
@@ -130,6 +128,8 @@ class _StreakRescueDialogState extends State<StreakRescueDialog> {
   Widget build(BuildContext context) {
     final price = StreakService.rescueTokenPrice;
     return GlassContainer(
+      useBlur: true,
+      scrim: true,
       borderRadius: 28,
       padding: const EdgeInsets.all(24),
       child: Column(

@@ -1,8 +1,12 @@
+import '../services/analytics_service.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/token_service.dart';
+import '../services/token_economy.dart';
+import '../services/token_arena_rules.dart';
+import 'token_arena_screen.dart';
 import '../services/review_service.dart';
 import '../services/referral_service.dart';
 import '../widgets/rewarded_ad_manager.dart';
@@ -11,6 +15,7 @@ import '../widgets/navigation_buttons.dart';
 import '../widgets/my_native_ad.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:emilekbul/services/haptic_service.dart';
 
 class TokenScreen extends StatefulWidget {
   const TokenScreen({super.key});
@@ -29,6 +34,8 @@ class _TokenScreenState extends State<TokenScreen>
   bool _isLoading = true;
   bool _isAdLoading = false;
   bool _isSubmittingReferral = false;
+  int _adWatchedToday = 0;
+  bool _adGoalClaimed = false;
   Duration _adCooldown = Duration.zero;
   Timer? _cooldownTimer;
   final TextEditingController _referralController = TextEditingController();
@@ -114,14 +121,18 @@ class _TokenScreenState extends State<TokenScreen>
   }
 
   Future<void> _loadTokenData() async {
+    await ReferralService.claimPendingReferralReward();
     final tokenAmount = await TokenService.getTokenAmount();
     final canClaimDaily = await TokenService.canClaimDailyReward();
     final hasClaimedReview = await ReviewService.hasClaimedReward();
     final myInviteCode = await ReferralService.getUserInviteCode();
     final hasUsedReferral = await ReferralService.hasUsedReferral();
+    final adGoal = await TokenService.adGoalStatus();
 
     if (mounted) {
       setState(() {
+        _adWatchedToday = adGoal.watched;
+        _adGoalClaimed = adGoal.claimed;
         _tokenAmount = tokenAmount;
         _canClaimDaily = canClaimDaily;
         _hasClaimedReview = hasClaimedReview;
@@ -136,7 +147,7 @@ class _TokenScreenState extends State<TokenScreen>
     final success = await TokenService.claimDailyReward();
     if (success) {
       setState(() {
-        _tokenAmount += 50;
+        _tokenAmount += TokenEconomy.dailyRewardAmount;
         _canClaimDaily = false;
       });
 
@@ -146,7 +157,7 @@ class _TokenScreenState extends State<TokenScreen>
         _pulseController.reset();
       });
 
-      HapticFeedback.mediumImpact();
+      HapticService.medium();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -169,6 +180,7 @@ class _TokenScreenState extends State<TokenScreen>
   void _showRewardedAd() async {
     final cooldown = await RewardedAdManager.getRemainingCooldown();
     if (cooldown > Duration.zero) {
+      AnalyticsService.logRewardedCooldownBlocked(remainingSeconds: cooldown.inSeconds);
       final formattedTime = _formatCooldown(cooldown);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -197,18 +209,21 @@ class _TokenScreenState extends State<TokenScreen>
 
     _rewardedAdManager.showAd(onRewarded: () async {
       await RewardedAdManager.recordAdWatched();
-      await TokenService.addTokens(50, source: 'rewarded_ad');
+      await TokenService.addTokens(TokenEconomy.rewardedAdAmount, source: 'rewarded_ad');
       final newTokenAmount = await TokenService.getTokenAmount();
+      final adGoal = await TokenService.adGoalStatus();
 
       if (mounted) {
         setState(() {
           _tokenAmount = newTokenAmount;
+          _adWatchedToday = adGoal.watched;
+          _adGoalClaimed = adGoal.claimed;
         });
       }
 
       _checkAdCooldown();
 
-      HapticFeedback.mediumImpact();
+      HapticService.medium();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -230,7 +245,7 @@ class _TokenScreenState extends State<TokenScreen>
 
   void _copyInviteCode() {
     Clipboard.setData(ClipboardData(text: _myInviteCode));
-    HapticFeedback.lightImpact();
+    HapticService.light();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('referral.code_copied'.tr()),
@@ -243,7 +258,7 @@ class _TokenScreenState extends State<TokenScreen>
 
   void _shareInviteCode() async {
     final shareText = 'referral.share_msg'.tr(args: [_myInviteCode]);
-    HapticFeedback.mediumImpact();
+    HapticService.medium();
     try {
       await SharePlus.instance.share(
         ShareParams(
@@ -421,6 +436,10 @@ class _TokenScreenState extends State<TokenScreen>
                         const SizedBox(height: 16),
                         _buildWatchAdCard(),
                         const SizedBox(height: 16),
+                        _buildAdGoalCard(),
+                        const SizedBox(height: 16),
+                        _buildArenaCard(),
+                        const SizedBox(height: 16),
                         _buildReferralCard(),
                         const SizedBox(height: 16),
                         const MyNativeAd(
@@ -584,6 +603,124 @@ class _TokenScreenState extends State<TokenScreen>
     );
   }
 
+  /// Token Arena: jeton harcayıp 2 katını kazanma oyunlarına giriş
+  Widget _buildArenaCard() {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const TokenArenaScreen()),
+      ),
+      child: GlassContainer(
+        borderRadius: 20,
+        padding: const EdgeInsets.all(20),
+        opacity: 0.1,
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.casino_rounded, color: Colors.orangeAccent, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('mg.title'.tr(),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 4),
+                  Text(
+                    'mg.stake'.tr(args: ['${TokenEconomy.miniGameStake}', '${TokenArenaRules.payout(TokenEconomy.miniGameStake)}']),
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Colors.white38),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _claimAdGoal() async {
+    final ok = await TokenService.claimAdDailyGoal();
+    if (!ok) return;
+    HapticService.medium();
+    await _loadTokenData();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('token.ad_goal_done'.tr(args: [TokenEconomy.adGoalBonus.toString()])),
+        backgroundColor: Colors.indigo,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  /// Günlük reklam hedefi: N reklam izleyen bonus alır
+  Widget _buildAdGoalCard() {
+    const goal = TokenEconomy.adGoalCount;
+    final watched = _adWatchedToday > goal ? goal : _adWatchedToday;
+    final ready = !_adGoalClaimed && _adWatchedToday >= goal;
+    return GlassContainer(
+      borderRadius: 20,
+      padding: const EdgeInsets.all(20),
+      opacity: 0.1,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.teal.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.flag_rounded, color: Colors.tealAccent, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'token.ad_goal'.tr(),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'token.ad_goal_progress'.tr(args: ['$watched', '$goal']),
+                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+              ElevatedButton(
+                onPressed: ready ? _claimAdGoal : null,
+                child: Text('token.ad_goal_claim'.tr(args: [TokenEconomy.adGoalBonus.toString()])),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: _adGoalClaimed ? 1 : watched / goal,
+              minHeight: 6,
+              backgroundColor: Colors.white12,
+              color: Colors.tealAccent,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildWatchAdCard() {
     return GlassContainer(
       borderRadius: 20,
@@ -722,7 +859,7 @@ class _TokenScreenState extends State<TokenScreen>
                                 color: Colors.amber.withValues(alpha: 0.5)),
                           ),
                           child: const Text(
-                            '+500',
+                            '+${TokenEconomy.referralInviteeReward}',
                             style: TextStyle(
                               color: Colors.amber,
                               fontSize: 11,
@@ -784,7 +921,8 @@ class _TokenScreenState extends State<TokenScreen>
                         ),
                         child: Text(
                           _myInviteCode.isEmpty ? '...' : _myInviteCode,
-                          style: GoogleFonts.firaCode(
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
                             fontSize: 16,
                             fontWeight: FontWeight.w900,
                             color: Colors.white,
@@ -874,7 +1012,8 @@ class _TokenScreenState extends State<TokenScreen>
                     child: TextField(
                       controller: _referralController,
                       textCapitalization: TextCapitalization.characters,
-                      style: GoogleFonts.firaCode(
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -1017,28 +1156,25 @@ class _TokenScreenState extends State<TokenScreen>
       child: Column(
         children: [
           _buildInfoRow('token.cost_quiz'.tr(),
-              'token.cost_tokens'.tr(args: ['10']), Colors.redAccent),
+              'token.cost_tokens'.tr(args: ['${TokenEconomy.quizEntryCost}']), Colors.redAccent),
           const Divider(color: Colors.white10),
-          _buildInfoRow(
-              'token.reward_easy'.tr(),
-              'token.reward_points_tokens'
-                  .tr(args: ['2', 'category_ui.points'.tr(), '2']),
-              Colors.white70),
-          _buildInfoRow(
-              'token.reward_medium'.tr(),
-              'token.reward_points_tokens'
-                  .tr(args: ['3', 'category_ui.points'.tr(), '3']),
-              Colors.white70),
-          _buildInfoRow(
-              'token.reward_hard'.tr(),
-              'token.reward_points_tokens'
-                  .tr(args: ['4', 'category_ui.points'.tr(), '4']),
-              Colors.white70),
-          _buildInfoRow(
-              'token.reward_impossible'.tr(),
-              'token.reward_points_tokens'
-                  .tr(args: ['6', 'category_ui.points'.tr(), '6']),
-              Colors.amberAccent),
+          _buildInfoRow('token.cost_joker'.tr(),
+              'token.cost_tokens'.tr(args: ['${TokenEconomy.jokerCost}']), Colors.redAccent),
+          const Divider(color: Colors.white10),
+          _buildInfoRow('token.cost_duel'.tr(),
+              'token.cost_tokens'.tr(args: ['${TokenEconomy.duelEntryCost}']), Colors.redAccent),
+          const Divider(color: Colors.white10),
+          _buildInfoRow('token.cost_speed'.tr(),
+              'token.cost_tokens'.tr(args: ['${TokenEconomy.speedRoundEntryCost}']), Colors.redAccent),
+          const Divider(color: Colors.white10),
+          _buildInfoRow('token.cost_board'.tr(),
+              'token.cost_tokens'.tr(args: ['${TokenEconomy.boardEntryCost}']), Colors.redAccent),
+          const Divider(color: Colors.white10),
+          _buildInfoRow('token.cost_minigame'.tr(),
+              'token.cost_tokens'.tr(args: ['${TokenEconomy.miniGameStake}']), Colors.redAccent),
+          const Divider(color: Colors.white10),
+          _buildInfoRow('token.reward_quiz_flat'.tr(),
+              'token.reward_flat'.tr(args: ['${TokenEconomy.offlineQuizReward}']), Colors.amberAccent),
         ],
       ),
     );

@@ -1,3 +1,4 @@
+import '../services/behavior_tracker.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -26,6 +27,7 @@ class _LeagueScreenState extends State<LeagueScreen> {
   void initState() {
     super.initState();
     _load();
+    BehaviorTracker.track('league');
   }
 
   Future<void> _load() async {

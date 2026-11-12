@@ -1,8 +1,10 @@
+import '../services/retention_engine.dart';
 import 'package:flutter/material.dart';
+import 'glass_surface.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/services.dart';
 import '../services/notification_service.dart';
 import '../constants/app_languages.dart';
+import 'package:emilekbul/services/haptic_service.dart';
 
 class LanguageSelectorButton extends StatelessWidget {
   const LanguageSelectorButton({super.key});
@@ -33,7 +35,7 @@ class LanguageSelectorButton extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: () {
-            HapticFeedback.mediumImpact();
+            HapticService.medium();
             _showLanguageDialog(context);
           },
           child: Padding(
@@ -77,13 +79,11 @@ class LanguageSelectorButton extends StatelessWidget {
         final currentCode = context.locale.languageCode;
         return StatefulBuilder(
           builder: (context, setModalState) {
-            return Container(
+            return GlassSurface(
               height: MediaQuery.of(context).size.height * 0.75,
-              decoration: const BoxDecoration(
-                color: Color(0xFF1E293B),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                border: Border(top: BorderSide(color: Color(0x2EFFFFFF), width: 1)),
-              ),
+              tint: const Color(0xFF1E293B),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(28)),
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
               child: Column(
                 children: [
@@ -99,7 +99,8 @@ class LanguageSelectorButton extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.language_rounded, color: Colors.blueAccent, size: 24),
+                      const Icon(Icons.language_rounded,
+                          color: Colors.blueAccent, size: 24),
                       const SizedBox(width: 8),
                       Text(
                         'settings.language'.tr(),
@@ -116,7 +117,8 @@ class LanguageSelectorButton extends StatelessWidget {
                     child: ListView.separated(
                       physics: const BouncingScrollPhysics(),
                       itemCount: AppLanguages.languages.length,
-                      separatorBuilder: (context, i) => const SizedBox(height: 8),
+                      separatorBuilder: (context, i) =>
+                          const SizedBox(height: 8),
                       itemBuilder: (context, index) {
                         final lang = AppLanguages.languages[index];
                         final isSelected = lang.code == currentCode;
@@ -126,14 +128,17 @@ class LanguageSelectorButton extends StatelessWidget {
                             if (currentCode != lang.code) {
                               await context.setLocale(Locale(lang.code));
                               NotificationService.cancelAndReschedule();
+                              RetentionEngine
+                                  .onAppOpen(); // bildirim metinlerini yeni dile göre yenile
                             }
                             if (context.mounted) {
                               Navigator.pop(context);
-                              HapticFeedback.lightImpact();
+                              HapticService.light();
                             }
                           },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
                             decoration: BoxDecoration(
                               color: isSelected
                                   ? Colors.blueAccent.withValues(alpha: 0.25)
@@ -148,25 +153,32 @@ class LanguageSelectorButton extends StatelessWidget {
                             ),
                             child: Row(
                               children: [
-                                Text(lang.flag, style: const TextStyle(fontSize: 22)),
+                                Text(lang.flag,
+                                    style: const TextStyle(fontSize: 22)),
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         lang.name,
                                         style: TextStyle(
-                                          color: isSelected ? Colors.blueAccent : Colors.white,
+                                          color: isSelected
+                                              ? Colors.blueAccent
+                                              : Colors.white,
                                           fontSize: 15,
-                                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                          fontWeight: isSelected
+                                              ? FontWeight.w800
+                                              : FontWeight.w600,
                                         ),
                                       ),
                                       if (lang.name != lang.englishName)
                                         Text(
                                           lang.englishName,
                                           style: TextStyle(
-                                            color: Colors.white.withValues(alpha: 0.45),
+                                            color: Colors.white
+                                                .withValues(alpha: 0.45),
                                             fontSize: 11,
                                           ),
                                         ),
@@ -174,7 +186,8 @@ class LanguageSelectorButton extends StatelessWidget {
                                   ),
                                 ),
                                 if (isSelected)
-                                  const Icon(Icons.check_circle_rounded, color: Colors.blueAccent, size: 20),
+                                  const Icon(Icons.check_circle_rounded,
+                                      color: Colors.blueAccent, size: 20),
                               ],
                             ),
                           ),

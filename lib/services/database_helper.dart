@@ -24,13 +24,25 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 6) {
+      await db.execute('''
+CREATE TABLE IF NOT EXISTS question_stats (
+  qkey TEXT PRIMARY KEY,
+  category TEXT NOT NULL,
+  shown INTEGER NOT NULL DEFAULT 0,
+  correct INTEGER NOT NULL DEFAULT 0,
+  difficulty REAL NOT NULL DEFAULT 1000,
+  updated_at INTEGER NOT NULL DEFAULT 0
+)
+''');
+    }
     if (oldVersion < 2) {
       await db.execute('''
 CREATE TABLE logins (
@@ -171,6 +183,17 @@ CREATE TABLE seen_questions (
   question_id TEXT PRIMARY KEY,
   category TEXT NOT NULL,
   answered_at INTEGER NOT NULL
+)
+''');
+
+    await db.execute('''
+CREATE TABLE IF NOT EXISTS question_stats (
+  qkey TEXT PRIMARY KEY,
+  category TEXT NOT NULL,
+  shown INTEGER NOT NULL DEFAULT 0,
+  correct INTEGER NOT NULL DEFAULT 0,
+  difficulty REAL NOT NULL DEFAULT 1000,
+  updated_at INTEGER NOT NULL DEFAULT 0
 )
 ''');
   }
@@ -613,6 +636,52 @@ CREATE TABLE seen_questions (
       }
     }
     return spacedQuestions;
+  }
+
+  /// Son [days] gün içinde yanlış cevaplanan soruları (şıkları karıştırılmış) döner.
+  /// Yanlışlarım tekrar ekranı ve yükleme ekranındaki mini soru için kullanılır.
+  Future<List<Question>> getWrongAnswerQuestions({int days = 14, int limit = 20}) async {
+    final db = await instance.database;
+    final thresholdDate = DateTime.now().subtract(Duration(days: days)).toIso8601String();
+
+    final rows = await db.rawQuery('''
+      SELECT tq.question, tq.correct_answer, tq.options
+      FROM test_questions tq
+      INNER JOIN tests t ON t.id = tq.test_id
+      WHERE tq.user_answer != tq.correct_answer AND t.date >= ?
+      ORDER BY RANDOM()
+      LIMIT ?
+    ''', [thresholdDate, limit]);
+
+    final random = Random();
+    final List<Question> wrongQuestions = [];
+    for (final row in rows) {
+      final questionText = row['question'] as String;
+      final correctAnswer = row['correct_answer'] as String;
+      final options = _parseOptions(row['options']);
+      if (options.length >= 4 && options.contains(correctAnswer)) {
+        options.shuffle(random);
+        wrongQuestions.add(Question(
+          question: questionText,
+          options: options,
+          correctIndex: options.indexOf(correctAnswer),
+        ));
+      }
+    }
+    return wrongQuestions;
+  }
+
+  List<String> _parseOptions(dynamic optionsRaw) {
+    if (optionsRaw is! String) return [];
+    try {
+      final decoded = jsonDecode(optionsRaw);
+      if (decoded is List) {
+        return decoded.map((e) => e.toString()).toList();
+      }
+    } catch (_) {
+      return optionsRaw.split('||').map((e) => e.trim()).toList();
+    }
+    return [];
   }
 
   Future close() async {

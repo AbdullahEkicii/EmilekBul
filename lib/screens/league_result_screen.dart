@@ -5,13 +5,13 @@ import 'dart:ui' as ui;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../services/league_service.dart';
 import '../services/performance_service.dart';
 import '../services/share_service.dart';
 import 'league_screen.dart';
+import 'package:emilekbul/services/haptic_service.dart';
 
 /// Hafta sonu lig sonucu (terfi / düşme) tam ekranı.
 /// Terfide hafif parçacık kutlaması (performans modunda kapalı), düşmede motive edici ton.
@@ -50,7 +50,7 @@ class _LeagueResultScreenState extends State<LeagueResultScreen> with SingleTick
           )
         : const [];
     _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 2800))..forward();
-    if (_promoted) HapticFeedback.heavyImpact();
+    if (_promoted) HapticService.heavy();
   }
 
   @override

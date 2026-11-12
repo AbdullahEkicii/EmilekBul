@@ -4,6 +4,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'startup_dialog_queue.dart';
 
 Future<void> checkUpdate(BuildContext context) async {
   const jsonUrl =
@@ -21,13 +23,52 @@ Future<void> checkUpdate(BuildContext context) async {
     debugPrint('Current version: $currentVersion');
     debugPrint('Minimum version: $minVersion');
 
+    bool forced = false;
+    String shownVersion = minVersion;
     if (_compareVersions(currentVersion, minVersion) < 0) {
+      forced = true;
+    } else {
+      // Opsiyonel: kapatılabilir öneri (günde en fazla 1 kez); hata/alan yoksa sessiz
+      try {
+        final rec = json['recommended_version'];
+        if (rec is String && rec.isNotEmpty && _compareVersions(currentVersion, rec) < 0) {
+          final prefs = await SharedPreferences.getInstance();
+          final today = DateTime.now().toIso8601String().substring(0, 10);
+          if (prefs.getString('update_recommended_shown_day') != today) {
+            await prefs.setString('update_recommended_shown_day', today);
+            shownVersion = rec;
+          } else {
+            return;
+          }
+        } else {
+          return;
+        }
+      } catch (e) {
+        debugPrint('recommended_version okunamadı: $e');
+        return;
+      }
+    }
+    // Opsiyonel sürüm notları: {"notes": {"tr": ["..."], "en": ["..."]}}; dil yoksa en'e düşer, hata sessiz
+    List<String> notes = const [];
+    try {
+      final n = json['notes'];
+      if (n is Map && context.mounted) {
+        final list = n[context.locale.languageCode] ?? n['en'];
+        if (list is List) {
+          notes = list.map((e) => e.toString()).where((e) => e.trim().isNotEmpty).take(6).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('Sürüm notları okunamadı: $e');
+    }
+    {
       if (!context.mounted) return;
+      StartupDialogQueue.force(StartupDialogType.forcedUpdate);
       await showDialog(
         context: context,
-        barrierDismissible: false,
-        builder: (_) => PopScope(
-          canPop: false,
+        barrierDismissible: !forced,
+        builder: (dialogContext) => PopScope(
+          canPop: !forced,
           child: Dialog(
             backgroundColor: Colors.transparent,
             elevation: 0,
@@ -111,7 +152,7 @@ Future<void> checkUpdate(BuildContext context) async {
                         ),
                         SizedBox(width: 8),
                         Text(
-                          'update.new_version'.tr(args: [minVersion]),
+                          'update.new_version'.tr(args: [shownVersion]),
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
@@ -133,6 +174,35 @@ Future<void> checkUpdate(BuildContext context) async {
                     ),
                     textAlign: TextAlign.center,
                   ),
+                  if (notes.isNotEmpty) ...[
+                    SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'whats_new.title'.tr(),
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                          SizedBox(height: 6),
+                          for (final note in notes)
+                            Padding(
+                              padding: EdgeInsets.only(bottom: 4),
+                              child: Text(
+                                '•  $note',
+                                style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 13.5, height: 1.35),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                   SizedBox(height: 32),
 
                   // Update Button with modern gradient
@@ -203,6 +273,14 @@ Future<void> checkUpdate(BuildContext context) async {
                       ),
                     ),
                   ),
+                  if (!forced)
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      child: Text(
+                        'update.later'.tr(),
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 15),
+                      ),
+                    ),
                   SizedBox(height: 16),
                 ],
               ),

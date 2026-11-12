@@ -1,6 +1,7 @@
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart';
+import '../widgets/glass_alert_dialog.dart';
 import 'dart:io';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,10 +16,12 @@ class NotificationPermissionManager {
   /// Sadece bildirim izni kontrolü (Android 13+).
   /// [afterFirstQuiz] true ise açılış sayısı kapısı atlanır (tek seferlik).
   static Future<bool> notificationPermissions(BuildContext context, {bool afterFirstQuiz = false}) async {
-    if (!Platform.isAndroid) return true;
+    if (!Platform.isAndroid && !Platform.isIOS) return true;
 
-    final androidInfo = await DeviceInfoPlugin().androidInfo;
-    if (androidInfo.version.sdkInt < 33) return true;
+    if (Platform.isAndroid) {
+      final androidInfo = await DeviceInfoPlugin().androidInfo;
+      if (androidInfo.version.sdkInt < 33) return true;
+    }
 
     final notificationStatus = await Permission.notification.status;
     if (notificationStatus.isGranted) return true;
@@ -105,7 +108,7 @@ class NotificationPermissionManager {
     return await showDialog<bool>(
           context: context,
           builder: (BuildContext context) {
-            return AlertDialog(
+            return GlassAlertDialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -162,7 +165,7 @@ class NotificationPermissionManager {
     await showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
+        return GlassAlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),

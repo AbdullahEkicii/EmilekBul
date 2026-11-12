@@ -188,7 +188,7 @@
 
 	<!-- Privacy Usage Descriptions for Apple Guidelines -->
 	<key>NSUserTrackingUsageDescription</key>
-	<string>Bu izin, size daha ilgili ve kişiselleştirilmiş reklamlar ile daha iyi bir oyun deneyimi sunabilmek için gereklidir.</string>
+	<string>This permission lets us show you more relevant, personalized ads and a better game experience.</string>
 
 	<!-- App Transport Security -->
 	<key>NSAppTransportSecurity</key>
@@ -227,8 +227,18 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>
+		<string>processing</string>
 		<string>remote-notification</string>
 		<string>audio</string>
+	</array>
+
+	<!-- BGTaskScheduler identifiers used by workmanager (retention_refresh = Dart uniqueName) -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>retention_refresh</string>
+		<string>dev.fluttercommunity.workmanager.BackgroundPeriodicTask</string>
+		<string>dev.fluttercommunity.workmanager.BackgroundProcessingTask</string>
+		<string>dev.fluttercommunity.workmanager.OneOffTask</string>
 	</array>
 
 	<!-- UI Configurations & Compliance -->

@@ -15,3 +15,10 @@ android/app/key.properties
 *.DS_Store
 .env
 .env
+
+# Ruflo local secrets and runtime data
+.env.local
+.env.*.local
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/

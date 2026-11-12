@@ -2,12 +2,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'analytics_service.dart';
 import 'database_helper.dart';
 import 'token_service.dart';
 import '../widgets/achievement_celebration.dart';
+import 'package:emilekbul/services/haptic_service.dart';
 
 class Achievement {
   final String id;
@@ -334,7 +334,7 @@ class AchievementService {
     try {
       final achievement = achievementsList.firstWhere((a) => a.id == id);
       if (context.mounted) {
-        HapticFeedback.mediumImpact();
+        HapticService.medium();
         AchievementCelebration.show(context, achievement);
       }
     } catch (_) {}
@@ -369,7 +369,7 @@ class AchievementService {
       }
 
       if (context.mounted) {
-        HapticFeedback.heavyImpact();
+        HapticService.heavy();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(

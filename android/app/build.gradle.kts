@@ -5,6 +5,7 @@ plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
     id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
     // END: FlutterFire Configuration
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
@@ -25,8 +26,8 @@ android {
         applicationId = "com.abdullahekici.emilekbul"
         minSdk = 26
         targetSdk = 36
-        versionCode = 52
-        versionName = "1.5.24"
+        versionCode = 56
+        versionName = "1.5.28"
     }
 
     signingConfigs {

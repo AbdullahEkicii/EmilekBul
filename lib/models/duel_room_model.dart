@@ -156,7 +156,8 @@ class DuelRoom {
   final DuelPlayer host;
   final DuelPlayer? guest;
   final DuelPlayer? pendingGuest; // Katılma isteği gönderen misafir
-  final String? joinRequestStatus; // 'none', 'pending', 'approved', 'rejected'
+  final String? joinRequestStatus; // 'none', 'pending', 'approved', 'rejected', 'expired'
+  final DateTime? joinRequestAt; // Bekleyen isteğin gönderildiği an (süre sınırı için)
   final String status; // 'waiting', 'ready', 'starting', 'in_game', 'finished', 'closed'
   final DuelConfig config;
   final List<Question> questions;
@@ -172,6 +173,7 @@ class DuelRoom {
     this.guest,
     this.pendingGuest,
     this.joinRequestStatus,
+    this.joinRequestAt,
     required this.status,
     required this.config,
     this.questions = const [],
@@ -214,6 +216,9 @@ class DuelRoom {
       guest: guestRaw is Map ? DuelPlayer.fromMap(guestRaw) : null,
       pendingGuest: pendingGuestRaw is Map ? DuelPlayer.fromMap(pendingGuestRaw) : null,
       joinRequestStatus: map['joinRequestStatus']?.toString(),
+      joinRequestAt: map['joinRequestAt'] is Timestamp
+          ? (map['joinRequestAt'] as Timestamp).toDate()
+          : null,
       status: map['status']?.toString() ?? 'waiting',
       config: configRaw is Map ? DuelConfig.fromMap(configRaw) : const DuelConfig(),
       questions: (questionsRaw as List<dynamic>?)

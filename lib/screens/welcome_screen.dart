@@ -1,7 +1,14 @@
+import '../widgets/discover_card.dart';
+import '../services/retention_engine.dart';
+import '../widgets/daily_goal_card.dart';
+import '../widgets/glass_surface.dart';
+import '../widgets/whats_new_dialog.dart';
+import '../services/whats_new_service.dart';
+import '../services/analytics_service.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../widgets/glass_alert_dialog.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'basari_hesapla_screen.dart';
@@ -10,11 +17,13 @@ import 'account_screen.dart';
 import 'token_screen.dart';
 import '../main.dart';
 import '../services/update_control.dart';
+import '../services/startup_dialog_queue.dart';
+import '../widgets/guest_link_prompt.dart';
 import '../services/user_service.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/background_orbs.dart';
-import '../widgets/my_native_ad.dart';
 import 'tier_list_screen.dart';
+import 'board_mode_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_utils.dart';
 import '../services/notification_service.dart';
@@ -43,6 +52,7 @@ import '../services/presence_service.dart';
 import '../models/category_model.dart';
 import '../constants/app_categories.dart';
 import '../services/duel_invite_service.dart';
+import 'package:emilekbul/services/haptic_service.dart';
 
 class WelcomeScreen extends StatefulWidget {
   final VoidCallback onStart;
@@ -68,9 +78,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   late Animation<double> _pulsingAnimation;
 
   bool _showOnboardingGuide = false;
+  bool _showMoreHome = false;
 
   User? currentUser;
   bool _isCheckingAuth = true;
+  // Giriş yapmamış (çevrimdışı/zayıf ağ) yeni kullanıcı için arka planda misafir girişi yeniden denenir
+  bool _hadUser = false;
+  Timer? _guestRetryTimer;
+  int _guestRetries = 0;
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<List<FriendRequest>>? _friendRequestsSub;
   StreamSubscription<List<DuelInvite>>? _duelInvitesSub;
@@ -93,16 +108,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   int _streakFreezes = 0;
   bool _playedToday = false;
 
-  // Oturum başına en fazla bir "bilgi" dialogu (streak > lig > aylık kazanan > bildirim izni)
-  static bool _sessionDialogShown = false;
-
-  bool _claimSessionDialog() {
-    if (_sessionDialogShown) return false;
-    _sessionDialogShown = true;
-    return true;
-  }
+  // Oturum başına en fazla 2 "bilgi" dialogu; bkz. StartupDialogQueue (öncelik sırası orada)
   League _league = LeagueService.leagues.first;
   bool _canSpinWheel = false;
+  Stream<DocumentSnapshot>? _profileStream;
+  Stream<int>? _requestsCountStream;
 
   Future<void> _checkConsecutiveLogin() async {
     try {
@@ -122,7 +132,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         final rescueOffer = await StreakService.getPendingRescueOffer();
         if (rescueOffer != null && currentUser != null && mounted) {
           await StreakService.markRescueOfferShown();
-          _sessionDialogShown = true;
+          StartupDialogQueue.force(StartupDialogType.streakRescue);
           if (!mounted) return;
           await StreakRescueDialog.show(
             context,
@@ -135,9 +145,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
         // Test çözülüp ödül açıldıysa her zaman göster; sadece hatırlatma ise oturum dialog sınırına uy
         final bool claimableNow = _canClaimStreak && _playedToday;
-        final bool showStreak = _canClaimStreak && (claimableNow || !_sessionDialogShown);
+        bool showStreak = false;
+        if (_canClaimStreak) {
+          if (claimableNow) {
+            StartupDialogQueue.force(StartupDialogType.dailyStreak);
+            showStreak = true;
+          } else {
+            showStreak =
+                StartupDialogQueue.tryClaim(StartupDialogType.dailyStreak);
+          }
+        }
         if (showStreak) {
-          _sessionDialogShown = true;
           Future.delayed(const Duration(milliseconds: 700), () {
             if (mounted && currentUser != null) {
               DailyStreakDialog.show(
@@ -258,6 +276,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               .get();
           final totalQuizzes = (userDoc.data())?['totalQuizzes'] as int? ?? 0;
 
+          // Misafir hesap bağlama teklifi (kuyruk: aylık kazanandan sonra, bildirim izninden önce)
+          _maybeOfferGuestLink(userDoc.data(), totalQuizzes);
+
           // Eğer hiç quiz çözmemişse (yeni kullanıcıysa) Loading ekranında izin İSTEME
           if (totalQuizzes > 0) {
             _checkNotifications();
@@ -269,6 +290,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       });
     }
 
+    _hadUser = FirebaseAuth.instance.currentUser != null;
+    AnalyticsService.logFirstSession(
+        'welcome_shown', {'has_user': _hadUser ? 1 : 0});
+    _maybeShowWhatsNew();
+    RetentionEngine.onAppOpen();
+
     // Auth state changes listener
     _authSubscription =
         FirebaseAuth.instance.authStateChanges().listen((User? user) {
@@ -276,6 +303,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         setState(() {
           currentUser = user;
         });
+        if (user != null) _hadUser = true;
+
+        // Hiç giriş yapılamamış yeni kullanıcı (ağ yok/yavaş): dil listesine atma, arka planda yeniden dene
+        if (user == null && !_hadUser) {
+          _startGuestRetry();
+          return;
+        }
 
         // Eğer kullanıcı çıkış yaparsa, login ekranına yönlendir
         if (user == null) {
@@ -296,14 +330,15 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       }
     });
 
-    // Start animations and social presence
+    // Animasyonlar giriş olmasa da başlar (çevrimdışı/zayıf ağdaki yeni kullanıcı boş ekran görmesin);
+    // yalnızca sosyal dinleyiciler/presence giriş gerektirir.
+    _headerAnimationController.forward();
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        _buttonAnimationController.forward();
+      }
+    });
     if (currentUser != null) {
-      _headerAnimationController.forward();
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) {
-          _buttonAnimationController.forward();
-        }
-      });
       _initSocialListeners();
     }
   }
@@ -312,7 +347,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final uid = currentUser?.uid;
     if (uid == null) return;
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
       // Arka planda gereksiz Firestore okuma/dinleme yapma
       _friendRequestsSub?.cancel();
       _friendRequestsSub = null;
@@ -333,6 +369,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _guestRetryTimer?.cancel();
     _authSubscription?.cancel();
     _friendRequestsSub?.cancel();
     _duelInvitesSub?.cancel();
@@ -384,7 +421,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   void _startSocialStreams(String uid) {
     // 1. Gelen Arkadaşlık İsteklerini Dinle
     _friendRequestsSub?.cancel();
-    _friendRequestsSub = FriendService.streamIncomingRequests(uid).listen((requests) {
+    _friendRequestsSub =
+        FriendService.streamIncomingRequests(uid).listen((requests) {
       if (_isFirstRequestsLoad) {
         _isFirstRequestsLoad = false;
         for (final req in requests) {
@@ -399,7 +437,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           NotificationService.showInstantNotification(
             id: 1000 + req.id.hashCode % 1000,
             title: 'friends.friend_req_received_title'.tr(),
-            body: 'friends.friend_req_received_body'.tr(args: [req.fromUsername]),
+            body:
+                'friends.friend_req_received_body'.tr(args: [req.fromUsername]),
           );
         }
       }
@@ -407,7 +446,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
     // 2. Gelen 1v1 Düello Davetlerini Dinle
     _duelInvitesSub?.cancel();
-    _duelInvitesSub = DuelInviteService.streamIncomingInvites(uid).listen((invites) {
+    _duelInvitesSub =
+        DuelInviteService.streamIncomingInvites(uid).listen((invites) {
       if (_isFirstInvitesLoad) {
         _isFirstInvitesLoad = false;
         for (final inv in invites) {
@@ -415,7 +455,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         }
         // Uygulama kapalıyken gelen, hâlâ geçerli olabilecek en yeni daveti göster (oda ~2 dk açık kalır)
         final fresh = invites
-            .where((inv) => inv.status == 'pending' && DateTime.now().difference(inv.createdAt).inMinutes < 3)
+            .where((inv) =>
+                inv.status == 'pending' &&
+                DateTime.now().difference(inv.createdAt).inMinutes < 3)
             .toList();
         if (fresh.isNotEmpty && mounted) {
           _showDuelInviteModal(fresh.first);
@@ -463,12 +505,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       context: context,
       backgroundColor: Colors.transparent,
       isDismissible: false,
-      builder: (sheetCtx) => Container(
+      builder: (sheetCtx) => GlassSurface(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Color(0xFF1E293B),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -499,12 +538,18 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     children: [
                       Text(
                         'duel.invite_received_title'.tr(),
-                        style: const TextStyle(color: Color(0xFFFFD56B), fontWeight: FontWeight.w900, fontSize: 16),
+                        style: const TextStyle(
+                            color: Color(0xFFFFD56B),
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         AppUtils.localizeUsername(invite.fromUsername),
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15),
                       ),
                     ],
                   ),
@@ -524,34 +569,57 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 children: [
                   Column(
                     children: [
-                      Text('duel.category'.tr(), style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                      Text('duel.category'.tr(),
+                          style: const TextStyle(
+                              color: Colors.white60, fontSize: 11)),
                       const SizedBox(height: 4),
                       Builder(builder: (context) {
-                        final allCats = [...AppCategories.categories, ...AppCategories.bonusPoolCategories.whereType<CategoryItem>()];
+                        final allCats = [
+                          ...AppCategories.categories,
+                          ...AppCategories.bonusPoolCategories
+                              .whereType<CategoryItem>()
+                        ];
                         final cat = allCats.firstWhere(
                           (c) => c.name == invite.category,
                           orElse: () => allCats.first,
                         );
-                        return Text(cat.key.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13));
+                        return Text(cat.key.tr(),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13));
                       }),
                     ],
                   ),
                   Column(
                     children: [
-                      Text('duel.difficulty'.tr(), style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                      Text('duel.difficulty'.tr(),
+                          style: const TextStyle(
+                              color: Colors.white60, fontSize: 11)),
                       const SizedBox(height: 4),
-                      Text(AppUtils.localizeDifficulty(invite.difficulty), style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+                      Text(AppUtils.localizeDifficulty(invite.difficulty),
+                          style: const TextStyle(
+                              color: Colors.cyanAccent,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13)),
                     ],
                   ),
                   Column(
                     children: [
-                      Text('duel.bet_amount'.tr(), style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                      Text('duel.bet_amount'.tr(),
+                          style: const TextStyle(
+                              color: Colors.white60, fontSize: 11)),
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Image.asset('lib/assets/coin.png', width: 14, height: 14),
+                          Image.asset('lib/assets/coin.png',
+                              width: 14, height: 14),
                           const SizedBox(width: 4),
-                          Text('${invite.betTokens}', style: const TextStyle(color: Color(0xFFFFD56B), fontWeight: FontWeight.bold, fontSize: 13)),
+                          Text('${invite.betTokens}',
+                              style: const TextStyle(
+                                  color: Color(0xFFFFD56B),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13)),
                         ],
                       ),
                     ],
@@ -576,9 +644,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       foregroundColor: Colors.white70,
                       side: const BorderSide(color: Colors.white24),
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
                     ),
-                    child: Text('duel.reject_invite'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
+                    child: Text('duel.reject_invite'.tr(),
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -592,16 +662,19 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         accept: true,
                       );
                       if (mounted) {
-                        FriendRaceEntryDialog.show(context, joinRoomCode: invite.roomCode);
+                        FriendRaceEntryDialog.show(context,
+                            joinRoomCode: invite.roomCode);
                       }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF6366F1),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
                     ),
-                    child: Text('duel.accept_invite'.tr(), style: const TextStyle(fontWeight: FontWeight.w900)),
+                    child: Text('duel.accept_invite'.tr(),
+                        style: const TextStyle(fontWeight: FontWeight.w900)),
                   ),
                 ),
               ],
@@ -628,15 +701,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         await prefs.setInt('user_tokens', tokens);
         final referralCount = (data['referralCount'] as num?)?.toInt() ?? 0;
         if (referralCount > 0 && mounted) {
-          await AchievementService.checkAndUnlockReferralAchievements(referralCount, context);
+          await AchievementService.checkAndUnlockReferralAchievements(
+              referralCount, context);
         }
       }
       final hasUnseen = await AchievementService.hasUnseenAchievements();
       if (mounted) {
         setState(() {
-          _cachedAvatarPath = (avatarIndex != null && UserService.hasAvatar(avatarIndex))
-              ? UserService.getAvatarPath(avatarIndex)
-              : null;
+          _cachedAvatarPath =
+              (avatarIndex != null && UserService.hasAvatar(avatarIndex))
+                  ? UserService.getAvatarPath(avatarIndex)
+                  : null;
           if (_cachedAvatarPath != null && _cachedAvatarPath!.isEmpty) {
             _cachedAvatarPath = null;
           }
@@ -682,7 +757,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
             onTap: () async {
-              HapticFeedback.lightImpact();
+              HapticService.light();
               await Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -795,13 +870,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     Future.delayed(const Duration(milliseconds: 1200), () {
       if (!mounted) return;
       // Başka bir diyalog bu oturumda zaten gösterildiyse sonucu atlamak yerine sonraki açılışa bırakma: sadece sade bildirim
-      if (!_claimSessionDialog()) {
+      if (!StartupDialogQueue.tryClaim(StartupDialogType.leagueResult)) {
         final promoted = result.outcome == LeagueOutcome.promoted;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               promoted
-                  ? 'league.promoted_desc'.tr(args: [result.to.titleKey.tr(), result.reward.toString()])
+                  ? 'league.promoted_desc'.tr(
+                      args: [result.to.titleKey.tr(), result.reward.toString()])
                   : 'league.demoted_desc'.tr(args: [result.to.titleKey.tr()]),
             ),
             behavior: SnackBarBehavior.floating,
@@ -810,15 +886,19 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         );
         return;
       }
-      Navigator.push(context, MaterialPageRoute(builder: (_) => LeagueResultScreen(result: result)));
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) => LeagueResultScreen(result: result)));
     });
   }
 
   Widget _buildLeagueChip() {
     return GestureDetector(
       onTap: () {
-        HapticFeedback.lightImpact();
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const LeagueScreen()));
+        HapticService.light();
+        Navigator.push(
+            context, MaterialPageRoute(builder: (_) => const LeagueScreen()));
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -877,7 +957,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     final uid = currentUser?.uid;
     return GestureDetector(
       onTap: () async {
-        HapticFeedback.lightImpact();
+        HapticService.light();
         await Navigator.push(
           context,
           MaterialPageRoute(
@@ -889,10 +969,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         }
       },
       child: StreamBuilder<DocumentSnapshot>(
-        stream: uid != null ? UserService.getUserProfileStream(uid) : null,
+        stream: uid != null
+            ? (_profileStream ??= UserService.getUserProfileStream(uid))
+            : null,
         builder: (context, snapshot) {
           int tokens = 50;
-          if (snapshot.hasData && snapshot.data != null && snapshot.data!.exists) {
+          if (snapshot.hasData &&
+              snapshot.data != null &&
+              snapshot.data!.exists) {
             final data = snapshot.data!.data() as Map<String, dynamic>?;
             tokens = (data?['tokens'] as num?)?.toInt() ?? 50;
           }
@@ -964,7 +1048,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             decoration: BoxDecoration(
               color: Colors.purple.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.purpleAccent.withValues(alpha: 0.5)),
+              border:
+                  Border.all(color: Colors.purpleAccent.withValues(alpha: 0.5)),
             ),
             child: const Row(
               mainAxisSize: MainAxisSize.min,
@@ -995,22 +1080,27 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     final uid = currentUser?.uid;
     return GestureDetector(
       onTap: () {
-        HapticFeedback.lightImpact();
+        HapticService.light();
         FriendsDialog.show(context);
       },
       child: StreamBuilder<int>(
-        stream: uid != null ? FriendService.streamIncomingRequestsCount(uid) : null,
+        stream: uid != null
+            ? (_requestsCountStream ??=
+                FriendService.streamIncomingRequestsCount(uid))
+            : null,
         builder: (context, snapshot) {
           final pendingCount = snapshot.data ?? 0;
           return Stack(
             clipBehavior: Clip.none,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: const Color(0xFF6366F1).withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.5)),
+                  border: Border.all(
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.5)),
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1024,12 +1114,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   top: -4,
                   right: -4,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                     decoration: const BoxDecoration(
                       color: Colors.redAccent,
                       shape: BoxShape.circle,
                     ),
-                    constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                    constraints:
+                        const BoxConstraints(minWidth: 14, minHeight: 14),
                     child: Text(
                       '$pendingCount',
                       textAlign: TextAlign.center,
@@ -1073,10 +1165,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
           onTap: () {
-            HapticFeedback.lightImpact();
+            HapticService.light();
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const DailyChallengeScreen()),
+              MaterialPageRoute(
+                  builder: (context) => const DailyChallengeScreen()),
             );
           },
           child: Padding(
@@ -1141,6 +1234,68 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 ),
                 const Icon(Icons.arrow_forward_ios,
                     color: Colors.amber, size: 16),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Çarpanlı tahta modu girişi (yerel, tek oyunculu).
+  Widget _buildBoardModeCard() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          colors: [
+            Colors.indigo.shade900.withValues(alpha: 0.4),
+            Colors.teal.shade800.withValues(alpha: 0.3),
+          ],
+        ),
+        border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.4)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            HapticService.light();
+            BoardModeScreen.open(context);
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                const Icon(Icons.grid_3x3_rounded,
+                    color: Colors.tealAccent, size: 28),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'board_mode.title'.tr(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'board_mode.subtitle'.tr(),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios,
+                    color: Colors.tealAccent, size: 16),
               ],
             ),
           ),
@@ -1246,7 +1401,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     try {
       if (!mounted) return;
       // Önce izin kontrolü (Kullanıcıya dialog gösterebilir); bu oturumda başka dialog çıktıysa atla
-      if (!_sessionDialogShown) {
+      // En düşük öncelik: diğer pencerelerin yer ayırmasını bekle
+      await Future.delayed(const Duration(milliseconds: 3000));
+      if (!mounted) return;
+      final quiet = await _waitForQuietScreen();
+      if (!mounted) return;
+      if (quiet &&
+          StartupDialogQueue.tryClaim(
+              StartupDialogType.notificationPermission)) {
         await NotificationPermissionManager.notificationPermissions(context);
       }
 
@@ -1376,7 +1538,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.white.withValues(alpha: 0.1),
+                                        color:
+                                            Colors.white.withValues(alpha: 0.1),
                                         blurRadius: 40,
                                         spreadRadius: 5,
                                       ),
@@ -1448,8 +1611,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                           Icon(
                                             Icons
                                                 .keyboard_double_arrow_down_rounded,
-                                            color:
-                                                Colors.white.withValues(alpha: 0.8),
+                                            color: Colors.white
+                                                .withValues(alpha: 0.8),
                                             size: 32,
                                           ),
                                           const SizedBox(height: 8),
@@ -1494,7 +1657,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                           (category, difficulty, duration,
                                               {bool isDuel = false}) async {
                                         final navigator = Navigator.of(context);
-                                        final messenger = ScaffoldMessenger.of(context);
+                                        final messenger =
+                                            ScaffoldMessenger.of(context);
                                         final prefs = await SharedPreferences
                                             .getInstance();
                                         final offlineTaken = prefs.getInt(
@@ -1512,8 +1676,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                                         .tr()),
                                                 backgroundColor:
                                                     Colors.redAccent,
-                                                duration: const Duration(
-                                                    seconds: 3),
+                                                duration:
+                                                    const Duration(seconds: 3),
                                               ),
                                             );
                                             return;
@@ -1547,7 +1711,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   ),
                                   const SizedBox(height: 12),
                                   FriendRaceButton(
-                                    onTap: () => FriendRaceEntryDialog.show(context),
+                                    onTap: () =>
+                                        FriendRaceEntryDialog.show(context),
                                   ),
                                 ],
                               ),
@@ -1564,27 +1729,33 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   const EdgeInsets.symmetric(horizontal: 20),
                               child: Column(
                                 children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                          child: BasariButton(
-                                              onStart: widget.onStart)),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                          child: TierListButton(
-                                              onPressed: widget.onStart)),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
                                   _buildFeaturedDailyCard(),
                                   const SizedBox(height: 12),
-                                  _buildShopButton(),
-                                  const SizedBox(height: 16),
-                                  const MyNativeAd(
-                                    height: 70,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  QuestsPanel(),
+                                  _buildMoreToggle(),
+                                  if (_showMoreHome) ...[
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                            child: BasariButton(
+                                                onStart: widget.onStart)),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                            child: TierListButton(
+                                                onPressed: widget.onStart)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildBoardModeCard(),
+                                    const SizedBox(height: 12),
+                                    const DiscoverCard(),
+                                    DailyGoalCard(
+                                        onTokensChanged: _loadUserData),
+                                    const SizedBox(height: 12),
+                                    _buildShopButton(),
+                                    const SizedBox(height: 16),
+                                    QuestsPanel(),
+                                  ],
                                 ],
                               ),
                             ),
@@ -1601,6 +1772,148 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         ],
       ),
     );
+  }
+
+  /// Ana ekranı sadeleştirir: ikincil kartlar (keşfet, mağaza, görevler, rozet) bu düğmenin arkasında.
+  Widget _buildMoreToggle() {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => setState(() => _showMoreHome = !_showMoreHome),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.explore_rounded,
+                color: Color(0xFF818CF8), size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'welcome_screen.more_home'.tr(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            AnimatedRotation(
+              turns: _showMoreHome ? 0.5 : 0,
+              duration: const Duration(milliseconds: 200),
+              child: const Icon(Icons.keyboard_arrow_down_rounded,
+                  color: Colors.white70),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Güncelleme sonrası ilk açılışta (yeni kurulumda değil) "Yenilikler" penceresini bir kez gösterir.
+  Future<void> _maybeShowWhatsNew() async {
+    try {
+      final version = await WhatsNewService.pendingVersion();
+      if (version == null) return;
+      await Future.delayed(const Duration(milliseconds: 3600));
+      if (!await _waitForQuietScreen() || !mounted) return;
+      if (!StartupDialogQueue.tryClaim(StartupDialogType.whatsNew)) return;
+      await WhatsNewService.markSeen(version);
+      if (!mounted) return;
+      AnalyticsService.logCustomEvent(
+          name: 'whats_new_shown', parameters: {'version': version});
+      await WhatsNewDialog.show(context, version);
+    } catch (e) {
+      debugPrint('Whats new error: $e');
+    }
+  }
+
+  /// Çevrimdışı/zayıf ağda açılan yeni kullanıcı için: bilgi ver, misafir girişini artan aralıklarla yeniden dene.
+  void _startGuestRetry() {
+    if (_guestRetryTimer != null) return;
+    AnalyticsService.logFirstSession(
+        'welcome_offline', {'retries': _guestRetries});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('auth.offline_mode'.tr()),
+          duration: const Duration(seconds: 6),
+        ),
+      );
+    });
+    _scheduleGuestRetry();
+  }
+
+  void _scheduleGuestRetry() {
+    final delay = Duration(seconds: (15 * (_guestRetries + 1)).clamp(15, 60));
+    _guestRetryTimer = Timer(delay, () async {
+      _guestRetryTimer = null;
+      if (!mounted || FirebaseAuth.instance.currentUser != null) return;
+      _guestRetries++;
+      final cred = await UserService.signInAsGuest();
+      if (!mounted) return;
+      if (cred != null) {
+        AnalyticsService.logFirstSession(
+            'guest_retry_ok', {'retries': _guestRetries});
+        _resumeAfterGuestLogin();
+      } else if (_guestRetries < 8) {
+        _scheduleGuestRetry();
+      }
+    });
+  }
+
+  /// Giriş sonradan başarılı oldu: ana ekran görünür olunca akışı kullanıcıyla yeniden başlat
+  /// (profil, seri ve sosyal dinleyiciler). Kullanıcı başka sayfadaysa bekler.
+  void _resumeAfterGuestLogin() {
+    _guestRetryTimer = Timer(const Duration(seconds: 2), () {
+      _guestRetryTimer = null;
+      if (!mounted) return;
+      if (ModalRoute.of(context)?.isCurrent ?? false) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const QuizFlow()),
+          (route) => false,
+        );
+      } else {
+        _resumeAfterGuestLogin();
+      }
+    });
+  }
+
+  /// Ana ekranın üstünde başka bir pencere/sayfa yoksa true döner; açıksa kapanmasını
+  /// (en fazla ~20 sn) bekler. Hâlâ doluysa false: düşük öncelikli pencere bu oturumda atlanır.
+  Future<bool> _waitForQuietScreen() async {
+    for (var i = 0; i < 40; i++) {
+      if (!mounted) return false;
+      if (ModalRoute.of(context)?.isCurrent ?? false) return true;
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+    return false;
+  }
+
+  Future<void> _maybeOfferGuestLink(
+      Map<String, dynamic>? profile, int totalQuizzes) async {
+    try {
+      final user = currentUser;
+      if (user == null || !user.isAnonymous) return;
+      final p = profile ?? const <String, dynamic>{};
+      final linked = (p['email'] ?? '').toString().isNotEmpty ||
+          (p['googleId'] ?? '').toString().isNotEmpty ||
+          (p['playGamesId'] ?? '').toString().isNotEmpty;
+      if (linked) return;
+      final trigger = await GuestLinkPrompt.pendingTrigger(totalQuizzes);
+      if (trigger == null) return;
+      await Future.delayed(const Duration(milliseconds: 2200));
+      // Başka bir pencere açıksa üst üste binmesin: ekran sakinleşene kadar bekle, olmazsa bu oturumda sorma
+      if (!await _waitForQuietScreen() || !mounted) return;
+      if (!StartupDialogQueue.tryClaim(StartupDialogType.guestLink)) return;
+      await GuestLinkPrompt.show(context, trigger);
+    } catch (e) {
+      debugPrint('Guest link offer error: $e');
+    }
   }
 
   Future<void> _checkAppUpdate() async {
@@ -1664,7 +1977,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           // Eğer henüz görmediyse göster
           if (!hasSeen && mounted) {
             Future.delayed(const Duration(milliseconds: 1600), () {
-              if (!mounted || !_claimSessionDialog()) return;
+              if (!mounted ||
+                  !StartupDialogQueue.tryClaim(StartupDialogType.monthlyWinner))
+                return;
               _showWinnerDialog(winner);
               // Bir kere gösterdikten sonra işaretle
               prefs.setBool('seen_winner_$yearMonth', true);
@@ -1680,7 +1995,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   Widget _buildShopButton() {
     return GestureDetector(
       onTap: () {
-        HapticFeedback.lightImpact();
+        HapticService.light();
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const ShopScreen()),
@@ -1764,7 +2079,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 decoration: BoxDecoration(
                   color: Colors.amber.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
+                  border:
+                      Border.all(color: Colors.amber.withValues(alpha: 0.5)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1815,7 +2131,7 @@ class TierListButton extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(24),
         onTap: () {
-          HapticFeedback.lightImpact();
+          HapticService.light();
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -1889,7 +2205,7 @@ class StartButton extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: () async {
-              HapticFeedback.mediumImpact();
+              HapticService.medium();
               final hasInternet = await AppUtils.hasInternetConnection();
               if (!hasInternet && context.mounted) {
                 _showOfflineDialog(context, onStart: onPressed);
@@ -1952,7 +2268,7 @@ class StartButton extends StatelessWidget {
 void _showOfflineDialog(BuildContext context, {required VoidCallback onStart}) {
   showDialog(
     context: context,
-    builder: (context) => AlertDialog(
+    builder: (context) => GlassAlertDialog(
       backgroundColor: const Color(0xFF1E293B),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       title: Row(
@@ -1962,19 +2278,24 @@ void _showOfflineDialog(BuildContext context, {required VoidCallback onStart}) {
           Expanded(
             child: Text(
               'errors.no_internet_title'.tr(),
-              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold),
             ),
           ),
         ],
       ),
       content: Text(
         'errors.offline_only_past_tests'.tr(),
-        style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+        style:
+            const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text('common.cancel'.tr(), style: const TextStyle(color: Colors.grey)),
+          child: Text('common.cancel'.tr(),
+              style: const TextStyle(color: Colors.grey)),
         ),
         ElevatedButton(
           onPressed: () {
@@ -1988,9 +2309,11 @@ void _showOfflineDialog(BuildContext context, {required VoidCallback onStart}) {
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF6366F1),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          child: Text('past_tests.view_past_tests'.tr(), style: const TextStyle(color: Colors.white)),
+          child: Text('past_tests.view_past_tests'.tr(),
+              style: const TextStyle(color: Colors.white)),
         ),
       ],
     ),
@@ -2022,7 +2345,7 @@ class QuickMatchButton extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: () async {
-              HapticFeedback.mediumImpact();
+              HapticService.medium();
               final hasInternet = await AppUtils.hasInternetConnection();
               if (!hasInternet && context.mounted) {
                 _showOfflineDialog(context, onStart: () {});
@@ -2039,7 +2362,8 @@ class QuickMatchButton extends StatelessWidget {
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1.5),
+                border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.25), width: 1.5),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -2050,7 +2374,8 @@ class QuickMatchButton extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.flash_on_rounded, color: Colors.white, size: 24),
+                    child: const Icon(Icons.flash_on_rounded,
+                        color: Colors.white, size: 24),
                   ),
                   const SizedBox(width: 12),
                   Flexible(
@@ -2062,13 +2387,19 @@ class QuickMatchButton extends StatelessWidget {
                           'duel.quick_match'.tr(),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900),
                         ),
                         Text(
                           'duel.quick_match_sub'.tr(),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 12, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
@@ -2108,7 +2439,7 @@ class FriendRaceButton extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: () async {
-              HapticFeedback.mediumImpact();
+              HapticService.medium();
               final hasInternet = await AppUtils.hasInternetConnection();
               if (!hasInternet && context.mounted) {
                 _showOfflineDialog(context, onStart: () {});
@@ -2157,7 +2488,8 @@ class FriendRaceButton extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFD56B),
                       borderRadius: BorderRadius.circular(10),
@@ -2195,7 +2527,7 @@ class BasariButton extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(24),
         onTap: () {
-          HapticFeedback.lightImpact();
+          HapticService.light();
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -2386,8 +2718,9 @@ class _QuestsPanelState extends State<QuestsPanel> {
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color:
-                isActive ? Colors.amberAccent.withValues(alpha: 0.5) : Colors.white24,
+            color: isActive
+                ? Colors.amberAccent.withValues(alpha: 0.5)
+                : Colors.white24,
             width: 1,
           ),
         ),

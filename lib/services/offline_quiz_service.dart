@@ -1,4 +1,5 @@
 import '../models/question.dart';
+import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class OfflineQuizService {
@@ -125,6 +126,23 @@ class OfflineQuizService {
     ],
   };
 
+  /// Son çare: hazır başlangıç sorularından [exclude] içindekileri tekrarlamadan
+  /// en fazla [count] soru döndürür. Dil yoksa 'en'e düşer. Hata fırlatmaz.
+  static List<Question> getFallbackQuestions({
+    required String languageCode,
+    required int count,
+    Set<String> exclude = const {},
+  }) {
+    final lang = languageCode.split(RegExp('[_-]')).first.toLowerCase();
+    final pool = List<Question>.from(
+        _offlineQuestions[lang] ?? _offlineQuestions['en']!)
+      ..shuffle(Random());
+    return pool
+        .where((q) => !exclude.contains(q.question))
+        .take(count)
+        .toList();
+  }
+
   /// Get a specific subset of questions based on how many tests the user has taken
   static Future<List<Question>> getQuestions({required String languageCode, int count = 5}) async {
     final lang = languageCode.split('_').first.toLowerCase();
@@ -147,6 +165,6 @@ class OfflineQuizService {
        startIndex = 0; // Fallback if count is weird
     }
     
-    return baseQuestions.sublist(startIndex, startIndex + count);
+    return baseQuestions.sublist(startIndex, min(startIndex + count, baseQuestions.length));
   }
 }

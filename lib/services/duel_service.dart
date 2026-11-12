@@ -8,6 +8,9 @@ class DuelService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static const String _collectionName = 'duel_rooms';
 
+  /// Gerçek oyuncu katılma isteklerine host'un yanıt verme süresi
+  static const Duration joinRequestWindow = Duration(seconds: 10);
+
   /// 6 Haneli Benzersiz Oda Kodu Üretir
   static String generateRoomCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -115,10 +118,11 @@ class DuelService {
       return {'success': true, 'roomCode': normalizedCode, 'isHost': false, 'isDirect': true};
     }
 
-    // Gerçek kullanıcı odası için onay isteği yaz
+    // Gerçek kullanıcı odası için onay isteği yaz (süre joinRequestAt'ten başlar)
     await docRef.update({
       'pendingGuest': guestPlayer.toMap(),
       'joinRequestStatus': 'pending',
+      'joinRequestAt': FieldValue.serverTimestamp(),
       'lastActivity': FieldValue.serverTimestamp(),
     });
 
@@ -154,6 +158,35 @@ class DuelService {
       'joinRequestStatus': 'rejected',
       'lastActivity': FieldValue.serverTimestamp(),
     });
+  }
+
+  /// Süresi dolan bekleyen isteği sonlandırır. Herkes çağırabilir; süre dolmamış
+  /// veya farklı bir misafire ait istekler değiştirilmez.
+  static Future<void> expireJoinRequest(String roomCode, String guestUid) async {
+    final normalizedCode = roomCode.trim().toUpperCase();
+    final docRef = _firestore.collection(_collectionName).doc(normalizedCode);
+    try {
+      await _firestore.runTransaction((tx) async {
+        final snap = await tx.get(docRef);
+        final data = snap.data();
+        if (data == null) return;
+        final pending = data['pendingGuest'];
+        if (pending is! Map || pending['uid'] != guestUid) return;
+        if (data['joinRequestStatus'] != 'pending') return;
+        final requestedAt = data['joinRequestAt'];
+        if (requestedAt is Timestamp &&
+            DateTime.now().difference(requestedAt.toDate()) < joinRequestWindow) {
+          return;
+        }
+        tx.update(docRef, {
+          'pendingGuest': null,
+          'joinRequestStatus': 'expired',
+          'lastActivity': FieldValue.serverTimestamp(),
+        });
+      });
+    } catch (e) {
+      debugPrint('Expire join request error: $e');
+    }
   }
 
   /// Katılma İsteğini İptal Et (Misafir Oyuncu)
@@ -198,6 +231,7 @@ class DuelService {
     return _firestore
         .collection(_collectionName)
         .where('status', isEqualTo: 'waiting')
+        .limit(60)
         .snapshots()
         .map((snapshot) {
       final now = DateTime.now();
@@ -639,6 +673,8 @@ class DuelService {
         .collection(_collectionName)
         .doc(normalizedCode)
         .collection('messages')
+        .orderBy('createdAt')
+        .limitToLast(100)
         .snapshots()
         .map((snapshot) {
       final list = snapshot.docs.map((doc) => DuelChatMessage.fromDoc(doc)).toList();

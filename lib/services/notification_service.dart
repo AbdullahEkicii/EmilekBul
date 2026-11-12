@@ -36,8 +36,14 @@ class NotificationService {
     }
 
     // Bildirim başlatma ayarları
+    // iOS izinleri uygulama içi akışta (NotificationPermissionManager) istenir; açılışta sorulmaz.
     const android = AndroidInitializationSettings('ic_stat_notification');
-    const settings = InitializationSettings(android: android);
+    const ios = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+    const settings = InitializationSettings(android: android, iOS: ios);
 
     await _notifications.initialize(
       settings,
@@ -219,8 +225,7 @@ class NotificationService {
         body,
         scheduledTime,
         payload: payload,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
+        NotificationDetails(iOS: const DarwinNotificationDetails(), android: AndroidNotificationDetails(
             'daily_channel',
             'notifications.daily_channel_name'.tr(),
             channelDescription: 'notifications.daily_channel_desc'.tr(),
@@ -244,8 +249,7 @@ class NotificationService {
         777,
         'notifications.test_title'.tr(),
         'notifications.test_body'.tr(),
-        NotificationDetails(
-          android: AndroidNotificationDetails(
+        NotificationDetails(iOS: const DarwinNotificationDetails(), android: AndroidNotificationDetails(
             'daily_channel',
             'notifications.daily_channel_name'.tr(),
             channelDescription: 'Test kanalı',
@@ -270,8 +274,7 @@ class NotificationService {
         'notifications.weekly_bonus_title'.tr(),
         'notifications.weekly_bonus_body'.tr(),
         scheduledTime,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
+        NotificationDetails(iOS: const DarwinNotificationDetails(), android: AndroidNotificationDetails(
             'daily_channel',
             'notifications.daily_channel_name'.tr(),
             channelDescription: 'Haftalık 2X bonus kategoriler duyurusu',
@@ -306,8 +309,7 @@ class NotificationService {
         'notifications.monthly_title'.tr(),
         'notifications.monthly_body'.tr(),
         scheduledTime,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
+        NotificationDetails(iOS: const DarwinNotificationDetails(), android: AndroidNotificationDetails(
             'monthly_channel',
             'notifications.monthly_channel_name'.tr(),
             channelDescription: 'notifications.monthly_channel_desc'.tr(),
@@ -553,8 +555,7 @@ class NotificationService {
         'notifications.league_ending_title'.tr(),
         'notifications.league_ending_body'.tr(),
         target,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
+        NotificationDetails(iOS: const DarwinNotificationDetails(), android: AndroidNotificationDetails(
             'daily_channel',
             'notifications.daily_channel_name'.tr(),
             channelDescription: 'notifications.daily_channel_desc'.tr(),
@@ -626,7 +627,7 @@ class NotificationService {
         icon: 'ic_stat_notification',
       );
 
-      final notificationDetails = NotificationDetails(android: androidDetails);
+      final notificationDetails = NotificationDetails(iOS: const DarwinNotificationDetails(), android: androidDetails);
 
       await _notifications.show(
         id,

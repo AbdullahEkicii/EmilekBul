@@ -135,6 +135,7 @@ class DuelInviteService {
         .doc(myUid)
         .collection('duel_invites')
         .where('status', isEqualTo: 'pending')
+        .limit(20)
         .snapshots()
         .map((snapshot) {
       final list = snapshot.docs.map((doc) => DuelInvite.fromDoc(doc)).toList();
@@ -210,6 +211,8 @@ class DuelInviteService {
         .collection('users')
         .doc(myUid)
         .collection('pokes')
+        .orderBy('createdAt', descending: true)
+        .limit(20)
         .snapshots()
         .map((snapshot) {
       final list = snapshot.docs.map((doc) => PokeMessage.fromDoc(doc)).toList();

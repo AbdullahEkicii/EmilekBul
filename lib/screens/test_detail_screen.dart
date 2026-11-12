@@ -1,6 +1,8 @@
+import '../services/question_report_service.dart';
 import '../services/performance_service.dart';
 import 'package:emilekbul/models/test_result.dart';
 import 'package:flutter/material.dart';
+import '../widgets/glass_surface.dart';
 import '../widgets/my_native_ad.dart';
 import '../widgets/glass_container.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -51,12 +53,14 @@ class _TestDetailScreenState extends State<TestDetailScreen>
             Positioned(
               top: -50,
               right: -30 + (20 * _orbAnimation.value),
-              child: _buildOrb(200, const Color(0xFF6366F1).withValues(alpha: 0.15)),
+              child: _buildOrb(
+                  200, const Color(0xFF6366F1).withValues(alpha: 0.15)),
             ),
             Positioned(
               bottom: 150 + (40 * _orbAnimation.value),
               left: -40,
-              child: _buildOrb(250, const Color(0xFFA855F7).withValues(alpha: 0.12)),
+              child: _buildOrb(
+                  250, const Color(0xFFA855F7).withValues(alpha: 0.12)),
             ),
           ],
         );
@@ -213,6 +217,70 @@ class _TestDetailScreenState extends State<TestDetailScreen>
     );
   }
 
+  static const List<(String, String)> _reasons = [
+    ('wrong', 'report.reason_wrong'),
+    ('unclear', 'report.reason_unclear'),
+    ('offensive', 'report.reason_offensive'),
+    ('duplicate', 'report.reason_duplicate'),
+  ];
+
+  Future<void> _reportQuestion(TestQuestionDetail q) async {
+    final reason = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => SafeArea(
+        child: GlassSurface(
+          tint: const Color(0xFF1E1B3A),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+                child: Row(
+                  children: [
+                    const Icon(Icons.flag_rounded, color: Color(0xFFFBBF24)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text('report.title'.tr(),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+              for (final r in _reasons)
+                ListTile(
+                  title: Text(r.$2.tr(),
+                      style: const TextStyle(color: Colors.white)),
+                  onTap: () => Navigator.of(ctx).pop(r.$1),
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (reason == null || !mounted) return;
+
+    final result = await QuestionReportService.submit(
+      question: q.question,
+      category: widget.test.category,
+      difficulty: widget.test.difficulty,
+      reason: reason,
+    );
+    if (!mounted) return;
+    final key = switch (result) {
+      ReportResult.sent => 'report.sent',
+      ReportResult.limitReached => 'report.limit',
+      ReportResult.failed => 'report.error',
+    };
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(key.tr())));
+  }
+
   Widget _buildQuestionDetailCard(TestQuestionDetail question, int index) {
     final bool isCorrect = question.userAnswer == question.correctAnswer;
     final color = isCorrect ? Colors.greenAccent : Colors.redAccent;
@@ -252,6 +320,13 @@ class _TestDetailScreenState extends State<TestDetailScreen>
                       letterSpacing: 1),
                 ),
                 const Spacer(),
+                IconButton(
+                  tooltip: 'report.tooltip'.tr(),
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(Icons.flag_outlined,
+                      color: Colors.white.withValues(alpha: 0.55), size: 20),
+                  onPressed: () => _reportQuestion(question),
+                ),
                 Icon(
                     isCorrect
                         ? Icons.check_circle_rounded

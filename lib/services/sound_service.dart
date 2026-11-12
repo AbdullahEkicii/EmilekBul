@@ -3,13 +3,17 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SoundService {
+  // Kullanılmayan müzik oynatıcısı kaldırıldı (her AudioPlayer bir native oynatıcı ayırır).
   static final AudioPlayer _sfxPlayer = AudioPlayer();
   static final AudioPlayer _tickPlayer = AudioPlayer();
-  static final AudioPlayer _musicPlayer = AudioPlayer();
 
   static bool _soundEnabled = true;
   static bool _musicEnabled = true;
   static bool _isInitialized = false;
+  static double _volume = 1.0;
+
+  /// Efekt sesi seviyesi (0.0 - 1.0)
+  static double get volume => _volume;
 
   /// Ses servisini başlatır ve ayarları yükler
   static Future<void> init() async {
@@ -22,6 +26,8 @@ class SoundService {
       final prefs = await SharedPreferences.getInstance();
       _soundEnabled = prefs.getBool('sound_enabled') ?? true;
       _musicEnabled = prefs.getBool('music_enabled') ?? true;
+      _volume = (prefs.getDouble('sfx_volume') ?? 1.0).clamp(0.0, 1.0);
+      await _applyVolume();
       _isInitialized = true;
       
       debugPrint('🔊 SoundService başarıyla başlatıldı. SFX: $_soundEnabled, Müzik: $_musicEnabled');
@@ -48,15 +54,33 @@ class SoundService {
     }
   }
 
+  /// Efekt sesi seviyesini kaydeder ve iki oynatıcıya uygular
+  static Future<void> setVolume(double value) async {
+    _volume = value.clamp(0.0, 1.0);
+    await _applyVolume();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble('sfx_volume', _volume);
+    } catch (e) {
+      debugPrint('Error saving sfx volume: $e');
+    }
+  }
+
+  static Future<void> _applyVolume() async {
+    try {
+      await _sfxPlayer.setVolume(_volume);
+      await _tickPlayer.setVolume(_volume);
+    } catch (e) {
+      debugPrint('Error applying sfx volume: $e');
+    }
+  }
+
   /// Arka plan müziğini açar/kapatır
   static Future<void> setMusicEnabled(bool enabled) async {
     _musicEnabled = enabled;
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('music_enabled', enabled);
-      if (!enabled) {
-        await _musicPlayer.stop();
-      }
     } catch (e) {
       debugPrint('Error saving music setting: $e');
     }

@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../services/ad_grace.dart';
+import '../services/analytics_service.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import '../constants/ad_constants.dart';
@@ -40,6 +42,12 @@ class _MyBannerAdState extends State<MyBannerAd> {
   }
 
   void _loadAd() {
+    AdGrace.isActive().then((grace) {
+      if (mounted && !grace) _startLoad();
+    });
+  }
+
+  void _startLoad() {
     if (!AdConstants.adsEnabled) return;
     if (kIsWeb || (defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS)) {
       return;
@@ -64,6 +72,7 @@ class _MyBannerAdState extends State<MyBannerAd> {
         },
         onAdFailedToLoad: (ad, error) {
           debugPrint('BannerAd failed to load: $error');
+          AnalyticsService.logAdLoadFailed(format: 'banner', placement: 'banner', code: error.code);
           ad.dispose();
           if (mounted) {
             setState(() {

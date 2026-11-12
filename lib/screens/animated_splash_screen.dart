@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -6,6 +7,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../services/user_service.dart';
 import '../services/fullscreen_service.dart';
 import '../services/analytics_service.dart';
+import '../services/remote_flags.dart';
 import '../main.dart'; // To navigate to QuizFlow
 import 'onboarding_screen.dart';
 
@@ -22,6 +24,9 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
   late Animation<double> _scaleAnimation;
   late Animation<double> _opacityAnimation;
   late Animation<double> _rotationAnimation;
+  Timer? _spinnerTimer;
+  bool _showSpinner = false;
+  final Stopwatch _sw = Stopwatch()..start();
 
   @override
   void initState() {
@@ -32,7 +37,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3500),
+      duration: const Duration(milliseconds: 1300),
     );
 
     _scaleAnimation = TweenSequence<double>([
@@ -60,6 +65,11 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
       ),
     );
 
+    // Splash 2 sn'den uzun sürerse (yavaş ağ) kullanıcı donma sanmasın: ilerleme göstergesi
+    _spinnerTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (mounted) setState(() => _showSpinner = true);
+    });
+
     _startInitialization();
   }
 
@@ -67,11 +77,13 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
     // Both animation and backend setup happen concurrently
     await Future.wait([
       _controller.forward(),
-      _setupApp(),
+      // Yavaş/kopuk ağda en fazla 6 sn bekle; misafir girişi arka planda sürer, ana ekran yeniden dener
+      _setupApp().timeout(const Duration(seconds: 6), onTimeout: () {}),
     ]);
-
-    // Give a tiny buffer for smoothness
-    await Future.delayed(const Duration(milliseconds: 200));
+    AnalyticsService.logFirstSession('splash_done', {
+      'ms': _sw.elapsedMilliseconds,
+      'user_ready': FirebaseAuth.instance.currentUser != null ? 1 : 0,
+    });
 
     final prefs = await SharedPreferences.getInstance();
     final bool hasSeenOnboarding =
@@ -86,13 +98,15 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
               (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
           },
-          transitionDuration: const Duration(milliseconds: 800),
+          transitionDuration: const Duration(milliseconds: 500),
         ),
       );
     }
   }
 
   Future<void> _setupApp() async {
+    // Remote Config: asla bloklamaz, hatalar içeride yakalanır
+    unawaited(RemoteFlags.init());
     try {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
@@ -100,7 +114,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
         // doğrudan arka planda hızlı ve sessiz misafir girişi yapıyoruz
         debugPrint("Splash: Starting background guest login...");
         final userCredential = await UserService.signInAsGuest().timeout(
-          const Duration(seconds: 8),
+          const Duration(seconds: 5),
           onTimeout: () => throw Exception("Guest Login Timeout"),
         );
         if (userCredential != null) {
@@ -130,6 +144,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
   @override
   void dispose() {
     FullScreenService.applyCurrentMode();
+    _spinnerTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -182,6 +197,20 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
             },
           ),
           
+          if (_showSpinner)
+            const Positioned(
+              left: 0,
+              right: 0,
+              bottom: 90,
+              child: Center(
+                child: SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white54),
+                ),
+              ),
+            ),
+
           // Main Content
           Center(
             child: AnimatedBuilder(

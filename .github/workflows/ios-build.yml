@@ -1,0 +1,84 @@
+name: iOS Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.32.7'
+
+jobs:
+  analyze-and-test:
+    name: Analyze & test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Create .env (asset required by pubspec)
+        env:
+          DOTENV_CONTENT: ${{ secrets.DOTENV_CONTENT }}
+        run: |
+          if [ -n "$DOTENV_CONTENT" ]; then
+            printf '%s\n' "$DOTENV_CONTENT" > .env
+          else
+            touch .env
+          fi
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests
+        run: flutter test
+
+  build-ios:
+    name: Build iOS (unsigned)
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Create .env (asset required by pubspec)
+        env:
+          DOTENV_CONTENT: ${{ secrets.DOTENV_CONTENT }}
+        run: |
+          if [ -n "$DOTENV_CONTENT" ]; then
+            printf '%s\n' "$DOTENV_CONTENT" > .env
+          else
+            touch .env
+          fi
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build iOS (no code signing)
+        run: flutter build ios --release --no-codesign
+
+      - name: Package Runner.app
+        run: |
+          cd build/ios/iphoneos
+          zip -r --symlinks "$GITHUB_WORKSPACE/Runner-unsigned.app.zip" Runner.app
+
+      - name: Upload unsigned app
+        uses: actions/upload-artifact@v4
+        with:
+          name: Runner-unsigned-app
+          path: Runner-unsigned.app.zip
+          retention-days: 7

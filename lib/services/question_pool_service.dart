@@ -1,9 +1,15 @@
+import 'question_report_service.dart';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/question.dart';
 import 'database_helper.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../constants/app_categories.dart';
+import '../utils/app_utils.dart';
 import 'ai_api_service.dart';
+import 'analytics_service.dart';
+import 'offline_quiz_service.dart';
 
 class QuestionPoolService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -52,6 +58,9 @@ class QuestionPoolService {
   }) async {
     List<Question> resultQuestions = [];
     final neededCount = count;
+    // Oyuncunun bildirdiği sorular bir daha gösterilmez (yerel filtre)
+    final reportedKeys = await QuestionReportService.reportedKeys();
+    List<Question> keepOk(List<Question> l) => QuestionReportService.filterReported(l, reportedKeys);
 
     // 1. ADIM: Aralıklı Tekrar (Kullanıcının 4-5 test önce yanlış yaptığı 1 soruyu pekiştirme amaçlı ekle)
     if (includeSpacedRepetition) {
@@ -62,7 +71,7 @@ class QuestionPoolService {
           minTestsAgo: 4,
         );
         if (spaced.isNotEmpty) {
-          resultQuestions.addAll(spaced);
+          resultQuestions.addAll(keepOk(spaced));
           debugPrint('🧠 Aralıklı Tekrar: 1 adet geçmişte yanlış yapılan soru eklendi.');
         }
       } catch (e) {
@@ -80,8 +89,10 @@ class QuestionPoolService {
           languageCode: languageCode,
           count: remainingFromLocal,
         );
+        // Eski, aşırı uzun sorular önbellekte kalmış olabilir: okurken ele
+        localQuestions.retainWhere(AiApiService.isCompactQuestion);
         if (localQuestions.isNotEmpty) {
-          resultQuestions.addAll(localQuestions);
+          resultQuestions.addAll(keepOk(localQuestions));
           debugPrint('💾 Yerel Önbellek: ${localQuestions.length} soru yerelden yüklendi.');
         }
       } catch (e) {
@@ -105,7 +116,7 @@ class QuestionPoolService {
           count: remainingFromCloud,
         );
         if (cloudQuestions.isNotEmpty) {
-          resultQuestions.addAll(cloudQuestions);
+          resultQuestions.addAll(keepOk(cloudQuestions));
           // Yerel önbelleğe de kaydet
           await DatabaseHelper.instance.saveCachedQuestions(
             cloudQuestions,
@@ -153,6 +164,7 @@ class QuestionPoolService {
         }
       } catch (aiErr) {
         debugPrint('AI soru üretim hatası: $aiErr');
+        _logFallback('ai', category);
       }
     }
 
@@ -165,16 +177,93 @@ class QuestionPoolService {
           languageCode: languageCode,
           count: neededCount - resultQuestions.length,
         );
+        recycledQuestions.retainWhere(AiApiService.isCompactQuestion);
         if (recycledQuestions.isNotEmpty) {
-          resultQuestions.addAll(recycledQuestions);
+          resultQuestions.addAll(keepOk(recycledQuestions));
           debugPrint('♻️ Geri Dönüştürülmüş Önbellek: ${recycledQuestions.length} soru eklendi.');
+          _logFallback('recycled', category);
         }
       } catch (recycleErr) {
         debugPrint('Önbellek geri dönüştürme hatası: $recycleErr');
       }
     }
 
+    // 6. ADIM: Hala eksikse yerleşik çevrimdışı başlangıç sorularıyla tamamla (tekrarsız)
+    if (resultQuestions.length < neededCount) {
+      try {
+        final existing = resultQuestions.map((q) => q.question).toSet();
+        final starter = OfflineQuizService.getFallbackQuestions(
+          languageCode: languageCode,
+          count: neededCount - resultQuestions.length,
+          exclude: existing,
+        );
+        if (starter.isNotEmpty) {
+          resultQuestions.addAll(keepOk(starter));
+          debugPrint('🛟 Çevrimdışı başlangıç: ${starter.length} soru eklendi.');
+          _logFallback('offline_starter', category);
+        }
+      } catch (e) {
+        debugPrint('Çevrimdışı başlangıç soruları hatası: $e');
+      }
+    }
+
     return resultQuestions.take(neededCount).toList();
+  }
+
+  static void _logFallback(String stage, String category) {
+    try {
+      AnalyticsService.logCustomEvent(
+        name: 'questions_fallback',
+        parameters: {'stage': stage, 'category': category},
+      );
+    } catch (_) {}
+  }
+
+  /// İlk açılışta (dil başına bir kez) popüler kategoriler için 'Kolay' soruları
+  /// Firestore havuzundan çekip yerel önbelleğe yazar. AI çağrısı yapmaz; hatalar sessizdir.
+  static Future<void> prefetchStarterQuestions({required String languageCode}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final flagKey = 'starter_prefetch_done_$languageCode';
+      if (prefs.getBool(flagKey) ?? false) return;
+      if (!await AppUtils.hasInternetConnection()) return;
+
+      final categories = <String>['Genel Kültür'];
+      for (final c in AppCategories.categories) {
+        if (categories.length >= 3) break;
+        if (c.name != 'Genel Kültür') categories.add(c.name);
+      }
+
+      const difficulty = 'Kolay';
+      int saved = 0;
+      for (final category in categories) {
+        try {
+          final qs = await fetchQuestionsFromFirestorePool(
+            category: category,
+            difficulty: difficulty,
+            languageCode: languageCode,
+            count: 10,
+          ).timeout(const Duration(seconds: 10));
+          if (qs.isEmpty) continue;
+          await DatabaseHelper.instance.saveCachedQuestions(
+            qs,
+            category: category,
+            difficulty: difficulty,
+            languageCode: languageCode,
+          );
+          saved += qs.length;
+        } catch (e) {
+          debugPrint('Starter prefetch ($category) hatası: $e');
+        }
+      }
+      // Havuz boşsa bayrak konmaz; sonraki açılışta tekrar denenir
+      if (saved > 0) {
+        await prefs.setBool(flagKey, true);
+        debugPrint('📦 Starter prefetch: $saved soru yerele kaydedildi ($languageCode).');
+      }
+    } catch (e) {
+      debugPrint('Starter prefetch hatası: $e');
+    }
   }
 
   /// Çok Dilli Düello İçin Hibrit Soru Getirici
@@ -257,18 +346,22 @@ class QuestionPoolService {
 
     final docs = fetched..shuffle(_random);
     List<Question> questions = [];
+    void addIfCompact(Question q) {
+      if (AiApiService.isCompactQuestion(q)) questions.add(q);
+    }
 
     for (final data in docs) {
+      if (QuestionReportService.isCommunityFlagged(data)) continue; // çok bildirilen soru
       final translations = data['translations'] as Map<String, dynamic>?;
       if (translations != null && translations.containsKey(languageCode)) {
         final langData = translations[languageCode] as Map<String, dynamic>;
-        questions.add(Question(
+        addIfCompact(Question(
           question: langData['question'] ?? '',
           options: List<String>.from(langData['options'] ?? []),
           correctIndex: (langData['correctIndex'] as num?)?.toInt() ?? 0,
         ));
       } else if (languageCode == 'tr' && data['question'] != null) {
-        questions.add(Question(
+        addIfCompact(Question(
           question: data['question'] ?? '',
           options: List<String>.from(data['options'] ?? []),
           correctIndex: (data['correctIndex'] as num?)?.toInt() ?? 0,
@@ -307,6 +400,7 @@ class QuestionPoolService {
     final docs = fetched..shuffle(_random);
 
     for (final data in docs) {
+      if (QuestionReportService.isCommunityFlagged(data)) continue; // çok bildirilen soru
       final translations = data['translations'] as Map<String, dynamic>?;
       if (translations == null) continue;
 

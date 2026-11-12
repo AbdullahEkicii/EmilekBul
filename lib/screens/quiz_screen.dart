@@ -1,3 +1,5 @@
+import '../services/adaptive_service.dart';
+import '../services/haptic_service.dart';
 import 'package:emilekbul/models/question.dart';
 import 'package:emilekbul/models/test_result.dart';
 import 'package:emilekbul/services/database_helper.dart';
@@ -6,11 +8,12 @@ import '../models/category_model.dart';
 import '../services/sound_service.dart';
 import '../services/performance_service.dart';
 import '../constants/app_categories.dart';
-import '../widgets/my_native_ad.dart';
 import '../widgets/glass_container.dart';
 import '../services/bot_room_service.dart';
 import '../services/analytics_service.dart';
 import 'package:flutter/material.dart';
+import '../services/token_economy.dart';
+import '../widgets/glass_alert_dialog.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'dart:async';
 import 'dart:math' as math;
@@ -62,6 +65,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   bool _isFiftyFiftyUsedInCurrentQuestion = false;
   bool _isTransitioning = false;
   bool _isShowingAnswer = false;
+  bool _skipNow = false; // joker ile atlanan soru uyarlanabilir zorluğa kaydedilmez
   int _userTokens = 0;
 
   late AnimationController _orbController;
@@ -383,7 +387,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
 
   void _useFiftyFifty() async {
     if (_isFiftyFiftyUsedInCurrentQuestion) return;
-    if (!(await _checkTokens(3))) return;
+    if (!(await _checkTokens(TokenEconomy.jokerCost))) return;
 
     final currentQuestion = widget.questions[_currentIndex];
     final wrongOptions = <int>[];
@@ -416,7 +420,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
 
   void _useDoubleAnswer() async {
     if (_isDoubleAnswerUsedInCurrentQuestion) return;
-    if (!(await _checkTokens(3))) return;
+    if (!(await _checkTokens(TokenEconomy.jokerCost))) return;
 
     if (mounted) {
       setState(() {
@@ -434,9 +438,10 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   }
 
   void _useSkipQuestion() async {
-    if (!(await _checkTokens(6))) return;
+    if (!(await _checkTokens(TokenEconomy.jokerSkipCost))) return;
 
     _selectedIndex = widget.questions[_currentIndex].correctIndex;
+    _skipNow = true;
     _goNext();
 
     if (mounted) {
@@ -479,6 +484,8 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   }
 
   void _goNext() {
+    final bool skipped = _skipNow;
+    _skipNow = false;
     if (_isShowingAnswer) return;
 
     _timer?.cancel();
@@ -486,6 +493,16 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
 
     final currentQuestion = widget.questions[_currentIndex];
     final bool isCorrect = _selectedIndex == currentQuestion.correctIndex;
+
+    // Yalnızca kullanıcının gerçekten seçtiği (atlanmamış, süresi dolmamış) sorular öğrenme verisine girer
+    if (_selectedIndex != null && !skipped && !widget.isDuel) {
+      AdaptiveService.recordAnswer(
+        question: currentQuestion.question,
+        category: widget.category,
+        difficulty: widget.difficulty,
+        correct: isCorrect,
+      );
+    }
 
     setState(() {
       _isShowingAnswer = true;
@@ -496,6 +513,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
 
     if (isCorrect) {
       SoundService.playCorrect();
+      HapticService.correct();
       _correctStreak++;
       _playerScore++;
       if (_correctStreak > _maxStreak) {
@@ -517,13 +535,14 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
       }
     } else {
       SoundService.playWrong();
+      HapticService.wrong();
       _correctStreak = 0;
     }
 
     _userAnswers[_currentIndex] = _selectedIndex;
 
-    // Sonucu ve geribildirimi göstermek için 1.8 saniye bekle (Reklam görünürlük süresini artırır)
-    Future.delayed(const Duration(milliseconds: 1800), () {
+    // Sonucu ve geribildirimi göstermek için 1.2 saniye bekle
+    Future.delayed(const Duration(milliseconds: 1200), () {
       if (!mounted) return;
       if (_currentIndex < widget.questions.length - 1) {
         // Step 1: Start transition and increment index IMMEDIATELY
@@ -542,7 +561,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
         _feedbackController.reset();
 
         // Step 2: Wait for transition duration
-        Future.delayed(const Duration(milliseconds: 2500), () {
+        Future.delayed(const Duration(milliseconds: 450), () {
           if (!mounted) return;
 
           // Step 3: Hide overlay and start question animations/timer
@@ -629,7 +648,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   void _showFinishEarlyDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => GlassAlertDialog(
         backgroundColor: const Color(0xFF1E293B),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text('quiz.dialog_finish_title'.tr(),
@@ -849,12 +868,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                           ),
                         ),
                     ],
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(12, 4, 12, 8),
-                  child: MyNativeAd(
-                    height: 70,
                   ),
                 ),
               ],
@@ -1511,29 +1524,29 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
         _buildQuickJokerButton(
           icon: Icons.exposure_minus_2_rounded,
           title: 'quiz.joker_5050'.tr(),
-          cost: 3,
+          cost: TokenEconomy.jokerCost,
           color: const Color(0xFF6366F1),
           onTap: _useFiftyFifty,
           isUsed: _isFiftyFiftyUsedInCurrentQuestion,
-          isEnabled: _userTokens >= 3,
+          isEnabled: _userTokens >= TokenEconomy.jokerCost,
         ),
         _buildQuickJokerButton(
           icon: Icons.security_rounded,
           title: 'quiz.joker_double'.tr(),
-          cost: 3,
+          cost: TokenEconomy.jokerCost,
           color: const Color(0xFF3B82F6),
           onTap: _useDoubleAnswer,
           isUsed: _isDoubleAnswerUsedInCurrentQuestion,
-          isEnabled: _userTokens >= 3,
+          isEnabled: _userTokens >= TokenEconomy.jokerCost,
         ),
         _buildQuickJokerButton(
           icon: Icons.skip_next_rounded,
           title: 'quiz.joker_skip'.tr(),
-          cost: 6,
+          cost: TokenEconomy.jokerSkipCost,
           color: const Color(0xFF10B981),
           onTap: _useSkipQuestion,
           isUsed: false,
-          isEnabled: _userTokens >= 6,
+          isEnabled: _userTokens >= TokenEconomy.jokerSkipCost,
         ),
       ],
     );
@@ -1789,7 +1802,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   Widget _buildFeedbackBanner() {
     final isCorrect = _lastAnswerCorrect;
     final Color bannerColor = isCorrect ? const Color(0xFF10B981) : const Color(0xFFEF4444);
-    final String text = isCorrect ? 'DOĞRU!' : 'YANLIŞ!';
+    final String text = isCorrect ? 'quiz.feedback_correct'.tr() : 'quiz.feedback_wrong'.tr();
     final IconData icon = isCorrect ? Icons.check_circle_rounded : Icons.cancel_rounded;
 
     return Center(

@@ -1,3 +1,4 @@
+import '../services/behavior_tracker.dart';
 import 'dart:async';
 import 'dart:math';
 
@@ -5,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'glass_alert_dialog.dart';
 
 import '../constants/app_categories.dart';
 import '../models/duel_room_model.dart';
@@ -22,6 +24,7 @@ class QuickMatchDialog extends StatefulWidget {
   const QuickMatchDialog({super.key});
 
   static Future<void> show(BuildContext context) {
+    BehaviorTracker.track('quick_match');
     return showDialog(
       context: context,
       barrierDismissible: false,
@@ -217,7 +220,7 @@ class _QuickMatchDialogState extends State<QuickMatchDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return GlassAlertDialog(
       backgroundColor: const Color(0xFF1E293B),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       content: Column(

@@ -86,6 +86,13 @@ class StreakService {
     };
   }
 
+  /// Kilometre taşı bonusları: tam bu seri günlerine ulaşınca BİR KEZ verilir (gün -> jeton).
+  static const Map<int, int> milestoneBonuses = {7: 50, 14: 100, 30: 200, 60: 400, 100: 800};
+
+  /// Son talepte kazanılan kilometre taşı bonusu/serisi (arayüz kutlaması için; okununca sıfırlanır)
+  static int lastMilestoneBonus = 0;
+  static int lastMilestoneStreak = 0;
+
   /// Bugünkü streak ödülünü al
   static Future<int> claimStreakReward() async {
     final prefs = await SharedPreferences.getInstance();
@@ -106,10 +113,21 @@ class StreakService {
 
     await TokenService.addTokens(rewardAmount, source: 'streak');
     AnalyticsService.logStreakClaimed(streak: currentStreak, reward: rewardAmount);
+
+    // Kilometre taşı: seri tam bu güne ulaştıysa ek bonus (yalnızca o gün, tek sefer)
+    final bonus = milestoneBonuses[currentStreak] ?? 0;
+    lastMilestoneBonus = bonus;
+    lastMilestoneStreak = bonus > 0 ? currentStreak : 0;
+    if (bonus > 0) {
+      await TokenService.addTokens(bonus, source: 'streak_milestone');
+      AnalyticsService.logCustomEvent(
+          name: 'streak_milestone', parameters: {'streak': currentStreak, 'bonus': bonus});
+    }
+
     await _saveToCloud();
     NotificationService.scheduleStreakReminder(streak: currentStreak, claimedToday: true);
 
-    return rewardAmount;
+    return rewardAmount + bonus;
   }
 
   /// Sadece streak sayısını getir

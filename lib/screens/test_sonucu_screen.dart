@@ -1,5 +1,10 @@
+import '../services/behavior_tracker.dart';
+import '../services/retention_engine.dart';
+import '../services/haptic_service.dart';
+import '../widgets/confetti_burst.dart';
 import '../services/performance_service.dart';
 import 'package:flutter/material.dart';
+import '../services/token_economy.dart';
 import '../models/question.dart';
 import '../widgets/my_native_ad.dart';
 import '../widgets/token_widget.dart';
@@ -166,6 +171,11 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
 
       // Kusursuz ve İmkansız mod başarımlarını kontrol et
       if (!mounted) return;
+      // Kusursuz test: konfeti + kutlama titreşimi (tek sefer, yalnızca tek kişilik testlerde)
+      if (!widget.isDuel && widget.questions.isNotEmpty && widget.score == widget.questions.length) {
+        ConfettiBurst.show(context);
+        HapticService.celebrate();
+      }
       await AchievementService.checkAndUnlockPerfectScore(
         widget.score,
         widget.questions.length,
@@ -208,6 +218,8 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
       await NotificationService.scheduleReEngagementNotifications();
       await NotificationService.markPlayedToday();
       await StreakService.markQuizPlayedToday();
+      RetentionEngine.onActivityCompleted();
+      BehaviorTracker.track(widget.isDuel ? 'duel' : 'solo', category: widget.isDuel ? null : widget.category);
 
       // Görev ilerlemesini güncelle
       await QuestService.onTestCompleted(
@@ -375,19 +387,13 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
           _showWelcomeBonusCard = true;
         });
       }
-      await TokenService.addTokens(100, source: 'welcome_bonus');
+      await TokenService.addTokens(TokenEconomy.welcomeBonus, source: 'welcome_bonus');
     } else {
       final bool isWeeklyBonus = AppCategories.isCategoryWeeklyBonus(widget.category);
-      final tokensPerAnswer = TokenService.getTokensForCorrectAnswer(widget.difficulty);
-      if (isWeeklyBonus) {
-        // 2X Token Ödülü
-        final totalTokens = widget.score * tokensPerAnswer * 2;
-        await TokenService.addTokens(totalTokens, source: 'quiz_weekly_bonus');
-        _quizTokensEarned = totalTokens;
-      } else {
-        await TokenService.awardTokensForQuiz(widget.difficulty, widget.score);
-        _quizTokensEarned = widget.score * tokensPerAnswer;
-      }
+      // Çevrimdışı quiz: sabit ödül. Düellolarda ödül düello sisteminde belirlenir.
+      _quizTokensEarned = widget.isDuel
+          ? 0
+          : await TokenService.awardOfflineQuizReward(weeklyBonus: isWeeklyBonus);
       final boosterBonus = await TokenService.applyBooster(_quizTokensEarned);
       if (boosterBonus > 0 && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

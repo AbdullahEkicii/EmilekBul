@@ -1,2 +1,3 @@
 "CFBundleDisplayName" = "Trivia Quiz";
 "CFBundleName" = "Trivia Quiz";
+"NSUserTrackingUsageDescription" = "This permission lets us show you more relevant, personalized ads and a better game experience.";

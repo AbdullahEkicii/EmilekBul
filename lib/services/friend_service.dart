@@ -246,6 +246,7 @@ class FriendService {
         .collection(requestsCollection)
         .where('toUid', isEqualTo: uid)
         .where('status', isEqualTo: 'pending')
+        .limit(50)
         .snapshots()
         .map((snapshot) {
       return snapshot.docs.map((doc) => FriendRequest.fromDoc(doc)).toList();

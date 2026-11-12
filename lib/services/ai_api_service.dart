@@ -1,3 +1,4 @@
+import 'error_reporter.dart';
 import 'package:flutter/foundation.dart';
 import '../models/question.dart';
 
@@ -5,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:google_generative_ai/google_generative_ai.dart';
 
+import 'dart:async';
 import 'dart:convert';
 
 import '../services/database_helper.dart';
@@ -23,6 +25,9 @@ class AiApiService {
     'gemini-3.7-flash',
   ];
   final String _apiKey = dotenv.env['API_KEY']!;
+  // Model başına zaman aşımı ve tüm denemeler için toplam süre bütçesi
+  static const Duration _perModelTimeout = Duration(seconds: 7);
+  static const Duration _totalBudget = Duration(seconds: 12);
   // Soru/şık uzunluk sınırları (prompt + istemci tarafı doğrulama aynı değerleri kullanır)
   static const int _maxQuestionChars = 160;
   static const int _maxOptionChars = 50;
@@ -32,7 +37,13 @@ class AiApiService {
     int maxOutputTokens = 4096,
   }) async {
     final content = Content.text(prompt);
+    final budgetWatch = Stopwatch()..start();
     for (final modelName in _modelList) {
+      // Toplam bütçe aşıldıysa kalan modelleri deneme (ilk deneme her zaman yapılır)
+      if (budgetWatch.elapsed >= _totalBudget) {
+        debugPrint('⏱️ AI toplam süre bütçesi aşıldı, model denemesi durduruldu.');
+        break;
+      }
       final model = GenerativeModel(
         model: modelName,
         apiKey: _apiKey,
@@ -45,7 +56,12 @@ class AiApiService {
       );
       try {
         debugPrint('🧠 Deneniyor: $modelName');
-        final response = await model.generateContent([content]);
+        final remaining = _totalBudget - budgetWatch.elapsed;
+        final timeout = remaining < _perModelTimeout && remaining > Duration.zero
+            ? remaining
+            : _perModelTimeout;
+        final response =
+            await model.generateContent([content]).timeout(timeout);
         debugPrint('✅ Başarılı model: $modelName');
         return response;
       } catch (e) {
@@ -54,6 +70,7 @@ class AiApiService {
         continue;
       }
     }
+    ErrorReporter.record(Exception('ai_all_models_failed'), null, reason: 'ai_fallback_exhausted');
     throw Exception(
         'Tüm modellerle istek başarısız oldu. Limitler dolmuş veya internet bağlantısı kesilmiş olabilir.');
   }
@@ -169,7 +186,12 @@ class AiApiService {
     return compact.isNotEmpty ? compact : all;
   }
 
-  bool _isCompact(Question q) {
+  /// Havuz/önbellekten okunan sorulara da aynı uzunluk filtresini uygulamak için herkese açık.
+  static bool isCompactQuestion(Question q) => _isCompactStatic(q);
+
+  bool _isCompact(Question q) => _isCompactStatic(q);
+
+  static bool _isCompactStatic(Question q) {
     if (q.options.length != 4 || q.correctIndex < 0 || q.correctIndex > 3) {
       return false;
     }

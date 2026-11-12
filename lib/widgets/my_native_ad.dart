@@ -5,6 +5,7 @@ import 'package:visibility_detector/visibility_detector.dart';
 
 import '../constants/ad_constants.dart';
 import '../services/ads_service.dart';
+import '../services/ad_grace.dart';
 import '../services/analytics_service.dart';
 
 /// Eski native reklam yerleşimlerinde gösterilen inline adaptif banner.
@@ -36,9 +37,31 @@ class _MyNativeAdState extends State<MyNativeAd> {
   Timer? _retryTimer;
   late final Key _visibilityKey = UniqueKey();
 
+  Timer? _releaseTimer;
+
   void _onVisibilityChanged(VisibilityInfo info) {
     _isVisible = info.visibleFraction > 0.05;
-    if (_isVisible) _loadIfNeeded();
+    if (_isVisible) {
+      _releaseTimer?.cancel();
+      _releaseTimer = null;
+      _loadIfNeeded();
+    } else if (_bannerAd != null && _releaseTimer == null) {
+      // Başka bir sayfa üstünü kapattıysa banner (WebView) belleği boşuna tutmasın:
+      // 10 sn görünmez kalırsa bırak, tekrar görününce yeniden yüklenir.
+      _releaseTimer = Timer(const Duration(seconds: 10), _releaseBanner);
+    }
+  }
+
+  void _releaseBanner() {
+    _releaseTimer = null;
+    if (!mounted || _isVisible) return;
+    final ad = _bannerAd;
+    if (ad == null) return;
+    setState(() {
+      _bannerAd = null;
+      _loadedSize = null;
+    });
+    ad.dispose();
   }
 
   Future<void> _loadIfNeeded() async {
@@ -49,7 +72,7 @@ class _MyNativeAdState extends State<MyNativeAd> {
     _isLoading = true;
 
     final canRequestAds = await AdsService.ready;
-    if (!mounted || !canRequestAds) {
+    if (!mounted || !canRequestAds || await AdGrace.isActive()) {
       _isLoading = false;
       return;
     }
@@ -86,6 +109,7 @@ class _MyNativeAdState extends State<MyNativeAd> {
         onAdImpression: (_) => AnalyticsService.logAdImpression(format: 'banner', placement: 'inline'),
         onAdFailedToLoad: (ad, error) {
           debugPrint('Inline banner failed to load: $error');
+          AnalyticsService.logAdLoadFailed(format: 'banner', placement: 'inline', code: error.code);
           ad.dispose();
           _isLoading = false;
           _failCount++;
@@ -98,6 +122,8 @@ class _MyNativeAdState extends State<MyNativeAd> {
 
   void _scheduleRetry() {
     if (!mounted) return;
+    // Reklam doldurma yoksa/çevrimdışıysa radyoyu boşuna uyandırma: 5 başarısızlıktan sonra bu ekranda vazgeç
+    if (_failCount >= 5) return;
     final delay = Duration(seconds: (30 * _failCount).clamp(30, 300));
     _retryTimer = Timer(delay, () {
       _retryTimer = null;
@@ -108,6 +134,7 @@ class _MyNativeAdState extends State<MyNativeAd> {
   @override
   void dispose() {
     _retryTimer?.cancel();
+    _releaseTimer?.cancel();
     _bannerAd?.dispose();
     super.dispose();
   }

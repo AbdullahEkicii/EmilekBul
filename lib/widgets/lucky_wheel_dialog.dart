@@ -1,7 +1,11 @@
+import '../services/behavior_tracker.dart';
 import 'dart:math';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/analytics_service.dart';
+import '../services/performance_service.dart';
+import '../utils/app_motion.dart';
 import '../services/cloud_state_service.dart';
 import '../services/streak_service.dart';
 import '../services/token_service.dart';
@@ -78,6 +82,7 @@ class LuckyWheelDialog extends StatefulWidget {
     BuildContext context, {
     required VoidCallback onSpinCompleted,
   }) async {
+    BehaviorTracker.track('wheel');
     await showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -123,6 +128,11 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
   late ValueNotifier<double> _pointerTickNotifier;
   late ValueNotifier<double> _currentRotationNotifier;
 
+  // Background glow shader: program is loaded once and cached for all dialogs.
+  static ui.FragmentProgram? _glowProgram;
+  ui.FragmentShader? _glowShader;
+  late AnimationController _glowController;
+
   final List<Map<String, dynamic>> _prizes = [
     {'amount': 30, 'label': '30 Token', 'color': const Color(0xFF8B5CF6)},
     {'amount': 50, 'label': '50 Token', 'color': const Color(0xFF3B82F6)},
@@ -157,10 +167,11 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
       vsync: this,
     );
 
+    // Işık animasyonu yalnızca çark dönerken çalışır (bkz. _syncAnimationLoops).
     _bulbController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
-    )..repeat(reverse: true);
+    );
 
     _confettiController = AnimationController(
       duration: const Duration(milliseconds: 1000),
@@ -168,7 +179,57 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
     );
     _confettiAnimation = CurvedAnimation(parent: _confettiController, curve: Curves.easeOut);
 
+    // Drives uTime of the glow shader; loops over [0, 2*PI).
+    _glowController = AnimationController(
+      duration: const Duration(seconds: 8),
+      vsync: this,
+    );
+
+    _loadGlowShader();
     _checkSpinAvailability();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncAnimationLoops();
+  }
+
+  Future<void> _loadGlowShader() async {
+    try {
+      _glowProgram ??=
+          await ui.FragmentProgram.fromAsset('shaders/wheel_glow.frag');
+      if (!mounted) return;
+      setState(() {
+        _glowShader = _glowProgram!.fragmentShader();
+      });
+      _syncAnimationLoops();
+    } catch (e) {
+      debugPrint('Wheel glow shader unavailable: $e');
+    }
+  }
+
+  bool _shouldShowGlow() =>
+      !PerformanceService.isPerformanceMode && !AppMotion.reduced(context);
+
+  /// Sürekli animasyonları yalnızca çark dönerken çalıştırır. Dururken her kare
+  /// boşuna yeniden çizilmez; bu, emülatör/düşük donanımda yükü ciddi azaltır.
+  void _syncAnimationLoops() {
+    if (!mounted) return;
+    final active = _isSpinning && _shouldShowGlow();
+
+    final wantGlow = active && _glowShader != null;
+    if (wantGlow) {
+      if (!_glowController.isAnimating) _glowController.repeat();
+    } else if (_glowController.isAnimating) {
+      _glowController.stop();
+    }
+
+    if (active) {
+      if (!_bulbController.isAnimating) _bulbController.repeat(reverse: true);
+    } else if (_bulbController.isAnimating) {
+      _bulbController.stop();
+    }
   }
 
   Future<void> _checkSpinAvailability() async {
@@ -228,6 +289,8 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
     _controller.dispose();
     _bulbController.dispose();
     _confettiController.dispose();
+    _glowController.dispose();
+    _glowShader?.dispose();
     _pointerTickNotifier.dispose();
     _currentRotationNotifier.dispose();
     super.dispose();
@@ -239,6 +302,7 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
     setState(() {
       _isSpinning = true;
     });
+    _syncAnimationLoops();
 
     final random = Random();
     // Probabilistic / weighted selection or random
@@ -300,6 +364,7 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
           _hasSpun = true;
           _canSpin = false;
         });
+        _syncAnimationLoops();
         widget.onSpinCompleted();
       }
     });
@@ -493,6 +558,28 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
       alignment: Alignment.center,
       clipBehavior: Clip.none,
       children: [
+        // 0. Animated shader glow behind the wheel (skipped in reduced/performance mode).
+        // Positioned so it does not change the wheel's layout size.
+        if (_glowShader != null && _shouldShowGlow())
+          Positioned(
+            left: -60,
+            right: -60,
+            top: -60,
+            bottom: -60,
+            child: RepaintBoundary(
+              child: AnimatedBuilder(
+                animation: _glowController,
+                builder: (context, _) => CustomPaint(
+                  painter: _WheelGlowPainter(
+                    _glowShader!,
+                    _glowController.value * 2 * pi,
+                    0.9,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
         // 1. Outer Glow Aura
         Container(
           width: wheelSize + 30,
@@ -720,6 +807,31 @@ class _LuckyWheelDialogState extends State<LuckyWheelDialog>
       ],
     );
   }
+}
+
+/// Paints the wheel_glow fragment shader over the whole area.
+class _WheelGlowPainter extends CustomPainter {
+  _WheelGlowPainter(this.shader, this.time, this.intensity);
+
+  final ui.FragmentShader shader;
+  final double time;
+  final double intensity;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    shader
+      ..setFloat(0, size.width)
+      ..setFloat(1, size.height)
+      ..setFloat(2, time)
+      ..setFloat(3, intensity);
+    canvas.drawRect(Offset.zero & size, Paint()..shader = shader);
+  }
+
+  @override
+  bool shouldRepaint(covariant _WheelGlowPainter oldDelegate) =>
+      oldDelegate.time != time ||
+      oldDelegate.intensity != intensity ||
+      oldDelegate.shader != shader;
 }
 
 /// Renders the carnival-style gold rim with pulsating illuminated bulbs

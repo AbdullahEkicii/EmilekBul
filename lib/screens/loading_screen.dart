@@ -3,14 +3,18 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:animated_text_kit/animated_text_kit.dart';
 import '../widgets/glass_container.dart';
+import '../services/remote_flags.dart';
+import '../services/database_helper.dart';
+import '../services/haptic_service.dart';
+import '../models/question.dart';
 import 'package:easy_localization/easy_localization.dart';
-import '../widgets/my_native_ad.dart';
 
 class LoadingScreen extends StatefulWidget {
   final bool isDataReady;
   final VoidCallback? onStart;
   final VoidCallback? onTimeout;
-  final int minWaitSeconds;
+  /// null ise RemoteFlags.loadingMinWaitSeconds (varsayılan 1 sn) kullanılır.
+  final int? minWaitSeconds;
   final int timeoutSeconds;
 
   const LoadingScreen({
@@ -18,7 +22,7 @@ class LoadingScreen extends StatefulWidget {
     this.isDataReady = false,
     this.onStart,
     this.onTimeout,
-    this.minWaitSeconds = 5,
+    this.minWaitSeconds = 1,
     this.timeoutSeconds = 14,
   });
 
@@ -44,6 +48,7 @@ class _LoadingScreenState extends State<LoadingScreen>
   @override
   void initState() {
     super.initState();
+    final minWait = widget.minWaitSeconds ?? RemoteFlags.loadingMinWaitSeconds;
 
     _orbController =
         AnimationController(duration: const Duration(seconds: 10), vsync: this)
@@ -62,16 +67,16 @@ class _LoadingScreenState extends State<LoadingScreen>
           ..repeat();
 
     _progressController =
-        AnimationController(duration: Duration(seconds: widget.minWaitSeconds), vsync: this);
+        AnimationController(duration: Duration(seconds: minWait), vsync: this);
 
     _progressController.forward();
 
-    // 5 saniyede %99'a kadar akıcı animasyon
+    // Min bekleme süresinde %99'a kadar akıcı animasyon
     _progressAnimation = Tween<double>(begin: 0.0, end: 0.99).animate(
         CurvedAnimation(parent: _progressController, curve: Curves.easeInOutCubic));
 
-    // Minimum 5 saniye bekleme süresi (reklam ve hazır olma senkronu)
-    _minWaitTimer = Timer(Duration(seconds: widget.minWaitSeconds), () {
+    // Kısa minimum bekleme (veri hazırsa kullanıcıyı bekletme)
+    _minWaitTimer = Timer(Duration(seconds: minWait), () {
       if (!mounted) return;
       _minTimeElapsed = true;
       _checkAndTriggerStart();
@@ -299,9 +304,9 @@ class _LoadingScreenState extends State<LoadingScreen>
                           _buildProgressSection(),
                           const SizedBox(height: 10),
 
-                          // Feature Highlights
-                          _buildFeatureHighlights(),
-                          const SizedBox(height: 8),
+                          // Bekleme oyunu: daha önce yanlış cevaplanan bir soru
+                          const _WrongAnswerTeaser(),
+                          const SizedBox(height: 10),
 
                           // Fun fact / tip card
                           _FunFactCard(),
@@ -309,13 +314,6 @@ class _LoadingScreenState extends State<LoadingScreen>
                         ],
                       ),
                     ),
-                  ),
-                ),
-                // Sabit Alt Reklam (Tüm telefonlarda %100 ekranda görünür)
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 4, 16, 6),
-                  child: MyNativeAd(
-                    height: 75,
                   ),
                 ),
               ],
@@ -413,69 +411,130 @@ class _LoadingScreenState extends State<LoadingScreen>
     );
   }
 
-  Widget _buildFeatureHighlights() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildFeatureCard(
-            icon: Icons.psychology_rounded,
-            label: 'loading.ai_powered'.tr(),
-            color: const Color(0xFF6366F1),
+}
+
+/// Bekleme sırasında kullanıcıya, daha önce yanlış cevapladığı bir soruyu tekrar sorar.
+/// Yanlış soru yoksa hiçbir şey göstermez.
+class _WrongAnswerTeaser extends StatefulWidget {
+  const _WrongAnswerTeaser();
+
+  @override
+  State<_WrongAnswerTeaser> createState() => _WrongAnswerTeaserState();
+}
+
+class _WrongAnswerTeaserState extends State<_WrongAnswerTeaser> {
+  late final Future<List<Question>> _questionFuture;
+  int? _selectedIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _questionFuture = DatabaseHelper.instance
+        .getWrongAnswerQuestions(limit: 1)
+        .catchError((_) => <Question>[]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Question>>(
+      future: _questionFuture,
+      builder: (context, snapshot) {
+        final questions = snapshot.data;
+        if (questions == null || questions.isEmpty) return const SizedBox.shrink();
+        final question = questions.first;
+
+        return GlassContainer(
+          borderRadius: 20,
+          opacity: 0.12,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'loading.remember_title'.tr(),
+                style: TextStyle(
+                  color: Colors.amber.withValues(alpha: 0.85),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'loading.remember_hint'.tr(),
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 11),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                question.question,
+                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, height: 1.3),
+              ),
+              const SizedBox(height: 10),
+              for (int i = 0; i < question.options.length; i++) _buildOption(question, i),
+              if (_selectedIndex != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    _selectedIndex == question.correctIndex
+                        ? 'loading.remember_correct'.tr()
+                        : 'loading.remember_wrong'.tr(),
+                    style: TextStyle(
+                      color: _selectedIndex == question.correctIndex
+                          ? const Color(0xFF86EFAC)
+                          : const Color(0xFFFCA5A5),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+            ],
           ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _buildFeatureCard(
-            icon: Icons.category_rounded,
-            label: 'loading.categories'.tr(),
-            color: const Color(0xFFA855F7),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _buildFeatureCard(
-            icon: Icons.emoji_events_rounded,
-            label: 'loading.compete'.tr(),
-            color: const Color(0xFFEC4899),
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 
-  Widget _buildFeatureCard({
-    required IconData icon,
-    required String label,
-    required Color color,
-  }) {
-    return GlassContainer(
-      borderRadius: 20,
-      opacity: 0.12,
-      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 22),
+  Widget _buildOption(Question question, int index) {
+    final answered = _selectedIndex != null;
+    final isCorrect = index == question.correctIndex;
+    final isSelected = index == _selectedIndex;
+
+    Color background = Colors.white.withValues(alpha: 0.06);
+    if (answered && isCorrect) {
+      background = const Color(0xFF22C55E).withValues(alpha: 0.35);
+    } else if (answered && isSelected) {
+      background = const Color(0xFFEF4444).withValues(alpha: 0.35);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: answered
+            ? null
+            : () {
+                setState(() => _selectedIndex = index);
+                if (isCorrect) {
+                  HapticService.correct();
+                } else {
+                  HapticService.wrong();
+                }
+              },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white12),
           ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.7),
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              height: 1.3,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+          child: Text(
+            question.options[index],
+            style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
           ),
-        ],
+        ),
       ),
     );
   }

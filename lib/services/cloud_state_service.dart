@@ -1,3 +1,4 @@
+import 'retention_engine.dart';
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,6 +10,7 @@ import 'achievement_service.dart';
 import 'duel_ticket_service.dart';
 import 'quest_service.dart';
 import 'streak_service.dart';
+import 'token_service.dart';
 
 /// Streak, çark, görev ve başarım durumunu `users/{uid}.gameState` altında
 /// Firestore'a yazar; yeni cihazda / yeniden kurulumda yerel duruma geri yükler.
@@ -47,6 +49,8 @@ class CloudStateService {
       await LuckyWheelDialog.importState(_asMap(gameState['wheel']));
       await QuestService.importState(_asMap(gameState['quests']));
       await DuelTicketService.importState(_asMap(gameState['duelTickets']));
+      await TokenService.importFreeQuizState(_asMap(gameState['freeQuizzes']));
+      await RetentionEngine.importState(_asMap(gameState['retention']));
       await AchievementService.importState(
         unlocked: List<String>.from(data['unlockedBadges'] ?? const []),
         claimed: List<String>.from(data['claimedBadges'] ?? const []),

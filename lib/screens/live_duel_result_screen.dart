@@ -1,6 +1,7 @@
+import '../services/behavior_tracker.dart';
+import '../services/retention_engine.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/duel_room_model.dart';
@@ -13,15 +14,22 @@ import '../services/streak_service.dart';
 import '../services/duel_ticket_service.dart';
 import '../services/achievement_service.dart';
 import '../services/duel_service.dart';
+import '../services/share_card_capture.dart';
+import '../widgets/duel_share_card.dart';
 import '../services/token_service.dart';
 import '../services/user_service.dart';
 import '../services/friend_service.dart';
 import '../models/friend_model.dart';
 import '../utils/app_utils.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/user_card.dart';
+import '../services/rewarded_boost.dart';
 import '../widgets/token_widget.dart';
 import '../widgets/my_native_ad.dart';
 import 'duel_room_screen.dart';
+import 'package:emilekbul/services/haptic_service.dart';
+import '../utils/app_motion.dart';
+import '../widgets/confetti_burst.dart';
 
 class LiveDuelResultScreen extends StatefulWidget {
   final String roomCode;
@@ -39,18 +47,28 @@ class LiveDuelResultScreen extends StatefulWidget {
   State<LiveDuelResultScreen> createState() => _LiveDuelResultScreenState();
 }
 
-class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
+class _LiveDuelResultScreenState extends State<LiveDuelResultScreen>
+    with SingleTickerProviderStateMixin {
   late StreamSubscription<DuelRoom?> _roomSubscription;
   DuelRoom? _room;
   bool _rewardAwarded = false;
+  final RewardedBoost _prizeBoost = RewardedBoost();
+  bool _prizeDoubled = false;
+  bool _doublingPrize = false;
   int _earnedLeaderboardPoints = 0;
   int _myCorrectCount = 0;
   Timer? _autoReturnTimer;
   int _secondsLeft = 30;
+  final Map<String, Stream<FriendshipStatus>> _friendshipStreams = {};
+  late final AnimationController _entryController =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
+  late final Animation<double> _entryScale =
+      CurvedAnimation(parent: _entryController, curve: Curves.easeOutBack);
 
   @override
   void initState() {
     super.initState();
+    _prizeBoost.load();
     _room = widget.initialRoom;
     if (_room != null) {
       final initialWinner = _getEffectiveWinnerUid(_room!);
@@ -60,6 +78,7 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
     }
     _listenToRoom();
     _startAutoReturnTimer();
+    _entryController.forward();
   }
 
   void _startAutoReturnTimer() {
@@ -155,6 +174,9 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
 
     // 1. Token Ödül Dağıtımı
     if (isWinner) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && AppMotion.loopsAllowed(context)) ConfettiBurst.show(context);
+      });
       final prize = room.prizeTokens;
       await TokenService.addTokens(prize, source: 'duel_prize');
     } else if (isTie) {
@@ -206,6 +228,8 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
 
     NotificationService.markPlayedToday();
     StreakService.markQuizPlayedToday();
+    RetentionEngine.onActivityCompleted();
+    BehaviorTracker.track('duel');
     try {
       await UserService.addPointsToUser(
         uid: user.uid,
@@ -254,7 +278,9 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
   @override
   void dispose() {
     _autoReturnTimer?.cancel();
+    _prizeBoost.dispose();
     _roomSubscription.cancel();
+    _entryController.dispose();
     super.dispose();
   }
 
@@ -329,7 +355,7 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
                     child: Column(
                       children: [
                         const SizedBox(height: 10),
-                        _buildWinnerBanner(effectiveWinnerUid: effectiveWinnerUid, myUid: myUid),
+                        _buildEntry(_buildWinnerBanner(effectiveWinnerUid: effectiveWinnerUid, myUid: myUid)),
                         const SizedBox(height: 16),
                         _buildPointsEarnedCard(room: room, isWinner: isWinner),
                         const SizedBox(height: 16),
@@ -345,6 +371,10 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
                           fee: fee,
                           prize: prize,
                         ),
+                        if (isWinner && !_prizeDoubled && room.prizeTokens > 0) ...[
+                          const SizedBox(height: 12),
+                          _buildDoublePrizeButton(room.prizeTokens),
+                        ],
                         const SizedBox(height: 16),
                         _buildPlayerComparisonCard(room, myUid),
                         const SizedBox(height: 20),
@@ -358,6 +388,64 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  /// Kazanan banner'ı giriş animasyonu (azaltılmış harekette doğrudan gösterilir)
+  /// Kazanan, ödülünü ödüllü reklam izleyerek bir kez daha alır (2 katına çıkarır).
+  Widget _buildDoublePrizeButton(int prize) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: _doublingPrize ? null : () => _doublePrizeWithAd(prize),
+        icon: _doublingPrize
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFFD56B)),
+              )
+            : const Icon(Icons.smart_display_rounded, color: Color(0xFFFFD56B)),
+        label: Text(
+          'duel.double_prize_ad'.tr(),
+          style: const TextStyle(color: Color(0xFFFFD56B), fontWeight: FontWeight.w800),
+        ),
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: Color(0xFFFFD56B)),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _doublePrizeWithAd(int prize) async {
+    if (_doublingPrize || _prizeDoubled || prize <= 0) return;
+    setState(() => _doublingPrize = true);
+    final ok = await _prizeBoost.showAndWait();
+    if (ok) {
+      await TokenService.addTokens(prize, source: 'duel_prize_ad_bonus');
+    }
+    if (!mounted) return;
+    setState(() {
+      _doublingPrize = false;
+      if (ok) _prizeDoubled = true;
+    });
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('common.ad_not_ready'.tr()),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
+  }
+
+  Widget _buildEntry(Widget child) {
+    if (AppMotion.reduced(context)) return child;
+    return FadeTransition(
+      opacity: _entryController,
+      child: ScaleTransition(scale: _entryScale, child: child),
     );
   }
 
@@ -470,7 +558,7 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
     );
   }
 
-  void _shareDuelResult({required bool isWinner, required String myUid}) {
+  Future<void> _shareDuelResult({required bool isWinner, required String myUid}) async {
     final room = _room;
     if (room == null) return;
     final bool amHost = room.host.uid == myUid;
@@ -486,7 +574,25 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
             'app_title'.tr(),
           ])
         : 'share.duel_played'.tr(args: [opponent.username, 'app_title'.tr()]);
-    ShareService.shareText(context, text: text, contentType: 'duel_result');
+
+    final path = await ShareCardCapture.capture(
+      context,
+      DuelShareCard(
+        won: isWinner,
+        myName: AppUtils.localizeUsername(me.username),
+        myScore: me.score.toString(),
+        oppName: AppUtils.localizeUsername(opponent.username),
+        oppScore: opponent.score.toString(),
+        appTitle: 'app_title'.tr(),
+      ),
+      fileName: 'duel_result.png',
+    );
+    if (!mounted) return;
+    if (path == null) {
+      await ShareService.shareText(context, text: text, contentType: 'duel_result');
+      return;
+    }
+    await ShareService.shareImageFile(context, path: path, text: text, contentType: 'duel_result');
   }
 
   Widget _buildPointsEarnedCard({required DuelRoom room, required bool isWinner}) {
@@ -543,9 +649,13 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: const Color(0xFF10B981)),
                 ),
-                child: Text(
-                  '+$_earnedLeaderboardPoints ${'welcome_screen.points'.tr()}',
-                  style: const TextStyle(color: Color(0xFF34D399), fontWeight: FontWeight.w900, fontSize: 15),
+                child: TweenAnimationBuilder<int>(
+                  tween: IntTween(begin: 0, end: _earnedLeaderboardPoints),
+                  duration: AppMotion.duration(context, const Duration(milliseconds: 1200)),
+                  builder: (context, value, _) => Text(
+                    '+$value ${'welcome_screen.points'.tr()}',
+                    style: const TextStyle(color: Color(0xFF34D399), fontWeight: FontWeight.w900, fontSize: 15),
+                  ),
                 ),
               ),
             ],
@@ -700,41 +810,14 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
 
     return Column(
       children: [
-        Stack(
-          alignment: Alignment.topRight,
-          children: [
-            Builder(
-              builder: (context) {
-                final hasAvatar = UserService.hasAvatar(player.avatarIndex);
-                return CircleAvatar(
-                  radius: 26,
-                  backgroundColor: const Color(0xFF1E293B),
-                  backgroundImage: hasAvatar
-                      ? ResizeImage(
-                          AssetImage(UserService.getAvatarPath(player.avatarIndex)),
-                          width: 104,
-                          height: 104,
-                        )
-                      : null,
-                  child: hasAvatar
-                      ? null
-                      : const Icon(Icons.person_rounded, size: 26, color: Colors.white70),
-                );
-              },
-            ),
-            if (isWinner)
-              const Positioned(
-                top: -4,
-                right: -4,
-                child: Icon(Icons.emoji_events_rounded, color: Color(0xFFFFD56B), size: 20),
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          localizedName,
-          maxLines: 1,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13),
+        UserCard(
+          avatarIndex: player.avatarIndex,
+          frameId: player.equippedFrame,
+          name: localizedName,
+          size: UserCardSize.regular,
+          badge: isWinner
+              ? const Icon(Icons.emoji_events_rounded, color: Color(0xFFFFD56B), size: 20)
+              : null,
         ),
         const SizedBox(height: 4),
         Text(
@@ -758,7 +841,8 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
     }
 
     return StreamBuilder<FriendshipStatus>(
-      stream: FriendService.streamFriendshipStatus(otherUid),
+      stream: _friendshipStreams.putIfAbsent(
+          otherUid, () => FriendService.streamFriendshipStatus(otherUid)),
       builder: (context, snapshot) {
         final status = snapshot.data ?? FriendshipStatus.none;
 
@@ -817,7 +901,7 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
             padding: const EdgeInsets.only(top: 6),
             child: InkWell(
               onTap: () async {
-                HapticFeedback.lightImpact();
+                HapticService.light();
                 final res = await FriendService.acceptRequestFrom(otherUid);
                 final msgKey = res['message'] as String? ?? 'common.error';
                 if (context.mounted) {
@@ -859,7 +943,7 @@ class _LiveDuelResultScreenState extends State<LiveDuelResultScreen> {
           padding: const EdgeInsets.only(top: 6),
           child: InkWell(
             onTap: () async {
-              HapticFeedback.lightImpact();
+              HapticService.light();
               final res = await FriendService.sendFriendRequest(otherUid);
               final msgKey = res['message'] as String? ?? 'common.error';
               if (context.mounted) {

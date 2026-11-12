@@ -191,6 +191,10 @@ class AnalyticsService {
   static Future<void> logAdImpression({required String format, required String placement}) =>
       logCustomEvent(name: 'ad_impression_app', parameters: {'ad_format': format, 'placement': placement});
 
+  /// Yükleme hatalarını canlıda da görünür kılar (debugPrint yalnızca geliştirmede okunur).
+  static Future<void> logAdLoadFailed({required String format, required String placement, required int code}) =>
+      logCustomEvent(name: 'ad_load_failed', parameters: {'ad_format': format, 'placement': placement, 'code': code});
+
   static Future<void> logDuelFunnel(String step, {Map<String, Object>? parameters}) =>
       logCustomEvent(name: 'duel_$step', parameters: parameters);
 
@@ -211,6 +215,19 @@ class AnalyticsService {
       logCustomEvent(name: 'app_startup', parameters: {'duration_ms': ms});
 
   static Future<void> logDuelChallengeSent() => logCustomEvent(name: 'duel_challenge_sent');
+
+  static Future<void> logTokenWallHit({required int tokens, required int cost, required String source}) =>
+      logCustomEvent(name: 'token_wall_hit', parameters: {'tokens': tokens, 'cost': cost, 'source': source});
+
+  static Future<void> logFreeQuizUsed({required int left}) =>
+      logCustomEvent(name: 'free_quiz_used', parameters: {'left': left});
+
+  static Future<void> logRewardedCooldownBlocked({required int remainingSeconds}) =>
+      logCustomEvent(name: 'rewarded_cooldown_blocked', parameters: {'remaining_seconds': remainingSeconds});
+
+  /// İlk oturum hunisi: fs_ önekli event'ler (splash, giriş, tanıtım, dil ekranı, ana ekran...)
+  static Future<void> logFirstSession(String step, [Map<String, Object>? params]) =>
+      logCustomEvent(name: 'fs_$step', parameters: params);
 
   /// Özel Event Kaydı
   static Future<void> logCustomEvent({

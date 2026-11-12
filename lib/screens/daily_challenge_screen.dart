@@ -1,3 +1,5 @@
+import '../services/behavior_tracker.dart';
+import '../services/retention_engine.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -112,6 +114,8 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
     final ok = await DailyChallengeService.submit(lang: _lang, pattern: pattern, timeMs: timeMs);
     NotificationService.markPlayedToday();
     StreakService.markQuizPlayedToday();
+    RetentionEngine.onActivityCompleted();
+    BehaviorTracker.track('daily_challenge');
     if (!mounted) return;
     if (ok) {
       final correct = pattern.where((c) => c).length;

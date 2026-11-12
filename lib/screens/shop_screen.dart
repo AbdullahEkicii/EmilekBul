@@ -1,3 +1,4 @@
+import '../services/behavior_tracker.dart';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -195,6 +196,7 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
     super.initState();
     _generateShopAvatars();
     _loadUserProfile();
+    BehaviorTracker.track('shop');
   }
 
   Future<void> _loadUserProfile() async {
@@ -296,6 +298,8 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         child: GlassContainer(
+          useBlur: true,
+          scrim: true,
           borderRadius: 30,
           opacity: 0.2,
           blur: 25,
@@ -512,11 +516,83 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
                 bottom: false,
                 child: _buildHeader(),
               ),
+              _buildGoalBanner(),
               Expanded(
                 child: _buildBody(),
               ),
               _buildBottomArea(),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Sahip olunmayan, bakiyenin üzerindeki en ucuz ürün: "sıradaki hedef".
+  Map<String, dynamic>? _nextGoal(int balance) {
+    final ownedAvatars = List<String>.from(_userProfile?['ownedAvatars'] ?? []);
+    final ownedFrames = List<String>.from(_userProfile?['ownedFrames'] ?? []);
+    final ownedTitles = List<String>.from(_userProfile?['ownedTitles'] ?? []);
+    final candidates = <({String kind, Map<String, dynamic> item})>[];
+    for (final a in _avatars) {
+      if (!ownedAvatars.contains(a['id']) && (a['cost'] as int) > balance) {
+        candidates.add((kind: 'avatar', item: a));
+      }
+    }
+    for (final f in _frames) {
+      if (!ownedFrames.contains(f['id']) && (f['cost'] as int) > balance) {
+        candidates.add((kind: 'frame', item: f));
+      }
+    }
+    for (final t in _titles) {
+      if (!ownedTitles.contains(t['id']) && (t['cost'] as int) > balance) {
+        candidates.add((kind: 'title', item: t));
+      }
+    }
+    if (candidates.isEmpty) return null;
+    candidates.sort((x, y) => (x.item['cost'] as int).compareTo(y.item['cost'] as int));
+    final best = candidates.first;
+    return {'kind': best.kind, 'item': best.item};
+  }
+
+  Widget _buildGoalBanner() {
+    final balance = (_userProfile?['tokens'] as int?) ?? 0;
+    final goal = _nextGoal(balance);
+    if (goal == null) return const SizedBox.shrink();
+    final item = goal['item'] as Map<String, dynamic>;
+    final kind = goal['kind'] as String;
+    final cost = item['cost'] as int;
+    final name = kind == 'avatar'
+        ? 'shop_goal.avatar_name'.tr(args: [item['id'].toString()])
+        : (item['name'] as String).tr();
+    final progress = (balance / cost).clamp(0.0, 1.0);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFFFBBF24).withValues(alpha: 0.1),
+        border: Border.all(color: const Color(0xFFFBBF24).withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('shop_goal.title'.tr(),
+              style: const TextStyle(
+                  color: Color(0xFFFBBF24), fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
+          const SizedBox(height: 4),
+          Text('shop_goal.body'.tr(args: [name, '${cost - balance}']),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 14)),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: Colors.white.withValues(alpha: 0.12),
+              color: const Color(0xFFFBBF24),
+            ),
           ),
         ],
       ),

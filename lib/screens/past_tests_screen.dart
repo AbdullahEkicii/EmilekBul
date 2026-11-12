@@ -7,6 +7,7 @@ import '../widgets/my_native_ad.dart';
 import '../widgets/glass_container.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../constants/app_categories.dart';
+import 'wrong_answers_screen.dart';
 
 class PastTestsScreen extends StatefulWidget {
   const PastTestsScreen({super.key});
@@ -18,6 +19,7 @@ class PastTestsScreen extends StatefulWidget {
 class _PastTestsScreenState extends State<PastTestsScreen>
     with TickerProviderStateMixin {
   late Future<List<TestResult>> _tests;
+  late final Future<int> _testCount = _tests.then((tests) => tests.length);
   late AnimationController _orbController;
   late Animation<double> _orbAnimation;
 
@@ -102,6 +104,7 @@ class _PastTestsScreenState extends State<PastTestsScreen>
             child: Column(
               children: [
                 _buildHeader(context),
+                _buildWrongReviewEntry(),
                 Expanded(
                   child: FutureBuilder<List<TestResult>>(
                     future: _tests,
@@ -184,6 +187,68 @@ class _PastTestsScreenState extends State<PastTestsScreen>
           ),
         ],
       ),
+    );
+  }
+
+  /// Yanlışlarım girişi: yeterli test yoksa kilitli kalır ve kalan test sayısını gösterir.
+  Widget _buildWrongReviewEntry() {
+    return FutureBuilder<int>(
+      future: _testCount,
+      builder: (context, snapshot) {
+        final count = snapshot.data ?? 0;
+        final unlocked = count >= WrongAnswersScreen.requiredTests;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+          child: GestureDetector(
+            onTap: () {
+              if (unlocked) {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const WrongAnswersScreen()));
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text('wrong_review.locked'
+                      .tr(args: ['${WrongAnswersScreen.requiredTests}'])),
+                  behavior: SnackBarBehavior.floating,
+                ));
+              }
+            },
+            child: GlassContainer(
+              borderRadius: 18,
+              opacity: 0.1,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Icon(
+                    unlocked ? Icons.replay_rounded : Icons.lock_rounded,
+                    color: unlocked ? Colors.amber : Colors.white38,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'wrong_review.title'.tr(),
+                          style: const TextStyle(
+                              color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          unlocked
+                              ? 'wrong_review.subtitle'.tr()
+                              : 'wrong_review.locked'
+                                  .tr(args: ['${WrongAnswersScreen.requiredTests}']),
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

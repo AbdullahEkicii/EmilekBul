@@ -1,8 +1,13 @@
+import 'services/adaptive_service.dart';
+import 'services/background_worker.dart';
+import 'services/error_reporter.dart';
+import 'services/haptic_service.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/ads_service.dart';
 import 'services/interstitial_ad_manager.dart';
+import 'theme/app_theme.dart';
 import 'screens/animated_splash_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/kategori_screen.dart';
@@ -27,6 +32,9 @@ import 'firebase_options.dart';
 void main() async {
   final startupWatch = Stopwatch()..start();
   WidgetsFlutterBinding.ensureInitialized();
+  // Görsel önbelleğini sınırla (varsayılan 100 MB): düşük RAM'li cihazlarda bellek baskısını azaltır
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 48 << 20;
+  PaintingBinding.instance.imageCache.maximumSize = 150;
   await FullScreenService.init();
 
   // Kritik başlatmaları paralel yap — main thread'i minimum blokla
@@ -37,6 +45,9 @@ void main() async {
       EasyLocalization.ensureInitialized(),
       PerformanceService.init(),
     ]);
+
+    // Hata/çökme raporlama (Firebase hazır olduktan sonra)
+    await ErrorReporter.init();
 
     // Firestore ayarları, Firestore'a ilk erişimden ÖNCE yapılmalı (sıra önemli).
     // Önbellek boyutunu 15 MB ile sınırla (Varsayılan 100 MB veri şişmesini önler)
@@ -49,6 +60,8 @@ void main() async {
     Future(() async {
       try {
         await SoundService.init();
+        await HapticService.init();
+        await BackgroundWorker.init();
       } catch (e) {
         debugPrint('SoundService init error: $e');
       }
@@ -82,6 +95,17 @@ void main() async {
     final ms = startupWatch.elapsedMilliseconds;
     debugPrint('Startup: ilk frame sonrası $ms ms');
     AnalyticsService.logAppStartup(ms);
+
+    // İlk açılış önyükleme: UI'ı bloklamadan, hatalar sessiz
+    const supported = {
+      'en', 'tr', 'ru', 'ar', 'es', 'fr', 'de', 'it', 'pt', 'ja', 'ko', 'zh',
+      'hi', 'id', 'nl', 'pl', 'sv', 'uk', 'vi', 'th', 'cs', 'el', 'ro', 'hu',
+      'da', 'fi',
+    };
+    var lang = WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+    if (!supported.contains(lang)) lang = 'en';
+    Future(() => QuestionPoolService.prefetchStarterQuestions(languageCode: lang))
+        .catchError((e) => debugPrint('Starter prefetch error: $e'));
   });
 
   runApp(
@@ -134,9 +158,7 @@ class MyApp extends StatelessWidget {
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,
       locale: context.locale,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
+      theme: AppTheme.dark(),
       home: const AnimatedSplashScreen(),
     );
   }
@@ -222,11 +244,23 @@ class _QuizFlowState extends State<QuizFlow> {
       _loading = true; // Show loading screen while logging in
     });
 
+    // Splash'ta giriş az önce başarısız olduysa ikinci kez bekletme: ana ekran arka planda yeniden dener
+    final lastFail = UserService.lastGuestLoginFailure;
+    if (lastFail != null && DateTime.now().difference(lastFail) < const Duration(seconds: 30)) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _screenState = 'welcome';
+        });
+      }
+      return;
+    }
+
     try {
       debugPrint("_autoLoginAndSetup: Starting Guest Login...");
       // 1. Auto Guest Login
-      final userCredential = await UserService.signInAsGuest().timeout(const Duration(seconds: 10), onTimeout: () {
-        debugPrint("_autoLoginAndSetup: Guest Login timeout after 10s");
+      final userCredential = await UserService.signInAsGuest().timeout(const Duration(seconds: 6), onTimeout: () {
+        debugPrint("_autoLoginAndSetup: Guest Login timeout after 6s");
         throw Exception("Guest Login Timeout");
       });
       debugPrint("_autoLoginAndSetup: Guest Login completed, userCredential: ${userCredential?.user?.uid}");
@@ -300,13 +334,17 @@ class _QuizFlowState extends State<QuizFlow> {
       debugPrint('Hibrit soru havuzundan çekiliyor...');
       final loadWatch = Stopwatch()..start();
 
-      final questions = await QuestionPoolService.getHybridQuestions(
+      var questions = await QuestionPoolService.getHybridQuestions(
         category: category,
         difficulty: difficulty,
         languageCode: languageCode,
         count: count,
         includeSpacedRepetition: true,
       );
+      // Uyarlanabilir sıralama: kolaydan zora (yalnızca tekli test; küme aynı kalır)
+      if (!isDuel) {
+        questions = await AdaptiveService.arrange(questions, category: category, difficulty: difficulty);
+      }
 
       debugPrint('Soru yükleme başarılı, ${questions.length} soru hazır');
       AnalyticsService.logQuestionsLoaded(
@@ -323,6 +361,8 @@ class _QuizFlowState extends State<QuizFlow> {
       debugPrint('Data hazır. Kullanıcı onayı bekleniyor.');
     } catch (e) {
       debugPrint('API çağrısı hatası: $e');
+      AnalyticsService.logFirstSession('quiz_load_failed', {'category': category});
+      ErrorReporter.record(e, null, reason: 'quiz_load');
       
       if (!mounted) return;
       setState(() {

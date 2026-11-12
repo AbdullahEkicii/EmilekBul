@@ -1,7 +1,8 @@
+import '../widgets/weak_topic_card.dart';
 import 'package:emilekbul/screens/welcome_screen.dart';
 import 'package:flutter/material.dart';
+import '../widgets/glass_alert_dialog.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/services.dart';
 import 'package:emilekbul/services/database_helper.dart';
 import 'package:emilekbul/widgets/token_widget.dart';
 import 'package:emilekbul/services/token_service.dart';
@@ -12,7 +13,10 @@ import 'package:emilekbul/widgets/my_native_ad.dart';
 import '../models/category_model.dart';
 import '../constants/app_categories.dart';
 import '../screens/token_screen.dart';
+import '../screens/speed_round_screen.dart';
+import '../screens/tournament_screen.dart';
 import '../utils/app_utils.dart';
+import 'package:emilekbul/services/haptic_service.dart';
 
 class KategoriScreen extends StatefulWidget {
   final Function(String category, String difficulty, int duration, {bool isDuel}) onStartQuiz;
@@ -93,16 +97,25 @@ class _KategoriScreenState extends State<KategoriScreen>
 
     // Düşük bakiye kontrolü
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadFreeQuizzes();
       _checkLowBalance();
       _cleanOldTests();
     });
+  }
+
+  int _freeQuizzesLeft = 0;
+
+  Future<void> _loadFreeQuizzes() async {
+    final left = await TokenService.freeQuizzesLeft();
+    if (mounted && left != _freeQuizzesLeft) setState(() => _freeQuizzesLeft = left);
   }
 
   Future<void> _checkLowBalance() async {
     if (!mounted) return;
 
     final tokenAmount = await TokenService.getTokenAmount();
-    if (tokenAmount <= 10) {
+    final freeLeft = await TokenService.freeQuizzesLeft();
+    if (tokenAmount < TokenService.quizCost && freeLeft <= 0) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -403,10 +416,21 @@ class _KategoriScreenState extends State<KategoriScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // --- KİŞİSEL: ZAYIF KONU (yeterli veri varsa) ---
+            WeakTopicCard(
+              onStart: (category, difficulty, duration) =>
+                  widget.onStartQuiz(category, difficulty, duration),
+            ),
             // --- HAFTALIK 2X BONUS KATEGORİLER VİTRİNİ ---
             _buildWeeklyBonusHeader(),
             const SizedBox(height: 12),
             _buildWeeklyBonusRow(weeklyBonuses),
+            const SizedBox(height: 24),
+
+            // --- HIZ TURU (haftalık kategori) ---
+            _buildSpeedRoundCard(),
+            const SizedBox(height: 12),
+            _buildTournamentCard(),
             const SizedBox(height: 24),
 
             // --- TÜM KATEGORİLER BAŞLIĞI ---
@@ -483,6 +507,141 @@ class _KategoriScreenState extends State<KategoriScreen>
     } catch (_) {
       return categoryName;
     }
+  }
+
+  Widget _buildSpeedRoundCard() {
+    final weekly = SpeedRoundScreen.weeklyCategory();
+    return GestureDetector(
+      onTap: () {
+        HapticService.light();
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const SpeedRoundScreen()),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              const Color(0xFF6366F1).withValues(alpha: 0.3),
+              const Color(0xFF00D2D3).withValues(alpha: 0.2),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF00D2D3).withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF6366F1), Color(0xFF00D2D3)],
+                ),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.bolt_rounded, color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'speed_round.title'.tr(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'speed_round.weekly_category'.tr(args: [weekly.key.tr()]),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Colors.white70),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTournamentCard() {
+    return GestureDetector(
+      onTap: () {
+        HapticService.light();
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const TournamentScreen()),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              const Color(0xFFFECA57).withValues(alpha: 0.25),
+              const Color(0xFFFF9F43).withValues(alpha: 0.2),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFFECA57).withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFECA57), Color(0xFFFF9F43)],
+                ),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'tournament.title'.tr(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'tournament.card_subtitle'.tr(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Colors.white70),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildWeeklyBonusHeader() {
@@ -1028,7 +1187,9 @@ class _KategoriScreenState extends State<KategoriScreen>
                   child: _buildPreviewItem(
                     Icons.token,
                     'category_ui.preview_cost'.tr(),
-                    'category_ui.token_cost'.tr(),
+                    _freeQuizzesLeft > 0
+                        ? 'category_ui.cost_free'.tr()
+                        : 'category_ui.token_cost'.tr(),
                   ),
                 ),
                 Expanded(
@@ -1148,7 +1309,7 @@ class _KategoriScreenState extends State<KategoriScreen>
                   child: InkWell(
                     onTap: isEnabled
                         ? () async {
-                            HapticFeedback.mediumImpact();
+                            HapticService.medium();
 
                             // 1. İnternet Bağlantısı Kontrolü
                             final hasInternet = await AppUtils.hasInternetConnection();
@@ -1156,7 +1317,7 @@ class _KategoriScreenState extends State<KategoriScreen>
                               if (!context.mounted) return;
                               showDialog(
                                 context: context,
-                                builder: (ctx) => AlertDialog(
+                                builder: (ctx) => GlassAlertDialog(
                                   backgroundColor: const Color(0xFF1E293B),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                                   title: Row(
@@ -1200,12 +1361,21 @@ class _KategoriScreenState extends State<KategoriScreen>
                                   content: Text(
                                       'category_ui.insufficient_tokens'.tr()),
                                   backgroundColor: Colors.red,
-                                  duration: const Duration(seconds: 2),
+                                  duration: const Duration(seconds: 4),
+                                  action: SnackBarAction(
+                                    label: 'token.watch_ad'.tr(),
+                                    textColor: Colors.white,
+                                    onPressed: () => Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                          builder: (_) => const TokenScreen()),
+                                    ),
+                                  ),
                                 ),
                               );
                               return;
                             }
 
+                            _loadFreeQuizzes();
                             debugPrint('Quiz başlatılıyor');
 
                             // Preload ad so it's ready for the first question
@@ -1250,7 +1420,9 @@ class _KategoriScreenState extends State<KategoriScreen>
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  '10',
+                                  _freeQuizzesLeft > 0
+                                      ? 'category_ui.free_quiz_badge'.tr(args: ['$_freeQuizzesLeft'])
+                                      : '${TokenService.quizCost}',
                                   style: TextStyle(
                                     color: isEnabled ? Colors.orange : Colors.white,
                                     fontWeight: FontWeight.bold,
@@ -1280,7 +1452,7 @@ class _KategoriScreenState extends State<KategoriScreen>
   }
 
   void _triggerHapticFeedback() {
-    HapticFeedback.lightImpact();
+    HapticService.light();
   }
 
   int _getTokenRewardForDifficulty(String difficulty) {

@@ -1,20 +1,22 @@
+import '../services/haptic_service.dart';
 import '../services/performance_service.dart';
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import '../services/token_economy.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../models/duel_room_model.dart';
 import '../models/question.dart';
 import '../services/duel_service.dart';
 import '../services/interstitial_ad_manager.dart';
 import '../services/sound_service.dart';
-import '../services/user_service.dart';
 import '../services/token_service.dart';
 import '../services/bot_quiz_simulator.dart';
 import '../services/bot_room_service.dart';
 import '../utils/app_utils.dart';
 import '../widgets/glass_container.dart';
-import '../widgets/my_native_ad.dart';
+import '../widgets/user_card.dart';
+import '../services/rewarded_boost.dart';
 import 'live_duel_result_screen.dart';
 
 class LiveDuelQuizScreen extends StatefulWidget {
@@ -46,6 +48,10 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
   bool _isTransitioning = false;
   bool _showFeedbackBadge = false;
   bool _lastAnswerCorrect = false;
+
+  final RewardedBoost _boost = RewardedBoost();
+  bool _freeJokerPass = false;
+  Timer? _opponentWaitTimer;
 
   // Joker States
   final List<int> _eliminatedOptions = [];
@@ -113,6 +119,7 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
     ]).animate(_feedbackController);
 
     _loadUserTokens();
+    _boost.load();
     _startQuestionTimer();
     _listenToRoom();
 
@@ -162,6 +169,7 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
     if (_hasNavigatedToResults) return;
     _hasNavigatedToResults = true;
     _questionTimer?.cancel();
+    _opponentWaitTimer?.cancel();
     _roomSubscription.cancel();
     _botSimulator?.cancel();
 
@@ -192,11 +200,14 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
 
   void _startQuestionTimer() {
     _questionTimer?.cancel();
+    SoundService.stopClockTick();
     _remainingSeconds.value = _questionDuration;
 
     _questionTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_remainingSeconds.value > 0) {
         _remainingSeconds.value--;
+        // Son 5 saniyede tik sesi
+        if (_remainingSeconds.value == 5) SoundService.startClockTick();
       } else {
         timer.cancel();
         _handleAnswer(-1); // Timeout
@@ -204,7 +215,38 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
     });
   }
 
+  /// Jeton yetmediğinde joker, ödüllü reklam izlenerek açılır (reklam geliri).
+  Future<void> _jokerViaAd(VoidCallback joker) async {
+    final ok = await _boost.showAndWait();
+    if (!mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('common.ad_not_ready'.tr()),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+    // Joker, _checkTokens'ı senkron çağırır; bayrak orada tüketilir
+    _freeJokerPass = true;
+    joker();
+    _freeJokerPass = false;
+  }
+
+  /// Rakip süre içinde bitirmediyse (bağlantı kopması vb.) mevcut skorlarla maçı sonuçlandırır.
+  void _forceResolveAfterOpponentWait() {
+    if (!mounted || _hasNavigatedToResults) return;
+    _navigateToResults();
+  }
+
   Future<bool> _checkTokens(int cost) async {
+    if (_freeJokerPass) {
+      _freeJokerPass = false;
+      return true;
+    }
     final currentTokens = await TokenService.getTokenAmount();
     if (currentTokens < cost) {
       if (mounted) {
@@ -226,7 +268,7 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
 
   void _useFiftyFifty() async {
     if (_isFiftyFiftyUsedInCurrentQuestion) return;
-    if (!(await _checkTokens(3))) return;
+    if (!(await _checkTokens(TokenEconomy.jokerCost))) return;
 
     final currentQuestion = widget.room.questions[_currentIndex];
     final wrongOptions = <int>[];
@@ -258,7 +300,7 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
 
   void _useDoubleAnswer() async {
     if (_isDoubleAnswerUsedInCurrentQuestion) return;
-    if (!(await _checkTokens(3))) return;
+    if (!(await _checkTokens(TokenEconomy.jokerCost))) return;
 
     if (mounted) {
       setState(() {
@@ -276,7 +318,7 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
   }
 
   void _useSkipQuestion() async {
-    if (!(await _checkTokens(6))) return;
+    if (!(await _checkTokens(TokenEconomy.jokerSkipCost))) return;
 
     _handleAnswer(widget.room.questions[_currentIndex].correctIndex);
 
@@ -316,6 +358,7 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
     }
 
     _questionTimer?.cancel();
+    SoundService.stopClockTick();
     final bool isCorrect = selectedIndex == currentQ.correctIndex;
 
     setState(() {
@@ -339,13 +382,15 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
         final comboBonus = (_combo > 1 ? (_combo * 10) : 0);
         _localScore += 50 + speedBonus + comboBonus;
         SoundService.playCorrect();
+        HapticService.correct();
       } else {
         _combo = 0;
         SoundService.playWrong();
+        HapticService.wrong();
       }
     });
 
-    HapticFeedback.mediumImpact();
+    HapticService.medium();
     _feedbackController.forward(from: 0.0);
 
     // Update progress in Firestore
@@ -362,8 +407,8 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
       userAnswers: _userAnswers,
     );
 
-    // Soru doğru/yanlış geri bildirimini kullanıcının net görmesi için 1400ms bekle
-    Future.delayed(const Duration(milliseconds: 1400), () {
+    // Soru doğru/yanlış geri bildirimini kullanıcının net görmesi için 1200ms bekle
+    Future.delayed(const Duration(milliseconds: 1200), () {
       if (!mounted) return;
 
       if (isLastQuestion) {
@@ -378,6 +423,10 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
         final isOpponentDone = (opponent?.finished == true) || (totalQ > 0 && (opponent?.progress ?? 0) >= totalQ);
         if (isOpponentDone) {
           _navigateToResults();
+        } else {
+          // Rakip bitirmezse (bağlantı kopması vb.) sonsuza kadar beklenmez
+          _opponentWaitTimer?.cancel();
+          _opponentWaitTimer = Timer(const Duration(seconds: 45), _forceResolveAfterOpponentWait);
         }
       } else {
         // Step 1: Diğer soru hazırlanıyor geçişini başlat
@@ -393,8 +442,8 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
           _isFiftyFiftyUsedInCurrentQuestion = false;
         });
 
-        // Step 2: 1300ms'lik rahat geçiş beklemesi
-        Future.delayed(const Duration(milliseconds: 1300), () {
+        // Step 2: 450ms'lik kısa geçiş beklemesi
+        Future.delayed(const Duration(milliseconds: 450), () {
           if (!mounted) return;
 
           setState(() {
@@ -411,11 +460,14 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
   @override
   void dispose() {
     _botSimulator?.cancel();
+    _boost.dispose();
+    _opponentWaitTimer?.cancel();
     _questionTimer?.cancel();
     _roomSubscription.cancel();
     _fadeController.dispose();
     _comboController.dispose();
     _feedbackController.dispose();
+    SoundService.stopClockTick();
     _remainingSeconds.dispose();
     super.dispose();
   }
@@ -470,12 +522,6 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
                         if (_showFeedbackBadge) _buildFeedbackBanner(),
                         if (_isTransitioning) _buildTransitionOverlay(),
                       ],
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    child: MyNativeAd(
-                      height: 65,
                     ),
                   ),
                 ] else ...[
@@ -736,8 +782,6 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
     required int displayScore,
     required DuelRoom room,
   }) {
-    final hasAvatar = UserService.hasAvatar(player.avatarIndex);
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final isSmallScreen = constraints.maxWidth < 360;
@@ -750,48 +794,13 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
               width: profileWidth,
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: isSmallScreen ? 11 : 13,
-                    backgroundColor: isMe ? const Color(0xFF10B981) : const Color(0xFFFF5252),
-                    backgroundImage: hasAvatar
-                        ? ResizeImage(
-                            AssetImage(UserService.getAvatarPath(player.avatarIndex)),
-                            width: 48,
-                            height: 48,
-                          )
-                        : null,
-                    child: hasAvatar ? null : const Icon(Icons.person_rounded, size: 12, color: Colors.white),
-                  ),
-                  const SizedBox(width: 5),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          isMe ? 'duel.you'.tr() : AppUtils.localizeUsername(player.username),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: isSmallScreen ? 10 : 11,
-                          ),
-                        ),
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            '$correctCount D • ${displayScore}p',
-                            style: TextStyle(
-                              color: isMe ? const Color(0xFF34D399) : const Color(0xFFF87171),
-                              fontWeight: FontWeight.bold,
-                              fontSize: isSmallScreen ? 8.5 : 9.5,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                  UserCard(
+                    avatarIndex: player.avatarIndex,
+                    frameId: player.equippedFrame,
+                    name: isMe ? 'duel.you'.tr() : AppUtils.localizeUsername(player.username),
+                    subtitle: '$correctCount D • ${displayScore}p',
+                    accentColor: isMe ? const Color(0xFF34D399) : const Color(0xFFF87171),
+                    size: UserCardSize.dense,
                   ),
                 ],
               ),
@@ -881,29 +890,32 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
         _buildQuickJokerButton(
           icon: Icons.exposure_minus_2_rounded,
           title: 'quiz.joker_5050'.tr(),
-          cost: 3,
+          cost: TokenEconomy.jokerCost,
           color: const Color(0xFF6366F1),
-          onTap: _useFiftyFifty,
+          onTap: _userTokens >= TokenEconomy.jokerCost ? _useFiftyFifty : () => _jokerViaAd(_useFiftyFifty),
           isUsed: _isFiftyFiftyUsedInCurrentQuestion,
-          isEnabled: _userTokens >= 3,
+          isEnabled: true,
+          viaAd: _userTokens < 3,
         ),
         _buildQuickJokerButton(
           icon: Icons.security_rounded,
           title: 'quiz.joker_double'.tr(),
-          cost: 3,
+          cost: TokenEconomy.jokerCost,
           color: const Color(0xFF3B82F6),
-          onTap: _useDoubleAnswer,
+          onTap: _userTokens >= TokenEconomy.jokerCost ? _useDoubleAnswer : () => _jokerViaAd(_useDoubleAnswer),
           isUsed: _isDoubleAnswerUsedInCurrentQuestion,
-          isEnabled: _userTokens >= 3,
+          isEnabled: true,
+          viaAd: _userTokens < 3,
         ),
         _buildQuickJokerButton(
           icon: Icons.skip_next_rounded,
           title: 'quiz.joker_skip'.tr(),
-          cost: 6,
+          cost: TokenEconomy.jokerSkipCost,
           color: const Color(0xFF10B981),
-          onTap: _useSkipQuestion,
+          onTap: _userTokens >= TokenEconomy.jokerSkipCost ? _useSkipQuestion : () => _jokerViaAd(_useSkipQuestion),
           isUsed: false,
-          isEnabled: _userTokens >= 6,
+          isEnabled: true,
+          viaAd: _userTokens < 6,
         ),
       ],
     );
@@ -917,6 +929,7 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
     required VoidCallback onTap,
     required bool isUsed,
     required bool isEnabled,
+    bool viaAd = false,
   }) {
     final bool canTap = isEnabled && !isUsed && !_isShowingAnswer && !_localFinished;
     return GestureDetector(
@@ -969,10 +982,10 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.monetization_on, color: Colors.white, size: 8),
+                          Icon(viaAd ? Icons.smart_display_rounded : Icons.monetization_on, color: Colors.white, size: 8),
                           const SizedBox(width: 2),
                           Text(
-                            '$cost',
+                            viaAd ? 'AD' : '$cost',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 9,
@@ -1169,7 +1182,24 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
           }
         }
 
-        return Padding(
+        return AnimatedBuilder(
+          animation: _feedbackController,
+          builder: (context, child) {
+            // Yanlış seçilen şık yatay titrer, doğru şık hafifçe nabız atar
+            final t = _feedbackController.value;
+            double dx = 0;
+            double scale = 1;
+            if (_isShowingAnswer && isSelected && !isCorrect) {
+              dx = sin(t * pi * 6) * 10 * (1 - t);
+            } else if (_isShowingAnswer && isCorrect) {
+              scale = 1 + 0.04 * sin(t * pi);
+            }
+            return Transform.translate(
+              offset: Offset(dx, 0),
+              child: Transform.scale(scale: scale, child: child),
+            );
+          },
+          child: Padding(
           padding: const EdgeInsets.only(bottom: 12.0),
           child: Opacity(
             opacity: isEliminated ? 0.25 : 1.0,
@@ -1221,6 +1251,7 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
               ),
             ),
           ),
+        ),
         );
       }),
     );

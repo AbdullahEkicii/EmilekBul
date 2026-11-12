@@ -1,9 +1,12 @@
+import 'behavior_tracker.dart';
+import 'social_rewards.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'analytics_service.dart';
+import 'package:emilekbul/services/haptic_service.dart';
 
 class ShareService {
   static const String storeUrl =
@@ -15,11 +18,14 @@ class ShareService {
     required String text,
     required String contentType,
   }) async {
-    HapticFeedback.mediumImpact();
+    HapticService.medium();
     final fullText = '$text\n$storeUrl';
     try {
       await SharePlus.instance.share(ShareParams(text: fullText));
       AnalyticsService.logShare(contentType: contentType);
+      BehaviorTracker.track('share');
+      final earned = await SocialRewards.claimShareReward(contentType);
+      if (earned > 0 && context.mounted) _showReward(context, earned);
     } catch (_) {
       await Clipboard.setData(ClipboardData(text: fullText));
       if (context.mounted) {
@@ -34,6 +40,16 @@ class ShareService {
     }
   }
 
+  static void _showReward(BuildContext context, int tokens) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('social.share_reward'.tr(args: ['$tokens'])),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
   /// Üretilmiş bir PNG dosyasını metinle birlikte paylaşır; başarısız olursa metni panoya kopyalar.
   static Future<void> shareImageFile(
     BuildContext context, {
@@ -41,12 +57,15 @@ class ShareService {
     required String text,
     required String contentType,
   }) async {
-    HapticFeedback.mediumImpact();
+    HapticService.medium();
     try {
       await SharePlus.instance.share(
         ShareParams(files: [XFile(path, mimeType: 'image/png')], text: '$text\n$storeUrl'),
       );
       AnalyticsService.logShare(contentType: contentType);
+      BehaviorTracker.track('share');
+      final earned = await SocialRewards.claimShareReward(contentType);
+      if (earned > 0 && context.mounted) _showReward(context, earned);
     } catch (_) {
       if (context.mounted) {
         await shareText(context, text: text, contentType: contentType);

@@ -1,2 +1,3 @@
 "CFBundleDisplayName" = "Bilgi Yarışması";
 "CFBundleName" = "Bilgi Yarışması";
+"NSUserTrackingUsageDescription" = "Bu izin, size daha ilgili ve kişiselleştirilmiş reklamlar ile daha iyi bir oyun deneyimi sunabilmek için gereklidir.";

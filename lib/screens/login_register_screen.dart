@@ -442,6 +442,8 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen>
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         child: GlassContainer(
+          useBlur: true,
+          scrim: true,
           borderRadius: 20,
           padding: const EdgeInsets.all(24),
           child: Column(

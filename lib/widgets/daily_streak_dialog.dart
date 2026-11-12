@@ -1,5 +1,7 @@
-import 'dart:ui';
+import '../services/haptic_service.dart';
+import 'confetti_burst.dart';
 import 'package:flutter/material.dart';
+import '../services/performance_service.dart';
 import '../services/streak_service.dart';
 import '../services/sound_service.dart';
 import '../services/achievement_service.dart';
@@ -46,9 +48,7 @@ class DailyStreakDialog extends StatefulWidget {
           scale: curve,
           child: Opacity(
             opacity: anim1.value,
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-              child: Dialog(
+            child: PerformanceService.blur(sigma: 8, child: Dialog(
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 child: DailyStreakDialog(
@@ -75,6 +75,8 @@ class _DailyStreakDialogState extends State<DailyStreakDialog> with SingleTicker
   bool _isClaiming = false;
   bool _claimed = false;
   int _earnedTokens = 0;
+  int _milestoneStreak = 0;
+  int _milestoneBonus = 0;
   late AnimationController _pulseController;
 
   @override
@@ -109,6 +111,13 @@ class _DailyStreakDialogState extends State<DailyStreakDialog> with SingleTicker
         _earnedTokens = earned;
       });
       widget.onClaimed();
+      if (StreakService.lastMilestoneBonus > 0) {
+        _milestoneStreak = StreakService.lastMilestoneStreak;
+        _milestoneBonus = StreakService.lastMilestoneBonus;
+        StreakService.lastMilestoneBonus = 0;
+        ConfettiBurst.show(context);
+        HapticService.celebrate();
+      }
       await AchievementService.checkAndUnlockStreakAchievements(widget.currentStreak + 1, context);
     }
   }
@@ -118,6 +127,8 @@ class _DailyStreakDialogState extends State<DailyStreakDialog> with SingleTicker
     final effectiveStreak = _claimed ? widget.currentStreak + 1 : widget.currentStreak;
 
     return GlassContainer(
+      useBlur: true,
+      scrim: true,
       borderRadius: 28,
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -183,6 +194,23 @@ class _DailyStreakDialogState extends State<DailyStreakDialog> with SingleTicker
             ),
             textAlign: TextAlign.center,
           ),
+          if (_claimed && _milestoneBonus > 0) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFBBF24).withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFFBBF24).withValues(alpha: 0.5)),
+              ),
+              child: Text(
+                'retention_hub.milestone'.tr(args: ['$_milestoneStreak', '$_milestoneBonus']),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: Color(0xFFFBBF24), fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+            ),
+          ],
           if (widget.freezesUsed > 0) ...[
             const SizedBox(height: 12),
             Container(

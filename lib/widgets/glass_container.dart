@@ -2,6 +2,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../services/performance_service.dart';
 
+/// Kart ve yüzey malzemesi. Varsayılan: opak standart malzeme (cam efekti yok).
+/// Cam yalnızca kontrol katmanında kullanılır: `useBlur: true`.
+/// `scrim: true` ise cam altına %35 koyu katman ekler (parlak arka planda okunabilirlik).
 class GlassContainer extends StatelessWidget {
   final Widget child;
   final double blur;
@@ -12,6 +15,7 @@ class GlassContainer extends StatelessWidget {
   final Color? color;
   final List<BoxShadow>? boxShadow;
   final bool useBlur;
+  final bool scrim;
 
   const GlassContainer({
     super.key,
@@ -23,12 +27,14 @@ class GlassContainer extends StatelessWidget {
     this.border,
     this.color,
     this.boxShadow,
-    this.useBlur = true,
+    this.useBlur = false,
+    this.scrim = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final bool effectiveUseBlur = useBlur && !PerformanceService.isPerformanceMode;
+    final bool effectiveUseBlur =
+        useBlur && !PerformanceService.isPerformanceMode;
 
     // In performance mode: use a solid opaque dark background instead of
     // near-transparent glass (which looks invisible without the blur effect).
@@ -50,10 +56,12 @@ class GlassContainer extends StatelessWidget {
                 end: Alignment.bottomRight,
                 colors: [
                   color != null
-                      ? color!.withValues(alpha: (opacity + 0.65).clamp(0.0, 1.0))
+                      ? color!
+                          .withValues(alpha: (opacity + 0.65).clamp(0.0, 1.0))
                       : const Color(0xFF1E293B),
                   color != null
-                      ? color!.withValues(alpha: (opacity + 0.5).clamp(0.0, 1.0))
+                      ? color!
+                          .withValues(alpha: (opacity + 0.5).clamp(0.0, 1.0))
                       : const Color(0xFF0F172A),
                 ],
               ),
@@ -91,24 +99,47 @@ class GlassContainer extends StatelessWidget {
       );
     }
 
+    // Liquid Glass benzeri: üstten alta ince bir ışık, kenarda parlak bir hat.
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: Container(
-          decoration: BoxDecoration(
-            color: baseColor.withValues(alpha: opacity),
-            borderRadius: BorderRadius.circular(borderRadius),
-            border: border ??
-                Border.all(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  width: 1,
+      child: Stack(
+        children: [
+          if (scrim)
+            Positioned.fill(
+              child: ColoredBox(color: Colors.black.withValues(alpha: 0.35)),
+            ),
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    baseColor.withValues(alpha: opacity + 0.06),
+                    baseColor.withValues(alpha: opacity * 0.6),
+                  ],
                 ),
-            boxShadow: boxShadow,
+                borderRadius: BorderRadius.circular(borderRadius),
+                border: border ??
+                    Border.all(
+                      color: Colors.white.withValues(alpha: 0.22),
+                      width: 0.8,
+                    ),
+                boxShadow: boxShadow ??
+                    [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.18),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+              ),
+              padding: padding,
+              child: child,
+            ),
           ),
-          padding: padding,
-          child: child,
-        ),
+        ],
       ),
     );
   }

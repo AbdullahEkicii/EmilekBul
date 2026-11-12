@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'glass_surface.dart';
+import 'glass_alert_dialog.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -15,6 +17,7 @@ import '../services/duel_ticket_service.dart';
 import '../services/analytics_service.dart';
 import '../screens/duel_room_screen.dart';
 import '../utils/app_utils.dart';
+import 'package:emilekbul/services/haptic_service.dart';
 
 class FriendRaceEntryDialog extends StatefulWidget {
   final String? inviteFriendUid;
@@ -63,6 +66,7 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
   bool _isLoading = false;
   String? _errorMessage;
   Timer? _botRoomPollTimer;
+  late final Stream<List<DuelRoom>> _openRoomsStream;
 
   // Initial Config for Create Room
   String _selectedCategory = 'Genel Kültür';
@@ -101,6 +105,7 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
               : (widget.joinRoomCode != null ? 'invite_accept' : 'home')),
     });
     _loadWallet();
+    _openRoomsStream = DuelService.streamOpenRooms();
     if (_isFriendInvite) _selectedTab = 1;
     final preset = widget.presetCategory;
     if (preset != null) {
@@ -294,8 +299,8 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
     StreamSubscription<DuelRoom?>? sub;
     bool isClosed = false;
 
-    // Host 60 sn içinde yanıt vermezse isteği iptal et
-    Timer(const Duration(seconds: 60), () {
+    // Host süre içinde yanıt vermezse (istek süresi + kısa tolerans) isteği iptal et
+    Timer(DuelService.joinRequestWindow + const Duration(seconds: 5), () {
       if (isClosed || !mounted) return;
       isClosed = true;
       sub?.cancel();
@@ -312,7 +317,7 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
       context: context,
       barrierDismissible: false,
       builder: (dialogCtx) {
-        return AlertDialog(
+        return GlassAlertDialog(
           backgroundColor: const Color(0xFF1E293B),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -402,14 +407,17 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
 
       // If rejected
       if (room.joinRequestStatus == 'rejected' ||
-          (room.pendingGuest == null && room.guest?.uid != myUid)) {
+          room.joinRequestStatus == 'expired' ||
+          (room.pendingGuest?.uid != myUid && room.guest?.uid != myUid)) {
         isClosed = true;
         sub?.cancel();
         Navigator.of(context, rootNavigator: true)
             .pop(); // close waiting dialog
         setState(() {
           _isLoading = false;
-          _errorMessage = 'duel.join_request_rejected'.tr();
+          _errorMessage = room.joinRequestStatus == 'expired'
+              ? 'duel.host_no_response'.tr()
+              : 'duel.join_request_rejected'.tr();
         });
       }
     });
@@ -419,14 +427,11 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
-    return Container(
+    return GlassSurface(
       height: MediaQuery.of(context).size.height * 0.78,
       padding: EdgeInsets.fromLTRB(20, 16, 20, 16 + bottomInset),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1E293B),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        border: Border(top: BorderSide(color: Color(0x2EFFFFFF), width: 1)),
-      ),
+      tint: Color(0xFF1E293B),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       child: Column(
         children: [
           // Handle Bar
@@ -597,7 +602,7 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
   // TAB 1: Canlı Açık Odalar Listesi
   Widget _buildOpenRoomsTab() {
     return StreamBuilder<List<DuelRoom>>(
-      stream: DuelService.streamOpenRooms(),
+      stream: _openRoomsStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
@@ -859,7 +864,7 @@ class _FriendRaceEntryDialogState extends State<FriendRaceEntryDialog> {
                       icon: const Icon(Icons.close_rounded,
                           color: Colors.redAccent, size: 20),
                       onPressed: () async {
-                        HapticFeedback.lightImpact();
+                        HapticService.light();
                         await DuelService.leaveRoom(room.roomCode,
                             isHost: true, uid: myUid ?? '');
                       },

@@ -136,7 +136,25 @@ class _CelebrationViewState extends State<_CelebrationView> with SingleTickerPro
                                 shape: BoxShape.circle,
                                 color: a.color.withValues(alpha: 0.18),
                               ),
-                              child: Icon(a.icon, color: a.color, size: 26),
+                              child: _lite
+                                  ? Icon(a.icon, color: a.color, size: 26)
+                                  : ShaderMask(
+                                      blendMode: BlendMode.srcATop,
+                                      // Açılışta ikonun üzerinden bir parıltı geçer
+                                      shaderCallback: (rect) {
+                                        final x = -1.5 + 3.0 * ((t - 0.1) / 0.35).clamp(0.0, 1.0);
+                                        return LinearGradient(
+                                          begin: Alignment(x - 0.5, -1),
+                                          end: Alignment(x + 0.5, 1),
+                                          colors: [
+                                            Colors.transparent,
+                                            Colors.white.withValues(alpha: 0.7),
+                                            Colors.transparent,
+                                          ],
+                                        ).createShader(rect);
+                                      },
+                                      child: Icon(a.icon, color: a.color, size: 26),
+                                    ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(

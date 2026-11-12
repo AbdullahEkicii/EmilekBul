@@ -1,4 +1,8 @@
+import '../services/retention_engine.dart';
+import '../services/haptic_service.dart';
 import 'package:flutter/material.dart';
+import '../widgets/glass_surface.dart';
+import '../widgets/glass_alert_dialog.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'edit_profile_screen.dart';
 import 'change_password_screen.dart';
@@ -44,6 +48,7 @@ class _AccountScreenState extends State<AccountScreen>
   User? currentUser;
   bool isLoading = false;
   bool _isGuest = false;
+  bool _remindersEnabled = true;
   bool _showPrivacyOptions = false;
   List<String> _unlockedAchievements = [];
   List<String> _unseenAchievements = [];
@@ -58,6 +63,9 @@ class _AccountScreenState extends State<AccountScreen>
     // We don't know if linked yet, so assume guest if anonymous until profile loads
     _isGuest = currentUser?.isAnonymous ?? false;
     _loadUserProfile();
+    RetentionEngine.remindersEnabled().then((v) {
+      if (mounted) setState(() => _remindersEnabled = v);
+    });
     AdsService.isPrivacyOptionsRequired().then((required) {
       if (mounted && required) setState(() => _showPrivacyOptions = true);
     });
@@ -161,7 +169,7 @@ class _AccountScreenState extends State<AccountScreen>
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
+        return GlassAlertDialog(
           backgroundColor: const Color(0xFF1E293B),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -810,15 +818,51 @@ class _AccountScreenState extends State<AccountScreen>
               setState(() {});
             },
           ),
+          if (SoundService.isSoundEnabled)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'settings.sfx_volume'.tr(),
+                    style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600),
+                  ),
+                  Slider(
+                    value: SoundService.volume,
+                    activeColor: Colors.teal,
+                    onChanged: (v) async {
+                      await SoundService.setVolume(v);
+                      setState(() {});
+                    },
+                  ),
+                ],
+              ),
+            ),
           _buildToggleMenuItem(
-            icon: Icons.music_note_rounded,
-            title: 'settings.music'.tr(),
-            subtitle: 'settings.music_desc'.tr(),
+            icon: Icons.vibration_rounded,
+            title: 'settings.haptics'.tr(),
+            subtitle: 'settings.haptics_desc'.tr(),
             color: Colors.purpleAccent,
-            value: SoundService.isMusicEnabled,
+            value: HapticService.isEnabled,
             onChanged: (val) async {
-              await SoundService.setMusicEnabled(val);
+              await HapticService.setEnabled(val);
+              if (val) HapticService.correct();
               setState(() {});
+            },
+          ),
+          _buildToggleMenuItem(
+            icon: Icons.notifications_active_rounded,
+            title: 'settings.reminders'.tr(),
+            subtitle: 'settings.reminders_desc'.tr(),
+            color: Colors.lightBlueAccent,
+            value: _remindersEnabled,
+            onChanged: (val) async {
+              setState(() => _remindersEnabled = val);
+              await RetentionEngine.setRemindersEnabled(val);
             },
           ),
           _buildToggleMenuItem(
@@ -892,13 +936,9 @@ class _AccountScreenState extends State<AccountScreen>
       isScrollControlled: true,
       builder: (context) {
         final currentCode = context.locale.languageCode;
-        return Container(
+        return GlassSurface(
           height: MediaQuery.of(context).size.height * 0.75,
-          decoration: const BoxDecoration(
-            color: Color(0xFF1E293B),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            border: Border(top: BorderSide(color: Color(0x2EFFFFFF), width: 1)),
-          ),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           child: Column(
             children: [
@@ -914,7 +954,8 @@ class _AccountScreenState extends State<AccountScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.language_rounded, color: Colors.indigoAccent, size: 24),
+                  const Icon(Icons.language_rounded,
+                      color: Colors.indigoAccent, size: 24),
                   const SizedBox(width: 8),
                   Text(
                     'settings.language'.tr(),
@@ -945,7 +986,8 @@ class _AccountScreenState extends State<AccountScreen>
                         }
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
                         decoration: BoxDecoration(
                           color: isSelected
                               ? Colors.indigoAccent.withValues(alpha: 0.25)
@@ -960,20 +1002,26 @@ class _AccountScreenState extends State<AccountScreen>
                         ),
                         child: Row(
                           children: [
-                            Text(lang.flag, style: const TextStyle(fontSize: 22)),
+                            Text(lang.flag,
+                                style: const TextStyle(fontSize: 22)),
                             const SizedBox(width: 14),
                             Expanded(
                               child: Text(
                                 lang.name,
                                 style: TextStyle(
-                                  color: isSelected ? Colors.indigoAccent : Colors.white,
+                                  color: isSelected
+                                      ? Colors.indigoAccent
+                                      : Colors.white,
                                   fontSize: 15,
-                                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w800
+                                      : FontWeight.w500,
                                 ),
                               ),
                             ),
                             if (isSelected)
-                              const Icon(Icons.check_circle_rounded, color: Colors.indigoAccent, size: 20),
+                              const Icon(Icons.check_circle_rounded,
+                                  color: Colors.indigoAccent, size: 20),
                           ],
                         ),
                       ),
@@ -1020,7 +1068,8 @@ class _AccountScreenState extends State<AccountScreen>
 
   int _getAchievementProgress(Achievement a, SharedPreferences? prefs) {
     if (_unlockedAchievements.contains(a.id) ||
-        (_userProfile?['unlockedBadges'] as List<dynamic>?)?.contains(a.id) == true) {
+        (_userProfile?['unlockedBadges'] as List<dynamic>?)?.contains(a.id) ==
+            true) {
       return a.maxProgress;
     }
     switch (a.id) {
@@ -1029,7 +1078,8 @@ class _AccountScreenState extends State<AccountScreen>
       case 'silver_scholar':
       case 'gold_scholar':
       case 'platinum_scholar':
-        final quizzes = (_userProfile?['completedQuizzes'] as num?)?.toInt() ?? 0;
+        final quizzes =
+            (_userProfile?['completedQuizzes'] as num?)?.toInt() ?? 0;
         return quizzes.clamp(0, a.maxProgress);
       case 'level_five':
       case 'level_ten':
@@ -1039,15 +1089,18 @@ class _AccountScreenState extends State<AccountScreen>
       case 'smart_shopper':
       case 'collector':
         final ownedFrames = (_userProfile?['ownedFrames'] as List?)
-                ?.where((f) => f != '0' && f != 'yok' && f.toString().isNotEmpty)
+                ?.where(
+                    (f) => f != '0' && f != 'yok' && f.toString().isNotEmpty)
                 .length ??
             0;
         final ownedTitles = (_userProfile?['ownedTitles'] as List?)
-                ?.where((t) => t != '0' && t != 'yok' && t.toString().isNotEmpty)
+                ?.where(
+                    (t) => t != '0' && t != 'yok' && t.toString().isNotEmpty)
                 .length ??
             0;
         final ownedAvatars = (_userProfile?['ownedAvatars'] as List?)
-                ?.where((a) => a != '0' && a != 'yok' && a.toString().isNotEmpty)
+                ?.where(
+                    (a) => a != '0' && a != 'yok' && a.toString().isNotEmpty)
                 .length ??
             0;
         final count = ownedFrames + ownedTitles + ownedAvatars;
@@ -1064,7 +1117,8 @@ class _AccountScreenState extends State<AccountScreen>
         return streak.clamp(0, a.maxProgress);
       case 'recruiter':
       case 'ambassador':
-        final referrals = (_userProfile?['referralCount'] as num?)?.toInt() ?? 0;
+        final referrals =
+            (_userProfile?['referralCount'] as num?)?.toInt() ?? 0;
         return referrals.clamp(0, a.maxProgress);
       default:
         return 0;
@@ -1096,15 +1150,20 @@ class _AccountScreenState extends State<AccountScreen>
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: Colors.amber.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                      border: Border.all(
+                          color: Colors.amber.withValues(alpha: 0.3)),
                     ),
                     child: Text(
                       '$unlockedCount/$totalCount',
-                      style: const TextStyle(color: Colors.amber, fontSize: 11, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          color: Colors.amber,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -1127,7 +1186,8 @@ class _AccountScreenState extends State<AccountScreen>
                         ),
                       ),
                       const SizedBox(width: 2),
-                      Icon(Icons.chevron_right_rounded, color: Colors.amberAccent.shade100, size: 16),
+                      Icon(Icons.chevron_right_rounded,
+                          color: Colors.amberAccent.shade100, size: 16),
                     ],
                   ),
                 ),
@@ -1249,7 +1309,8 @@ class _AccountScreenState extends State<AccountScreen>
                                   color: Color(0xFF10B981),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(Icons.card_giftcard_rounded, color: Colors.white, size: 10),
+                                child: const Icon(Icons.card_giftcard_rounded,
+                                    color: Colors.white, size: 10),
                               ),
                             ),
                         ],
@@ -1293,7 +1354,8 @@ class _AccountScreenState extends State<AccountScreen>
             final unlockedCount = unlockedLocal.length;
             final totalCount = AchievementService.achievementsList.length;
 
-            final filteredAchievements = AchievementService.achievementsList.where((a) {
+            final filteredAchievements =
+                AchievementService.achievementsList.where((a) {
               if (_selectedAchievementCategory == 'all') return true;
               return a.category == _selectedAchievementCategory;
             }).toList();
@@ -1303,6 +1365,8 @@ class _AccountScreenState extends State<AccountScreen>
               insetPadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
               child: GlassContainer(
+                useBlur: true,
+                scrim: true,
                 borderRadius: 28,
                 padding: const EdgeInsets.all(18),
                 child: ConstrainedBox(
@@ -1340,7 +1404,8 @@ class _AccountScreenState extends State<AccountScreen>
                             ],
                           ),
                           IconButton(
-                            icon: const Icon(Icons.close, color: Colors.white60),
+                            icon:
+                                const Icon(Icons.close, color: Colors.white60),
                             onPressed: () => Navigator.pop(context),
                           ),
                         ],
@@ -1353,13 +1418,23 @@ class _AccountScreenState extends State<AccountScreen>
                         physics: const BouncingScrollPhysics(),
                         child: Row(
                           children: [
-                            _buildCategoryFilterChip('all', 'achievements.all'.tr(), setDialogState),
+                            _buildCategoryFilterChip(
+                                'all', 'achievements.all'.tr(), setDialogState),
                             const SizedBox(width: 8),
-                            _buildCategoryFilterChip('quiz', 'achievements.quiz_category'.tr(), setDialogState),
+                            _buildCategoryFilterChip(
+                                'quiz',
+                                'achievements.quiz_category'.tr(),
+                                setDialogState),
                             const SizedBox(width: 8),
-                            _buildCategoryFilterChip('duel', 'achievements.duel_category'.tr(), setDialogState),
+                            _buildCategoryFilterChip(
+                                'duel',
+                                'achievements.duel_category'.tr(),
+                                setDialogState),
                             const SizedBox(width: 8),
-                            _buildCategoryFilterChip('social', 'achievements.social_category'.tr(), setDialogState),
+                            _buildCategoryFilterChip(
+                                'social',
+                                'achievements.social_category'.tr(),
+                                setDialogState),
                           ],
                         ),
                       ),
@@ -1382,13 +1457,17 @@ class _AccountScreenState extends State<AccountScreen>
                             final isActive = activeBadge == achievement.id;
                             final isUnseen =
                                 _unseenAchievements.contains(achievement.id);
-                            final isClaimed = claimedLocal.contains(achievement.id) ||
-                                (_userProfile?['claimedBadges'] as List<dynamic>?)
-                                        ?.contains(achievement.id) ==
-                                    true;
-                            final progress = _getAchievementProgress(achievement, prefs);
+                            final isClaimed =
+                                claimedLocal.contains(achievement.id) ||
+                                    (_userProfile?['claimedBadges']
+                                                as List<dynamic>?)
+                                            ?.contains(achievement.id) ==
+                                        true;
+                            final progress =
+                                _getAchievementProgress(achievement, prefs);
                             final progressRatio = achievement.maxProgress > 0
-                                ? (progress / achievement.maxProgress).clamp(0.0, 1.0)
+                                ? (progress / achievement.maxProgress)
+                                    .clamp(0.0, 1.0)
                                 : (isUnlocked ? 1.0 : 0.0);
 
                             return Container(
@@ -1403,8 +1482,10 @@ class _AccountScreenState extends State<AccountScreen>
                                   color: isActive
                                       ? achievement.color
                                       : (isUnlocked
-                                          ? achievement.color.withValues(alpha: 0.3)
-                                          : Colors.white.withValues(alpha: 0.06)),
+                                          ? achievement.color
+                                              .withValues(alpha: 0.3)
+                                          : Colors.white
+                                              .withValues(alpha: 0.06)),
                                   width: isActive ? 1.5 : 1.0,
                                 ),
                               ),
@@ -1421,8 +1502,10 @@ class _AccountScreenState extends State<AccountScreen>
                                             padding: const EdgeInsets.all(10),
                                             decoration: BoxDecoration(
                                               color: isUnlocked
-                                                  ? achievement.color.withValues(alpha: 0.2)
-                                                  : Colors.white.withValues(alpha: 0.05),
+                                                  ? achievement.color
+                                                      .withValues(alpha: 0.2)
+                                                  : Colors.white
+                                                      .withValues(alpha: 0.05),
                                               shape: BoxShape.circle,
                                             ),
                                             child: Icon(
@@ -1453,7 +1536,8 @@ class _AccountScreenState extends State<AccountScreen>
                                       // Title & Description
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Row(
                                               children: [
@@ -1465,24 +1549,42 @@ class _AccountScreenState extends State<AccountScreen>
                                                           ? Colors.white
                                                           : Colors.white60,
                                                       fontSize: 13.5,
-                                                      fontWeight: FontWeight.w800,
+                                                      fontWeight:
+                                                          FontWeight.w800,
                                                     ),
                                                   ),
                                                 ),
                                                 Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2),
                                                   decoration: BoxDecoration(
-                                                    color: Colors.amber.withValues(alpha: 0.15),
-                                                    borderRadius: BorderRadius.circular(6),
+                                                    color: Colors.amber
+                                                        .withValues(
+                                                            alpha: 0.15),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            6),
                                                   ),
                                                   child: Row(
-                                                    mainAxisSize: MainAxisSize.min,
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
                                                     children: [
-                                                      const Icon(Icons.monetization_on_rounded, color: Colors.amber, size: 11),
+                                                      const Icon(
+                                                          Icons
+                                                              .monetization_on_rounded,
+                                                          color: Colors.amber,
+                                                          size: 11),
                                                       const SizedBox(width: 3),
                                                       Text(
                                                         '+${achievement.tokenReward}',
-                                                        style: const TextStyle(color: Colors.amber, fontSize: 10, fontWeight: FontWeight.w900),
+                                                        style: const TextStyle(
+                                                            color: Colors.amber,
+                                                            fontSize: 10,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w900),
                                                       ),
                                                     ],
                                                   ),
@@ -1493,7 +1595,8 @@ class _AccountScreenState extends State<AccountScreen>
                                             Text(
                                               achievement.descKey.tr(),
                                               style: TextStyle(
-                                                color: Colors.white.withValues(alpha: 0.5),
+                                                color: Colors.white
+                                                    .withValues(alpha: 0.5),
                                                 fontSize: 11,
                                               ),
                                             ),
@@ -1510,19 +1613,28 @@ class _AccountScreenState extends State<AccountScreen>
                                       // Progress Bar
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Row(
-                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
                                               children: [
                                                 Text(
                                                   'achievements.progress'.tr(),
-                                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 9.5),
+                                                  style: TextStyle(
+                                                      color: Colors.white
+                                                          .withValues(
+                                                              alpha: 0.4),
+                                                      fontSize: 9.5),
                                                 ),
                                                 Text(
                                                   '$progress / ${achievement.maxProgress}',
                                                   style: TextStyle(
-                                                    color: isUnlocked ? achievement.color : Colors.white60,
+                                                    color: isUnlocked
+                                                        ? achievement.color
+                                                        : Colors.white60,
                                                     fontSize: 10,
                                                     fontWeight: FontWeight.bold,
                                                   ),
@@ -1531,13 +1643,19 @@ class _AccountScreenState extends State<AccountScreen>
                                             ),
                                             const SizedBox(height: 4),
                                             ClipRRect(
-                                              borderRadius: BorderRadius.circular(4),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
                                               child: LinearProgressIndicator(
                                                 value: progressRatio,
                                                 minHeight: 5,
-                                                backgroundColor: Colors.white.withValues(alpha: 0.08),
-                                                valueColor: AlwaysStoppedAnimation<Color>(
-                                                  isUnlocked ? achievement.color : const Color(0xFF6366F1),
+                                                backgroundColor: Colors.white
+                                                    .withValues(alpha: 0.08),
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<
+                                                        Color>(
+                                                  isUnlocked
+                                                      ? achievement.color
+                                                      : const Color(0xFF6366F1),
                                                 ),
                                               ),
                                             ),
@@ -1548,7 +1666,8 @@ class _AccountScreenState extends State<AccountScreen>
 
                                       if (isUnlocked && isClaimed) ...[
                                         InkWell(
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                           onTap: () => ShareService.shareText(
                                             context,
                                             text: 'share.achievement'.tr(args: [
@@ -1559,7 +1678,10 @@ class _AccountScreenState extends State<AccountScreen>
                                           ),
                                           child: Padding(
                                             padding: const EdgeInsets.all(6),
-                                            child: Icon(Icons.ios_share_rounded, color: Colors.white.withValues(alpha: 0.7), size: 16),
+                                            child: Icon(Icons.ios_share_rounded,
+                                                color: Colors.white
+                                                    .withValues(alpha: 0.7),
+                                                size: 16),
                                           ),
                                         ),
                                         const SizedBox(width: 6),
@@ -1568,58 +1690,88 @@ class _AccountScreenState extends State<AccountScreen>
                                       // Action Buttons
                                       if (!isUnlocked)
                                         Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 5),
                                           decoration: BoxDecoration(
-                                            color: Colors.white.withValues(alpha: 0.05),
-                                            borderRadius: BorderRadius.circular(8),
+                                            color: Colors.white
+                                                .withValues(alpha: 0.05),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
                                           ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Icon(Icons.lock_rounded, color: Colors.grey.shade600, size: 13),
+                                              Icon(Icons.lock_rounded,
+                                                  color: Colors.grey.shade600,
+                                                  size: 13),
                                             ],
                                           ),
                                         )
                                       else if (!isClaimed)
                                         ElevatedButton(
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: const Color(0xFF10B981),
+                                            backgroundColor:
+                                                const Color(0xFF10B981),
                                             foregroundColor: Colors.white,
-                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10, vertical: 6),
                                             minimumSize: Size.zero,
-                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                            tapTargetSize: MaterialTapTargetSize
+                                                .shrinkWrap,
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8)),
                                           ),
                                           onPressed: () async {
-                                            final success = await AchievementService.claimReward(achievement.id, context);
+                                            final success =
+                                                await AchievementService
+                                                    .claimReward(achievement.id,
+                                                        context);
                                             if (success && mounted) {
                                               setState(() {
-                                                _claimedAchievements.add(achievement.id);
+                                                _claimedAchievements
+                                                    .add(achievement.id);
                                               });
                                               setDialogState(() {
-                                                claimedLocal.add(achievement.id);
+                                                claimedLocal
+                                                    .add(achievement.id);
                                               });
                                             }
                                           },
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              const Icon(Icons.card_giftcard_rounded, color: Colors.white, size: 12),
+                                              const Icon(
+                                                  Icons.card_giftcard_rounded,
+                                                  color: Colors.white,
+                                                  size: 12),
                                               const SizedBox(width: 4),
                                               Text(
-                                                'achievements.claim_reward'.tr(args: [achievement.tokenReward.toString()]),
-                                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900),
+                                                'achievements.claim_reward'.tr(
+                                                    args: [
+                                                      achievement.tokenReward
+                                                          .toString()
+                                                    ]),
+                                                style: const TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight:
+                                                        FontWeight.w900),
                                               ),
                                             ],
                                           ),
                                         )
                                       else if (isActive)
                                         Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 4),
                                           decoration: BoxDecoration(
-                                            color: achievement.color.withValues(alpha: 0.15),
-                                            borderRadius: BorderRadius.circular(8),
-                                            border: Border.all(color: achievement.color.withValues(alpha: 0.4)),
+                                            color: achievement.color
+                                                .withValues(alpha: 0.15),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            border: Border.all(
+                                                color: achievement.color
+                                                    .withValues(alpha: 0.4)),
                                           ),
                                           child: Text(
                                             'achievements.equipped'.tr(),
@@ -1633,27 +1785,40 @@ class _AccountScreenState extends State<AccountScreen>
                                       else
                                         OutlinedButton(
                                           style: OutlinedButton.styleFrom(
-                                            side: BorderSide(color: achievement.color.withValues(alpha: 0.5)),
-                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                            side: BorderSide(
+                                                color: achievement.color
+                                                    .withValues(alpha: 0.5)),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10, vertical: 5),
                                             minimumSize: Size.zero,
-                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                            tapTargetSize: MaterialTapTargetSize
+                                                .shrinkWrap,
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8)),
                                           ),
                                           onPressed: () async {
-                                            await AchievementService.setActiveBadge(achievement.id);
+                                            await AchievementService
+                                                .setActiveBadge(achievement.id);
                                             if (mounted) {
                                               setState(() {
-                                                _userProfile?['activeBadge'] = achievement.id;
+                                                _userProfile?['activeBadge'] =
+                                                    achievement.id;
                                               });
                                               setDialogState(() {});
                                               if (!context.mounted) return;
-                                              ScaffoldMessenger.of(context).showSnackBar(
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
                                                 SnackBar(
                                                   content: Text(
-                                                    'achievements.badge_equipped'.tr(args: [achievement.titleKey.tr()]),
+                                                    'achievements.badge_equipped'
+                                                        .tr(args: [
+                                                      achievement.titleKey.tr()
+                                                    ]),
                                                   ),
                                                   backgroundColor: Colors.green,
-                                                  duration: const Duration(seconds: 2),
+                                                  duration: const Duration(
+                                                      seconds: 2),
                                                 ),
                                               );
                                             }
@@ -1686,7 +1851,8 @@ class _AccountScreenState extends State<AccountScreen>
     );
   }
 
-  Widget _buildCategoryFilterChip(String catId, String title, StateSetter setDialogState) {
+  Widget _buildCategoryFilterChip(
+      String catId, String title, StateSetter setDialogState) {
     final isSelected = _selectedAchievementCategory == catId;
     return InkWell(
       onTap: () {

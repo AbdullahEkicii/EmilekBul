@@ -1,4 +1,6 @@
+import '../services/analytics_service.dart';
 import 'package:flutter/material.dart';
+import '../widgets/glass_alert_dialog.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/glass_container.dart';
@@ -26,6 +28,7 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
   @override
   void initState() {
     super.initState();
+    AnalyticsService.logFirstSession('language_screen_shown');
     _checkOfflineOnboardingState();
   }
 
@@ -38,15 +41,13 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
         final offlineTaken = prefs.getInt('offline_tests_taken') ?? 0;
         final isLimitReached = offlineTaken >= 3;
         
-        final title = isLimitReached ? "Tebrikler! 🎉" : 'errors.no_internet_ai'.tr();
-        final content = isLimitReached 
-            ? "Harika! 3 adet çevrimdışı deneme testini tamamladınız. Artık internet bağlantınızı açın ve yapay zeka destekli sonsuz quizlerin tadını çıkarın! 🚀"
-            : "Uygulamamızı çevrimdışı denediniz! Tam deneyim ve ilerlemenizin kaydedilmesi için lütfen internet bağlantınızı açın.";
+        final title = isLimitReached ? 'offline.limit_title'.tr() : 'errors.no_internet_ai'.tr();
+        final content = isLimitReached ? 'offline.limit_body'.tr() : 'offline.retry_body'.tr();
 
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (context) => AlertDialog(
+          builder: (context) => GlassAlertDialog(
             backgroundColor: const Color(0xFF1E293B),
             title: Text(
               title,
@@ -62,7 +63,7 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                   Navigator.pop(context);
                   _checkOfflineOnboardingState(); // Re-check when pressed
                 },
-                child: const Text('Tekrar Dene', style: TextStyle(color: Colors.blueAccent)),
+                child: Text('common.retry'.tr(), style: const TextStyle(color: Colors.blueAccent)),
               ),
             ],
           ),
@@ -75,7 +76,7 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
       BuildContext context, String languageCode) async {
     setState(() {
       _isLoading = true;
-      _loadingMessage = 'Setting language...';
+      _loadingMessage = 'language_selection.setting_language'.tr();
     });
 
     // 1. Set Locale
@@ -149,7 +150,7 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
         );
       }
     } else {
-      _showError('Guest login failed. Please try again.');
+      _showError('auth.guest_error'.tr());
     }
   }
 

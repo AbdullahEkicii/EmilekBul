@@ -1,3 +1,4 @@
+import 'error_reporter.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -304,7 +305,11 @@ class UserService {
   }
 
   /// Misafir Girişi
+  /// Son başarısız misafir girişi (aynı açılışta ikinci kez bekletmemek için)
+  static DateTime? lastGuestLoginFailure;
+
   static Future<UserCredential?> signInAsGuest() async {
+    final sw = Stopwatch()..start();
     try {
       // 1. Anonim Giriş
       final userCredential = await _auth.signInAnonymously();
@@ -353,7 +358,9 @@ class UserService {
           'ownedTitles': ['0'],
           'equippedFrame': '0',
           'equippedTitle': 'yok',
-        }, SetOptions(merge: true));
+        }, SetOptions(merge: true)).timeout(const Duration(seconds: 4), onTimeout: () {
+          // Zayıf ağda yazma yerel kuyruğa alınır ve sonra tamamlanır; kullanıcıyı bekletme
+        });
 
         // HIZLI JETON EŞİTLEMESİ (Misafir için SharedPreferences güncellemesi)
         try {
@@ -366,12 +373,18 @@ class UserService {
         // Analytics Kaydı
         AnalyticsService.setUserId(user.uid);
         AnalyticsService.logLogin(loginMethod: 'guest');
+        lastGuestLoginFailure = null;
+        AnalyticsService.logFirstSession('guest_login', {'ok': 1, 'ms': sw.elapsedMilliseconds});
 
         return userCredential;
       }
       return null;
-    } catch (e) {
+    } catch (e, st) {
       debugPrint('Guest login error: $e');
+      lastGuestLoginFailure = DateTime.now();
+      final code = e is FirebaseAuthException ? e.code : e.runtimeType.toString();
+      AnalyticsService.logFirstSession('guest_login', {'ok': 0, 'ms': sw.elapsedMilliseconds, 'code': code});
+      ErrorReporter.record(e, st, reason: 'guest_login');
       return null;
     }
   }
@@ -1461,6 +1474,7 @@ class UserService {
       });
       // Davet edilen ilk testini bitirdiyse davet ödülü iki tarafa verilir (idempotent)
       ReferralService.completePendingReferralIfAny();
+      ReferralService.claimPendingReferralReward();
       return result;
     } catch (e) {
       debugPrint('Error incrementing completed quizzes: $e');

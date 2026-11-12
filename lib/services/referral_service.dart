@@ -1,11 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'analytics_service.dart';
 import 'token_service.dart';
+import 'token_economy.dart';
+import 'package:emilekbul/services/haptic_service.dart';
 
 enum ReferralResult {
   success,
@@ -16,8 +17,8 @@ enum ReferralResult {
 }
 
 class ReferralService {
-  static const int referralRewardTokens = 500;
-  static const int referrerBonusTokens = 250;
+  static const int referralRewardTokens = TokenEconomy.referralInviteeReward;
+  static const int referrerBonusTokens = TokenEconomy.referrerReward;
   static const String _claimedKey = 'has_claimed_referral_reward';
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -141,7 +142,7 @@ class ReferralService {
 
       // 6. Başarı bildirimi
       if (context.mounted) {
-        HapticFeedback.heavyImpact();
+        HapticService.heavy();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -194,16 +195,49 @@ class ReferralService {
       await TokenService.addTokens(referralRewardTokens, source: 'referral');
       if (referrerUid.isNotEmpty) {
         try {
-          await _firestore.collection('users').doc(referrerUid).update({
-            'tokens': FieldValue.increment(referrerBonusTokens),
-            'referralCount': FieldValue.increment(1),
-          });
+          // Davet eden başına ödül üst sınırı: sınırı aştıysa jeton verilmez
+          // Ödül davet edenin bekleyen bakiyesine yazılır; davet eden kendi cihazında alır.
+          // Böylece yerel bakiye bulut değerini ezip ödülü silemez.
+          final referrerRef = _firestore.collection('users').doc(referrerUid);
+          final referrerSnap = await referrerRef.get();
+          final referrals =
+              (referrerSnap.data()?['referralCount'] as num?)?.toInt() ?? 0;
+          if (referrals < TokenEconomy.referrerRewardCap) {
+            await referrerRef.update({
+              'pendingReferralReward': FieldValue.increment(referrerBonusTokens),
+              'referralCount': FieldValue.increment(1),
+            });
+          }
         } catch (e) {
           debugPrint('Referrer reward failed: $e');
         }
       }
     } catch (e) {
       debugPrint('completePendingReferralIfAny error: $e');
+    }
+    await claimPendingReferralReward();
+  }
+
+  /// Davet edenin bekleyen ödüllerini yerel bakiyeye alır ve bekleyeni sıfırlar (transaction ile).
+  static Future<int> claimPendingReferralReward() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return 0;
+    try {
+      final ref = _firestore.collection('users').doc(user.uid);
+      final amount = await _firestore.runTransaction<int>((tx) async {
+        final snap = await tx.get(ref);
+        final pending = (snap.data()?['pendingReferralReward'] as num?)?.toInt() ?? 0;
+        if (pending <= 0) return 0;
+        tx.update(ref, {'pendingReferralReward': 0});
+        return pending;
+      });
+      if (amount > 0) {
+        await TokenService.addTokens(amount, source: 'referral');
+      }
+      return amount;
+    } catch (e) {
+      debugPrint('claimPendingReferralReward error: $e');
+      return 0;
     }
   }
 }

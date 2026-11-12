@@ -8,6 +8,7 @@ import '../widgets/glass_container.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../constants/app_constants.dart';
 import '../utils/app_utils.dart';
+import 'package:emilekbul/services/haptic_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -232,6 +233,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             child: SizedBox(
               height: MediaQuery.of(context).size.height * 0.7,
               child: GlassContainer(
+                useBlur: true,
+                scrim: true,
                 borderRadius: 32,
                 opacity: 0.15,
                 blur: 20,
@@ -313,7 +316,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     _selectedAvatarIndex = avatarId;
                                   });
                                   Navigator.pop(context);
-                                  HapticFeedback.mediumImpact();
+                                  HapticService.medium();
                                 },
                                 child: AnimatedContainer(
                                   duration: const Duration(milliseconds: 300),
@@ -484,7 +487,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             child: GestureDetector(
                               onTap: () {
                                 _showAvatarPicker();
-                                HapticFeedback.mediumImpact();
+                                HapticService.medium();
                               },
                               child: Stack(
                                 children: [
@@ -729,7 +732,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               return GestureDetector(
                 onTap: () {
                   setState(() => _selectedFrameId = frameId);
-                  HapticFeedback.selectionClick();
+                  HapticService.selection();
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
@@ -804,7 +807,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   return GestureDetector(
                     onTap: () {
                       setState(() => _selectedTitleId = titleId);
-                      HapticFeedback.selectionClick();
+                      HapticService.selection();
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
