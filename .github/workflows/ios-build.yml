@@ -43,7 +43,7 @@ jobs:
         run: flutter test
 
   build-ios:
-    name: Build iOS (unsigned)
+    name: Build iOS (simulator)
     runs-on: macos-15
     timeout-minutes: 60
     steps:
@@ -68,17 +68,17 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build iOS (no code signing)
-        run: flutter build ios --release --no-codesign
+      - name: Build iOS Simulator (debug)
+        run: flutter build ios --simulator --debug
 
       - name: Package Runner.app
         run: |
-          cd build/ios/iphoneos
-          zip -r --symlinks "$GITHUB_WORKSPACE/Runner-unsigned.app.zip" Runner.app
+          cd build/ios/iphonesimulator
+          zip -r --symlinks "$GITHUB_WORKSPACE/Runner-simulator.app.zip" Runner.app
 
-      - name: Upload unsigned app
+      - name: Upload simulator app
         uses: actions/upload-artifact@v4
         with:
-          name: Runner-unsigned-app
-          path: Runner-unsigned.app.zip
+          name: Runner-simulator-app
+          path: Runner-simulator.app.zip
           retention-days: 7
