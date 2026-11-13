@@ -125,6 +125,7 @@ class _TestDetailScreenState extends State<TestDetailScreen>
                   padding: EdgeInsets.symmetric(horizontal: 20, vertical: 5),
                   child: MyNativeAd(
                     height: 65,
+                    keepDuringGrace: true,
                   ),
                 ),
               ],

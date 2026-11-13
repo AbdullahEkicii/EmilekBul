@@ -37,7 +37,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1300),
+      duration: const Duration(milliseconds: 1000),
     );
 
     _scaleAnimation = TweenSequence<double>([
@@ -77,8 +77,8 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
     // Both animation and backend setup happen concurrently
     await Future.wait([
       _controller.forward(),
-      // Yavaş/kopuk ağda en fazla 6 sn bekle; misafir girişi arka planda sürer, ana ekran yeniden dener
-      _setupApp().timeout(const Duration(seconds: 6), onTimeout: () {}),
+      // Yavaş/kopuk ağda en fazla 3 sn bekle; misafir girişi arka planda sürer, ana ekran yeniden dener
+      _setupApp().timeout(const Duration(seconds: 3), onTimeout: () {}),
     ]);
     AnalyticsService.logFirstSession('splash_done', {
       'ms': _sw.elapsedMilliseconds,
@@ -138,7 +138,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    precacheImage(const AssetImage('lib/assets/emilekbul2.png'), context);
+    precacheImage(const AssetImage('lib/assets/app_icon.png'), context);
   }
 
   @override
@@ -256,7 +256,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
                         ],
                       ),
                       child: Image.asset(
-                        'lib/assets/emilekbul2.png',
+                        'lib/assets/app_icon.png',
                         width: 140,
                         height: 140,
                         cacheWidth: 420,

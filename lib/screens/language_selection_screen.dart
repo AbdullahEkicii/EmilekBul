@@ -248,7 +248,7 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                     )
                   ]),
               child: Image.asset(
-                'lib/assets/emilekbul.png',
+                'lib/assets/app_icon.png',
                 width: 80,
                 height: 80,
                 errorBuilder: (c, o, s) =>

@@ -295,6 +295,7 @@ class _KategoriScreenState extends State<KategoriScreen>
                         padding: EdgeInsets.symmetric(horizontal: 20.0),
                         child: MyNativeAd(
                           height: 70,
+                          keepDuringGrace: true,
                         ),
                       ),
                     ),
@@ -374,7 +375,7 @@ class _KategoriScreenState extends State<KategoriScreen>
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                 ),
-                child: Image.asset('lib/assets/emilekbul2.png',
+                child: Image.asset('lib/assets/app_icon.png',
                     width: 40, height: 40, cacheWidth: 120, cacheHeight: 120),
               ),
             ),

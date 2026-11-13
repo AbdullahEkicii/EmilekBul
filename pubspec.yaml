@@ -79,10 +79,13 @@ dev_dependencies:
 flutter_icons:
   android: true
   ios: true
-  image_path_android: "lib/assets/emilekbul2.png"
-  adaptive_icon_foreground: "lib/assets/emilekbul2.png"
-  image_path_ios: "lib/assets/emilekbul2.png"
-  adaptive_icon_background: "#00000000"
+  image_path: "lib/assets/app_icon.png"
+  image_path_android: "lib/assets/app_icon.png"
+  adaptive_icon_foreground: "lib/assets/app_icon.png"
+  adaptive_icon_background: "#0A84FF"
+  image_path_ios: "lib/assets/app_icon.png"
+  remove_alpha_ios: true
+  background_color_ios: "#0A84FF"
 
 flutter:
   uses-material-design: true

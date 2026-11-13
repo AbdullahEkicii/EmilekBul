@@ -272,7 +272,7 @@ class _LoadingScreenState extends State<LoadingScreen>
                                   // Logo image
                                   ClipOval(
                                     child: Image.asset(
-                                      'lib/assets/emilekbul2.png',
+                                      'lib/assets/app_icon.png',
                                       width: 55,
                                       height: 55,
                                       fit: BoxFit.cover,

@@ -15,12 +15,16 @@ class MyNativeAd extends StatefulWidget {
   final double height;
   final double width;
 
+  /// Yeni kullanıcı sessiz döneminde (AdGrace) de gösterilsin mi? Yalnızca seçili ekranlarda true.
+  final bool keepDuringGrace;
+
   static bool get adsEnabled => AdConstants.adsEnabled;
 
   const MyNativeAd({
     super.key,
     this.height = 100,
     this.width = double.infinity,
+    this.keepDuringGrace = false,
   });
 
   @override
@@ -72,7 +76,9 @@ class _MyNativeAdState extends State<MyNativeAd> {
     _isLoading = true;
 
     final canRequestAds = await AdsService.ready;
-    if (!mounted || !canRequestAds || await AdGrace.isActive()) {
+    // Yeni kullanıcı sessiz dönemi: yalnızca keepDuringGrace olan banner yerleşimleri açık kalır.
+    final inGrace = await AdGrace.isActive();
+    if (!mounted || !canRequestAds || (inGrace && !widget.keepDuringGrace)) {
       _isLoading = false;
       return;
     }

@@ -1632,6 +1632,7 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
               child: MyNativeAd(
                 height: 65,
+                keepDuringGrace: true,
               ),
             ),
             Row(

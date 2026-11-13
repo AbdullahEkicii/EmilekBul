@@ -1335,7 +1335,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     ],
                   ),
                   child: Image.asset(
-                    'lib/assets/emilekbul2.png',
+                    'lib/assets/app_icon.png',
                     width: 120,
                     height: 120,
                     cacheWidth: 360, // 120 * 3 for retina/high-density
@@ -1394,7 +1394,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
     // Logo ve diğer varlıkları önbelleğe al
-    precacheImage(const AssetImage('lib/assets/emilekbul2.png'), context);
+    precacheImage(const AssetImage('lib/assets/app_icon.png'), context);
   }
 
   Future<void> _checkNotifications() async {
@@ -1546,7 +1546,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                     ],
                                   ),
                                   child: Image.asset(
-                                    'lib/assets/emilekbul2.png',
+                                    'lib/assets/app_icon.png',
                                     width: 140,
                                     height: 140,
                                     cacheWidth: 420,
