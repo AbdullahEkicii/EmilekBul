@@ -1,21 +1,23 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 import '../constants/ad_constants.dart';
-import '../services/ads_service.dart';
 import '../services/ad_grace.dart';
+import '../services/ads_service.dart';
 import '../services/analytics_service.dart';
+import '../theme/app_theme.dart';
 
-/// Eski native reklam yerleşimlerinde gösterilen inline adaptif banner.
-/// Yükseklik [height] ile sınırlanır (kırpılma olmaz); yenileme AdMob konsolundaki
-/// otomatik yenileme ile yapılır.
+/// Eski native reklam yerleşimlerinde Android (>= 90dp yükseklik) için gerçek
+/// [NativeAd] şablonu ([NativeTemplateStyle]), diğer durumlarda veya yükleme hatasında
+/// otomatik olarak inline adaptif [BannerAd] yedeği gösterir.
 class MyNativeAd extends StatefulWidget {
   final double height;
   final double width;
 
-  /// Yeni kullanıcı sessiz döneminde (AdGrace) de gösterilsin mi? Yalnızca seçili ekranlarda true.
+  /// Yeni kullanıcı sessiz döneminde (AdGrace) banner gösterilsin mi? Varsayılan true (yalnızca geçiş reklamları ertelenir).
   final bool keepDuringGrace;
 
   static bool get adsEnabled => AdConstants.adsEnabled;
@@ -24,7 +26,7 @@ class MyNativeAd extends StatefulWidget {
     super.key,
     this.height = 100,
     this.width = double.infinity,
-    this.keepDuringGrace = false,
+    this.keepDuringGrace = true,
   });
 
   @override
@@ -33,15 +35,19 @@ class MyNativeAd extends StatefulWidget {
 
 class _MyNativeAdState extends State<MyNativeAd> {
   BannerAd? _bannerAd;
+  NativeAd? _nativeAd;
   AdSize? _loadedSize;
   bool _isLoading = false;
   bool _isVisible = false;
+  bool _suppressedByGrace = false;
   int _failCount = 0;
   int? _slotWidth;
   Timer? _retryTimer;
+  Timer? _releaseTimer;
   late final Key _visibilityKey = UniqueKey();
 
-  Timer? _releaseTimer;
+  bool get _supportsNativeTemplate =>
+      defaultTargetPlatform == TargetPlatform.android && widget.height >= 90;
 
   void _onVisibilityChanged(VisibilityInfo info) {
     _isVisible = info.visibleFraction > 0.05;
@@ -49,41 +55,113 @@ class _MyNativeAdState extends State<MyNativeAd> {
       _releaseTimer?.cancel();
       _releaseTimer = null;
       _loadIfNeeded();
-    } else if (_bannerAd != null && _releaseTimer == null) {
-      // Başka bir sayfa üstünü kapattıysa banner (WebView) belleği boşuna tutmasın:
-      // 10 sn görünmez kalırsa bırak, tekrar görününce yeniden yüklenir.
-      _releaseTimer = Timer(const Duration(seconds: 10), _releaseBanner);
+    } else if ((_bannerAd != null || _nativeAd != null) && _releaseTimer == null) {
+      _releaseTimer = Timer(const Duration(seconds: 10), _releaseAds);
     }
   }
 
-  void _releaseBanner() {
+  void _releaseAds() {
     _releaseTimer = null;
     if (!mounted || _isVisible) return;
-    final ad = _bannerAd;
-    if (ad == null) return;
+    final banner = _bannerAd;
+    final native = _nativeAd;
+    if (banner == null && native == null) return;
     setState(() {
       _bannerAd = null;
+      _nativeAd = null;
       _loadedSize = null;
     });
-    ad.dispose();
+    banner?.dispose();
+    native?.dispose();
   }
 
   Future<void> _loadIfNeeded() async {
     if (!MyNativeAd.adsEnabled || !AdsService.isSupportedPlatform) return;
-    if (_bannerAd != null || _isLoading || _retryTimer != null) return;
+    if (_bannerAd != null || _nativeAd != null || _isLoading || _retryTimer != null) return;
     final width = _slotWidth;
     if (width == null || width <= 0) return;
     _isLoading = true;
 
     final canRequestAds = await AdsService.ready;
-    // Yeni kullanıcı sessiz dönemi: yalnızca keepDuringGrace olan banner yerleşimleri açık kalır.
     final inGrace = await AdGrace.isActive();
-    if (!mounted || !canRequestAds || (inGrace && !widget.keepDuringGrace)) {
+    if (!mounted) {
       _isLoading = false;
       return;
     }
+    if (!canRequestAds || (inGrace && !widget.keepDuringGrace)) {
+      _isLoading = false;
+      if (inGrace && !widget.keepDuringGrace && !_suppressedByGrace) {
+        setState(() => _suppressedByGrace = true);
+      }
+      return;
+    }
 
-    // Önce standart anchored adaptif boyut (telefonda ~50-60dp); alana sığmazsa yüksekliği sınırlı inline boyut.
+    if (_supportsNativeTemplate) {
+      _loadNativeTemplate(width);
+    } else {
+      await _loadAdaptiveBanner(width);
+    }
+  }
+
+  void _loadNativeTemplate(int width) {
+    final ad = NativeAd(
+      adUnitId: AdConstants.nativeAdUnitId,
+      request: const AdRequest(),
+      nativeTemplateStyle: NativeTemplateStyle(
+        templateType: TemplateType.small,
+        mainBackgroundColor: AppColors.surface,
+        cornerRadius: AppRadius.button,
+        callToActionTextStyle: NativeTemplateTextStyle(
+          textColor: Colors.white,
+          backgroundColor: AppColors.accent,
+          style: NativeTemplateFontStyle.bold,
+          size: 13,
+        ),
+        primaryTextStyle: NativeTemplateTextStyle(
+          textColor: AppColors.textPrimary,
+          style: NativeTemplateFontStyle.bold,
+          size: 14,
+        ),
+        secondaryTextStyle: NativeTemplateTextStyle(
+          textColor: AppColors.textSecondary,
+          style: NativeTemplateFontStyle.normal,
+          size: 12,
+        ),
+        tertiaryTextStyle: NativeTemplateTextStyle(
+          textColor: AppColors.textSecondary,
+          style: NativeTemplateFontStyle.normal,
+          size: 11,
+        ),
+      ),
+      listener: NativeAdListener(
+        onAdLoaded: (ad) {
+          if (!mounted) {
+            ad.dispose();
+            return;
+          }
+          setState(() {
+            _nativeAd = ad as NativeAd;
+            _isLoading = false;
+            _failCount = 0;
+          });
+        },
+        onAdImpression: (_) => AnalyticsService.logAdImpression(format: 'native', placement: 'inline'),
+        onAdFailedToLoad: (ad, error) {
+          debugPrint('Native template failed, falling back to banner: $error');
+          AnalyticsService.logAdLoadFailed(format: 'native', placement: 'inline', code: error.code);
+          ad.dispose();
+          if (mounted) {
+            _loadAdaptiveBanner(width);
+          } else {
+            _isLoading = false;
+          }
+        },
+      ),
+    );
+    ad.load();
+  }
+
+  Future<void> _loadAdaptiveBanner(int width) async {
     final anchored = await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(width);
     if (!mounted) {
       _isLoading = false;
@@ -128,7 +206,6 @@ class _MyNativeAdState extends State<MyNativeAd> {
 
   void _scheduleRetry() {
     if (!mounted) return;
-    // Reklam doldurma yoksa/çevrimdışıysa radyoyu boşuna uyandırma: 5 başarısızlıktan sonra bu ekranda vazgeç
     if (_failCount >= 5) return;
     final delay = Duration(seconds: (30 * _failCount).clamp(30, 300));
     _retryTimer = Timer(delay, () {
@@ -142,12 +219,15 @@ class _MyNativeAdState extends State<MyNativeAd> {
     _retryTimer?.cancel();
     _releaseTimer?.cancel();
     _bannerAd?.dispose();
+    _nativeAd?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!MyNativeAd.adsEnabled) return const SizedBox.shrink();
+    if (!MyNativeAd.adsEnabled || _suppressedByGrace) {
+      return const SizedBox.shrink();
+    }
 
     return SizedBox(
       width: widget.width,
@@ -159,20 +239,29 @@ class _MyNativeAdState extends State<MyNativeAd> {
               : MediaQuery.sizeOf(context).width;
           _slotWidth = available.floor();
 
-          final ad = _bannerAd;
+          final native = _nativeAd;
+          final banner = _bannerAd;
           final size = _loadedSize;
+          Widget child = const SizedBox.expand();
+          if (native != null) {
+            child = ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.button),
+              child: AdWidget(key: ObjectKey(native), ad: native),
+            );
+          } else if (banner != null && size != null) {
+            child = Center(
+              child: SizedBox(
+                width: size.width.toDouble(),
+                height: size.height.toDouble(),
+                child: AdWidget(key: ObjectKey(banner), ad: banner),
+              ),
+            );
+          }
+
           return VisibilityDetector(
             key: _visibilityKey,
             onVisibilityChanged: _onVisibilityChanged,
-            child: ad != null && size != null
-                ? Center(
-                    child: SizedBox(
-                      width: size.width.toDouble(),
-                      height: size.height.toDouble(),
-                      child: AdWidget(key: ObjectKey(ad), ad: ad),
-                    ),
-                  )
-                : const SizedBox.expand(),
+            child: child,
           );
         },
       ),

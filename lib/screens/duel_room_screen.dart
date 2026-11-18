@@ -27,6 +27,7 @@ import '../widgets/user_card.dart';
 import '../widgets/glass_surface.dart';
 import '../widgets/token_widget.dart';
 import '../widgets/my_native_ad.dart';
+import '../features/duel/widgets/duel_lobby_widgets.dart';
 import 'live_duel_quiz_screen.dart';
 import 'loading_screen.dart';
 import 'package:emilekbul/services/haptic_service.dart';
@@ -1313,7 +1314,15 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
                       child: Column(
                         children: [
                           const SizedBox(height: 10),
-                          _buildRoomCodeCard(room),
+                          DuelRoomCodeCard(
+                            room: room,
+                            onShare: () => _showShareDialog(room.roomCode),
+                            onCopy: () {
+                              Clipboard.setData(
+                                  ClipboardData(text: room.roomCode));
+                              _showToast('duel.code_copied'.tr());
+                            },
+                          ),
                           const SizedBox(height: 14),
                           if (isHost &&
                               room.pendingGuest != null &&
@@ -1335,7 +1344,10 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
                                   room.guest!.tokens <
                                       room.config.betTokens)) ...[
                             const SizedBox(height: 14),
-                            _buildInsufficientTokensBanner(room),
+                            DuelInsufficientTokensBanner(
+                              room: room,
+                              userTokens: _userTokens,
+                            ),
                           ],
                           const SizedBox(height: 20),
                         ],
@@ -1408,67 +1420,6 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
     );
   }
 
-  Widget _buildRoomCodeCard(DuelRoom room) {
-    return GlassContainer(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      borderRadius: 20,
-      opacity: 0.12,
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                  colors: [Color(0xFFFF9F43), Color(0xFFFF5252)]),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.vpn_key_rounded,
-                color: Colors.white, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'duel.room_code'.tr(),
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  room.roomCode,
-                  style: const TextStyle(
-                    color: Color(0xFFFFD56B),
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.share_rounded, color: Color(0xFFFF9F43)),
-            tooltip: 'duel.share_link'.tr(),
-            onPressed: () => _showShareDialog(room.roomCode),
-          ),
-          IconButton(
-            icon: const Icon(Icons.copy_rounded, color: Colors.white70),
-            tooltip: 'duel.copy_code'.tr(),
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: room.roomCode));
-              _showToast('duel.code_copied'.tr());
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showShareDialog(String code) {
     AnalyticsService.logDuelFunnel('room_code_share');
     ShareService.shareText(
@@ -1524,7 +1475,9 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
         Expanded(
           child: room.guest != null
               ? _buildPlayerCard(room.guest!, isHost: false)
-              : _buildEmptyGuestCard(),
+              : DuelEmptyGuestCard(
+                  betTokens: _currentRoom?.config.betTokens ?? 0,
+                ),
         ),
       ],
     );
@@ -1916,52 +1869,6 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
           ),
         );
       },
-    );
-  }
-
-  Widget _buildEmptyGuestCard() {
-    return GlassContainer(
-      padding: const EdgeInsets.all(14),
-      borderRadius: 20,
-      opacity: 0.06,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: 0.05),
-              border:
-                  Border.all(color: Colors.white24, style: BorderStyle.solid),
-            ),
-            child: const Icon(Icons.person_add_alt_1_rounded,
-                color: Colors.white38, size: 30),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'duel.waiting_guest'.tr(),
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            DuelRoom.isSpecialHighBet(_currentRoom?.config.betTokens ?? 0)
-                ? 'duel.high_bet_real_only'.tr()
-                : 'duel.share_code_hint'.tr(),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.4),
-              fontSize: 10,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -3048,46 +2955,6 @@ class _DuelRoomScreenState extends State<DuelRoomScreen>
     if (text.isEmpty) return;
     _chatTextController.clear();
     await _sendQuickMessage(text: text, type: 'text');
-  }
-
-  Widget _buildInsufficientTokensBanner(DuelRoom room) {
-    final bet = room.config.betTokens;
-    final bool hostNeeds = _userTokens < bet;
-    final bool guestNeeds = room.guest != null && room.guest!.tokens < bet;
-
-    String msg = '';
-    if (hostNeeds && guestNeeds) {
-      msg = 'duel.both_need_tokens'.tr(args: [bet.toString()]);
-    } else if (hostNeeds) {
-      msg = 'duel.you_need_tokens'.tr(args: [bet.toString()]);
-    } else {
-      msg = 'duel.guest_needs_tokens'.tr(args: [bet.toString()]);
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.redAccent.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.warning_amber_rounded,
-              color: Colors.redAccent, size: 22),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              msg,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildBottomActionBar(DuelRoom room, bool canStart, bool isHost) {

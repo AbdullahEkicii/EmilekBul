@@ -1,164 +1,340 @@
 import 'dart:math';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../services/haptic_service.dart';
+import '../services/sound_service.dart';
 import '../services/token_arena_rules.dart';
 import '../services/token_economy.dart';
+import '../theme/app_theme.dart';
 import 'token_arena_common.dart';
 
-/// Yüksek-Düşük: arka arkaya [TokenArenaRules.hiLoRounds] doğru tahmin.
+/// Yüksek mi Düşük mü: 3 tur kart tahmini (eşitlikte kasa kazanır, 1.8x ödeme).
 class TokenArenaHiLoScreen extends StatefulWidget {
-  const TokenArenaHiLoScreen({super.key});
+  final int initialStake;
+
+  const TokenArenaHiLoScreen({
+    super.key,
+    this.initialStake = TokenEconomy.miniGameStake,
+  });
 
   @override
   State<TokenArenaHiLoScreen> createState() => _TokenArenaHiLoScreenState();
 }
 
 class _TokenArenaHiLoScreenState extends State<TokenArenaHiLoScreen> {
-  static const _id = 'hilo';
-  final Random _random = Random();
+  final _rng = Random();
+  late int _stake;
+  int _balance = 0;
 
-  bool _busy = false;
   bool _playing = false;
-  int _round = 0;
-  int _current = 1;
-  int? _next;
   bool? _won;
+  int _payout = 0;
+  int _round = 0;
+  int _card = 7;
+  int _suitIndex = 0;
+  String? _statusHint;
 
-  String _label(int v) {
-    switch (v) {
-      case 1:
-        return 'A';
-      case 11:
-        return 'J';
-      case 12:
-        return 'Q';
-      case 13:
-        return 'K';
-      default:
-        return '$v';
-    }
+  static const _suits = ['♠', '♥', '♦', '♣'];
+
+  @override
+  void initState() {
+    super.initState();
+    _stake = widget.initialStake;
+    _refreshBalance();
+  }
+
+  Future<void> _refreshBalance() async {
+    final bal = await loadArenaBalance();
+    if (mounted) setState(() => _balance = bal);
   }
 
   Future<void> _start() async {
-    if (_busy || _playing) return;
-    setState(() => _busy = true);
-    final ok = await arenaStake(context, _id);
-    if (!mounted) return;
+    if (!await arenaStake(context, 'hilo', stake: _stake)) return;
     setState(() {
-      _busy = false;
-      if (ok) {
-        _playing = true;
-        _round = 0;
-        _current = TokenArenaRules.drawCard(_random);
-        _next = null;
-        _won = null;
-      }
+      _playing = true;
+      _won = null;
+      _payout = 0;
+      _round = 0;
+      _card = TokenArenaRules.drawCard(_rng);
+      _suitIndex = _rng.nextInt(_suits.length);
+      _statusHint = null;
     });
+    _refreshBalance();
   }
 
-  void _guess(bool higher) {
-    if (!_playing || _next != null) return;
-    final next = TokenArenaRules.drawCard(_random);
-    final correct = TokenArenaRules.hiLoGuessCorrect(
-        current: _current, next: next, guessHigher: higher);
-    setState(() => _next = next);
+  Future<void> _guess(bool higher) async {
+    final next = TokenArenaRules.drawCard(_rng);
+    final nextSuit = _rng.nextInt(_suits.length);
+    final ok = TokenArenaRules.hiLoGuessCorrect(
+      current: _card,
+      next: next,
+      guessHigher: higher,
+    );
 
-    Future.delayed(const Duration(milliseconds: 900), () {
-      if (!mounted) return;
-      if (!correct) {
-        _finish(false);
-        return;
-      }
-      final rounds = _round + 1;
-      if (rounds >= TokenArenaRules.hiLoRounds) {
-        _finish(true);
-        return;
-      }
+    if (!ok) {
+      final isTie = next == _card;
       setState(() {
-        _round = rounds;
-        _current = next;
-        _next = null;
+        _card = next;
+        _suitIndex = nextSuit;
+        _playing = false;
+        _won = false;
+        _payout = 0;
+        _statusHint = isTie ? 'mg.tie_house_wins'.tr() : null;
       });
-    });
-  }
+      await arenaFinish('hilo', false, stake: _stake);
+      _refreshBalance();
+      return;
+    }
 
-  Future<void> _finish(bool won) async {
+    final nextRound = _round + 1;
+    if (nextRound >= TokenArenaRules.hiLoRounds) {
+      final paid = await arenaFinish('hilo', true, stake: _stake);
+      setState(() {
+        _card = next;
+        _suitIndex = nextSuit;
+        _round = nextRound;
+        _playing = false;
+        _won = true;
+        _payout = paid;
+      });
+      _refreshBalance();
+      return;
+    }
+
+    SoundService.playCorrect();
+    HapticService.light();
     setState(() {
-      _playing = false;
-      _won = won;
+      _card = next;
+      _suitIndex = nextSuit;
+      _round = nextRound;
     });
-    await arenaFinish(_id, won);
   }
 
-  Widget _card(String text, {bool hidden = false}) {
-    return Container(
-      width: 90,
-      height: 130,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: hidden ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Text(
-        hidden ? '?' : text,
-        style: TextStyle(
-          color: hidden ? Colors.white54 : const Color(0xFF0F172A),
-          fontSize: 40,
-          fontWeight: FontWeight.w900,
-        ),
+  String _rank(int v) => const {1: 'A', 11: 'J', 12: 'Q', 13: 'K'}[v] ?? '$v';
+
+  @override
+  Widget build(BuildContext context) {
+    final suit = _suits[_suitIndex];
+    final isRed = suit == '♥' || suit == '♦';
+    final cardColor = isRed ? AppColors.danger : const Color(0xFF0F172A);
+
+    return ArenaScaffold(
+      title: 'mg.higher_lower'.tr(),
+      balance: _balance,
+      accentColor: AppColors.indigoLight,
+      ruleSummary: 'mg.higher_lower_rule'.tr(),
+      onBalanceTap: () => openTokenEarnScreen(context, onReturned: _refreshBalance),
+      child: Column(
+        children: [
+          _buildRoundStepper(),
+          const Spacer(),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 260),
+            transitionBuilder: (child, anim) => ScaleTransition(
+              scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+              child: FadeTransition(opacity: anim, child: child),
+            ),
+            child: Container(
+              key: ValueKey('$_card-$_suitIndex-$_round-$_won'),
+              width: 170,
+              height: 235,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: _won == true
+                      ? AppColors.success
+                      : (_won == false
+                          ? AppColors.danger
+                          : AppColors.indigoLight),
+                  width: 3,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: (_won == false
+                            ? AppColors.danger
+                            : AppColors.indigo)
+                        .withValues(alpha: 0.38),
+                    blurRadius: 28,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Align(
+                    alignment: Alignment.topLeft,
+                    child: Column(
+                      children: [
+                        Text(
+                          _rank(_card),
+                          style: GoogleFonts.poppins(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: cardColor,
+                            height: 1.0,
+                          ),
+                        ),
+                        Text(
+                          suit,
+                          style: TextStyle(fontSize: 18, color: cardColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    children: [
+                      Text(
+                        _rank(_card),
+                        style: GoogleFonts.poppins(
+                          fontSize: 54,
+                          fontWeight: FontWeight.w800,
+                          color: cardColor,
+                          height: 1.0,
+                        ),
+                      ),
+                      Text(
+                        suit,
+                        style: TextStyle(fontSize: 28, color: cardColor),
+                      ),
+                    ],
+                  ),
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    child: Text(
+                      '${_rank(_card)} $suit',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: cardColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _statusHint ?? 'mg.tie_house_note'.tr(),
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: _statusHint != null
+                  ? AppColors.danger
+                  : AppColors.textSecondary,
+            ),
+          ),
+          const Spacer(),
+          if (_won != null) ...[
+            ArenaResultBanner(
+              won: _won!,
+              stake: _stake,
+              payoutAmount: _payout,
+              currentBalance: _balance,
+              onEarnTokens: () =>
+                  openTokenEarnScreen(context, onReturned: _refreshBalance),
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (!_playing) ...[
+            ArenaStakeSelector(
+              selectedStake: _stake,
+              onSelected: (v) => setState(() => _stake = v),
+              accentColor: AppColors.indigoLight,
+            ),
+            const SizedBox(height: 12),
+            ArenaPlayButton(
+              label: 'mg.play'.tr(args: ['$_stake']),
+              onPressed: _start,
+              color: AppColors.indigo,
+            ),
+          ] else
+            Row(
+              children: [
+                Expanded(
+                  child: _buildGuessButton(
+                    icon: Icons.arrow_downward_rounded,
+                    label: 'mg.lower'.tr(),
+                    color: AppColors.danger,
+                    onTap: () => _guess(false),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildGuessButton(
+                    icon: Icons.arrow_upward_rounded,
+                    label: 'mg.higher'.tr(),
+                    color: AppColors.emerald,
+                    onTap: () => _guess(true),
+                  ),
+                ),
+              ],
+            ),
+        ],
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final canGuess = _playing && _next == null;
-    return ArenaScaffold(
-      title: 'mg.higher_lower'.tr(),
-      child: Column(
-        children: [
-          Text(
-            'mg.round'.tr(args: ['${_playing ? _round + 1 : 0}', '${TokenArenaRules.hiLoRounds}']),
-            style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700),
+  Widget _buildRoundStepper() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(TokenArenaRules.hiLoRounds, (i) {
+        final done = i < _round;
+        final active = _playing && i == _round;
+        final color = done
+            ? AppColors.success
+            : (active ? AppColors.indigoLight : Colors.white24);
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: done || active ? 0.22 : 0.08),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: color),
           ),
-          const SizedBox(height: 28),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _card(_label(_current)),
-              const SizedBox(width: 24),
-              _card(_next == null ? '' : _label(_next!), hidden: _next == null),
-            ],
+          child: Text(
+            'mg.round'.tr(args: ['${i + 1}', '${TokenArenaRules.hiLoRounds}']),
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: done || active ? Colors.white : AppColors.textSecondary,
+            ),
           ),
-          const SizedBox(height: 28),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: canGuess ? () => _guess(false) : null,
-                  child: Text('mg.lower'.tr(), style: const TextStyle(fontWeight: FontWeight.w800)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: canGuess ? () => _guess(true) : null,
-                  child: Text('mg.higher'.tr(), style: const TextStyle(fontWeight: FontWeight.w800)),
-                ),
-              ),
-            ],
+        );
+      }),
+    );
+  }
+
+  Widget _buildGuessButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return SizedBox(
+      height: 56,
+      child: ElevatedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, size: 22),
+        label: Text(
+          label,
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 16),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          elevation: 6,
+          shadowColor: color.withValues(alpha: 0.45),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-          const Spacer(),
-          if (_won != null) ...[
-            ArenaResultBanner(won: _won!),
-            const SizedBox(height: 14),
-          ],
-          ArenaPlayButton(
-            label: _playing ? 'mg.your_turn'.tr() : 'mg.play'.tr(args: ['${TokenEconomy.miniGameStake}']),
-            onPressed: _playing || _busy ? null : _start,
-          ),
-        ],
+        ),
       ),
     );
   }

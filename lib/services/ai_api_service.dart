@@ -1,5 +1,8 @@
 import 'error_reporter.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import '../models/question.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -10,21 +13,19 @@ import 'dart:async';
 import 'dart:convert';
 
 import '../services/database_helper.dart';
+import '../services/remote_flags.dart';
 import '../utils/app_utils.dart';
 import '../constants/category_taxonomy.dart';
 
 class AiApiService {
+  // Doğrulanmış hızlı Gemini modelleri (bütçe içinde gereksiz 404 gecikmesini önlemek için)
   final List<String> _modelList = [
-    'gemini-3.5-flash-lite',
-    'gemini-3.1-flash-lite',
-    'gemini-3-flash',
-    'gemini-2.5-flash',
     'gemini-2.5-flash-lite',
-    'gemini-3.5-flash',
-    'gemini-3.6-flash',
-    'gemini-3.7-flash',
+    'gemini-2.5-flash',
+    'gemini-2.0-flash-lite',
+    'gemini-2.0-flash',
   ];
-  final String _apiKey = dotenv.env['API_KEY']!;
+  String? get _apiKey => dotenv.maybeGet('API_KEY');
   // Model başına zaman aşımı ve tüm denemeler için toplam süre bütçesi
   static const Duration _perModelTimeout = Duration(seconds: 7);
   static const Duration _totalBudget = Duration(seconds: 12);
@@ -32,10 +33,72 @@ class AiApiService {
   static const int _maxQuestionChars = 160;
   static const int _maxOptionChars = 50;
 
-  Future<GenerateContentResponse> _generateContentWithFallback(
+  Future<String?> _generateViaProxy(
+    String proxyUrl,
+    String prompt, {
+    required int maxOutputTokens,
+  }) async {
+    try {
+      final headers = <String, String>{'Content-Type': 'application/json'};
+      final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+      if (idToken != null && idToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $idToken';
+      }
+      try {
+        final appCheckToken = await FirebaseAppCheck.instance.getToken();
+        if (appCheckToken != null && appCheckToken.isNotEmpty) {
+          headers['X-Firebase-AppCheck'] = appCheckToken;
+        }
+      } catch (_) {}
+
+      final res = await http
+          .post(
+            Uri.parse(proxyUrl),
+            headers: headers,
+            body: jsonEncode({
+              'prompt': prompt,
+              'maxOutputTokens': maxOutputTokens,
+              'responseMimeType': 'application/json',
+            }),
+          )
+          .timeout(_totalBudget);
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final decoded = jsonDecode(res.body);
+        if (decoded is Map && decoded['text'] != null) {
+          return decoded['text'].toString();
+        }
+        return res.body;
+      }
+      debugPrint('⚠️ AI proxy HTTP ${res.statusCode}');
+    } catch (e) {
+      debugPrint('⚠️ AI proxy hata verdi: $e');
+    }
+    return null;
+  }
+
+  Future<String?> _generateContentWithFallback(
     String prompt, {
     int maxOutputTokens = 4096,
   }) async {
+    final proxyUrl = RemoteFlags.aiProxyUrl;
+    if (proxyUrl.isNotEmpty) {
+      final proxyText = await _generateViaProxy(
+        proxyUrl,
+        prompt,
+        maxOutputTokens: maxOutputTokens,
+      );
+      if (proxyText != null && proxyText.isNotEmpty) {
+        return proxyText;
+      }
+    }
+
+    final apiKey = _apiKey;
+    if (apiKey == null || apiKey.trim().isEmpty) {
+      ErrorReporter.record(Exception('ai_missing_api_key'), null, reason: 'ai_no_key_or_proxy');
+      throw Exception('ai_service.errors.general_error');
+    }
+
     final content = Content.text(prompt);
     final budgetWatch = Stopwatch()..start();
     for (final modelName in _modelList) {
@@ -46,7 +109,7 @@ class AiApiService {
       }
       final model = GenerativeModel(
         model: modelName,
-        apiKey: _apiKey,
+        apiKey: apiKey,
         generationConfig: GenerationConfig(
           temperature: 0.9,
           // Düşünen (thinking) modellerde düşünme token'ları da bu limite dahildir; cömert tut.
@@ -63,7 +126,7 @@ class AiApiService {
         final response =
             await model.generateContent([content]).timeout(timeout);
         debugPrint('✅ Başarılı model: $modelName');
-        return response;
+        return response.text;
       } catch (e) {
         debugPrint('⚠️ $modelName modeli hata verdi: $e');
         // Tüm hata türlerinde bir sonraki yedek modele geç
@@ -120,7 +183,7 @@ class AiApiService {
         prompt,
         maxOutputTokens: 2048 + count * 700 * uniqueLangs.length,
       );
-      return _parseQuestions(response.text);
+      return _parseQuestions(response);
     } catch (e, s) {
       debugPrint('AI API MULTILINGUAL HATASI: $e\n$s');
       if (e.toString().contains('ai_service.errors')) {
@@ -160,7 +223,7 @@ class AiApiService {
         prompt,
         maxOutputTokens: 2048 + count * 700,
       );
-      return _parseQuestions(response.text);
+      return _parseQuestions(response);
     } catch (e, s) {
       debugPrint('AI API HATASI: $e\n$s');
       if (e.toString().contains('ai_service.errors')) {

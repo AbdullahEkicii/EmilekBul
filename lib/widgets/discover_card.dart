@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../screens/daily_challenge_screen.dart';
 import '../screens/league_screen.dart';
+import '../screens/main_shell.dart';
 import '../screens/shop_screen.dart';
 import '../services/behavior_tracker.dart';
 import '../services/nudge_engine.dart';
@@ -22,7 +23,6 @@ class DiscoverCard extends StatefulWidget {
 
 class _DiscoverCardState extends State<DiscoverCard> {
   String? _feature;
-  String? _label;
   bool _dismissed = false;
 
   @override
@@ -42,22 +42,23 @@ class _DiscoverCardState extends State<DiscoverCard> {
       if (mounted) setState(() => _feature = null);
       return;
     }
-    final pick = candidates.first;
-    final label = await NudgeEngine.featureLabel(pick);
     if (!mounted) return;
     setState(() {
-      _feature = pick;
-      _label = label;
+      _feature = candidates.first;
     });
   }
 
   void _open(BuildContext context) {
     switch (_feature) {
       case 'shop':
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const ShopScreen()));
+        if (!MainShell.selectTabOf(context, 3)) {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const ShopScreen()));
+        }
         break;
       case 'league':
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const LeagueScreen()));
+        if (!MainShell.selectTabOf(context, 2)) {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const LeagueScreen()));
+        }
         break;
       case 'daily_challenge':
         Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyChallengeScreen()));
@@ -76,7 +77,10 @@ class _DiscoverCardState extends State<DiscoverCard> {
 
   @override
   Widget build(BuildContext context) {
-    if (_dismissed || _feature == null || _label == null) return const SizedBox.shrink();
+    EasyLocalization.of(context)?.locale;
+    Localizations.maybeLocaleOf(context);
+    if (_dismissed || _feature == null) return const SizedBox.shrink();
+    final label = 'nudge.feat_$_feature'.tr();
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 12),
@@ -97,7 +101,7 @@ class _DiscoverCardState extends State<DiscoverCard> {
                 Text('discover.title'.tr(),
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
                 const SizedBox(height: 2),
-                Text('discover.body'.tr(args: [_label!]),
+                Text('discover.body'.tr(args: [label]),
                     style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 12.5)),
               ],
             ),

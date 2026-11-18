@@ -7,10 +7,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../main.dart';
 import '../services/league_service.dart';
 import '../services/performance_service.dart';
 import '../services/share_service.dart';
-import 'league_screen.dart';
+import '../theme/app_theme.dart';
+import '../widgets/my_native_ad.dart';
 import 'package:emilekbul/services/haptic_service.dart';
 
 /// Hafta sonu lig sonucu (terfi / düşme) tam ekranı.
@@ -90,7 +92,7 @@ class _LeagueResultScreenState extends State<LeagueResultScreen> with SingleTick
     final r = widget.result;
     final accent = r.to.color;
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: AppColors.backgroundTop,
       body: Stack(
         children: [
           if (_sparks.isNotEmpty)
@@ -143,10 +145,17 @@ class _LeagueResultScreenState extends State<LeagueResultScreen> with SingleTick
                   ),
                   TextButton(
                     onPressed: () {
-                      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LeagueScreen()));
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                          builder: (_) => const QuizFlow(initialTabIndex: 2),
+                        ),
+                        (route) => false,
+                      );
                     },
                     child: Text('league.view'.tr(), style: TextStyle(color: Colors.white.withValues(alpha: 0.7))),
                   ),
+                  const SizedBox(height: 8),
+                  const MyNativeAd(height: 65),
                 ],
               ),
             ),

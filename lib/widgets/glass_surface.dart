@@ -1,10 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../services/performance_service.dart';
+import '../theme/app_theme.dart';
 
-/// Kontrol katmanı yüzeyi: sheet ve diyaloglar için cam.
-/// Metin yoğun olduğu için "regular" varyant: koyu tonlu yarı saydam dolgu, %35 koyu katman
-/// ve arka planı bulanıklaştıran BackdropFilter. Performans modunda opak yüzeye düşer.
+/// Kontrol katmanı yüzeyi: sheet ve diyaloglar için ferah cam katmanı.
 class GlassSurface extends StatelessWidget {
   final Widget child;
   final BorderRadius borderRadius;
@@ -23,15 +22,17 @@ class GlassSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final base = tint ?? const Color(0xFF1E293B);
+    final base = tint ?? AppColors.surfaceElevated;
     final content = Container(
       height: height,
       padding: padding,
       decoration: BoxDecoration(
-        color: base.withValues(alpha: 0.72),
+        color: base.withValues(alpha: 0.64),
         borderRadius: borderRadius,
-        border:
-            Border.all(color: Colors.white.withValues(alpha: 0.18), width: 0.8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.22),
+          width: 0.9,
+        ),
       ),
       child: child,
     );
@@ -40,7 +41,10 @@ class GlassSurface extends StatelessWidget {
       return ClipRRect(
         borderRadius: borderRadius,
         child: Container(
-            color: const Color(0xFF1E293B), padding: padding, child: child),
+          color: base,
+          padding: padding,
+          child: child,
+        ),
       );
     }
 
@@ -49,7 +53,9 @@ class GlassSurface extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child: ColoredBox(color: Colors.black.withValues(alpha: 0.35)),
+            child: ColoredBox(
+              color: AppColors.backgroundTop.withValues(alpha: 0.28),
+            ),
           ),
           BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),

@@ -15,6 +15,7 @@ import '../services/bot_quiz_simulator.dart';
 import '../services/bot_room_service.dart';
 import '../utils/app_utils.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/my_native_ad.dart';
 import '../widgets/user_card.dart';
 import '../services/rewarded_boost.dart';
 import 'live_duel_result_screen.dart';
@@ -527,6 +528,10 @@ class _LiveDuelQuizScreenState extends State<LiveDuelQuizScreen>
                 ] else ...[
                   Expanded(child: _buildWaitingOpponentView(room)),
                 ],
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 4, 16, 4),
+                  child: MyNativeAd(height: 60),
+                ),
               ],
             ),
           ),

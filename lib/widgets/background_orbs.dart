@@ -44,10 +44,11 @@ class _BackgroundOrbsState extends State<BackgroundOrbs>
         shape: BoxShape.circle,
         gradient: RadialGradient(
           colors: [
-            color.withValues(alpha: 0.6),
+            color.withValues(alpha: 0.65),
+            color.withValues(alpha: 0.18),
             color.withValues(alpha: 0.0),
           ],
-          stops: const [0.0, 0.7],
+          stops: const [0.0, 0.45, 0.85],
         ),
       ),
     );
@@ -55,7 +56,7 @@ class _BackgroundOrbsState extends State<BackgroundOrbs>
 
   @override
   Widget build(BuildContext context) {
-    // RepaintBoundary prevents the animation from causing the whole screen to repaint
+    // Ferah gökyüzü-aurora ışık geçişleri: çamur moru yerine nefes alan turkuaz, nane ve gün ışığı.
     return RepaintBoundary(
       child: AnimatedBuilder(
         animation: _orbAnimation,
@@ -63,20 +64,24 @@ class _BackgroundOrbsState extends State<BackgroundOrbs>
           return Stack(
             children: [
               Positioned(
-                top: -50 + (30 * _orbAnimation.value),
-                left: -50 + (20 * _orbAnimation.value),
-                child: _buildOrb(250, const Color(0xFF667eea).withValues(alpha: 0.3)),
+                top: -80 + (28 * _orbAnimation.value),
+                right: -60 + (20 * _orbAnimation.value),
+                child: _buildOrb(320, const Color(0xFF38BDF8).withValues(alpha: 0.24)),
               ),
               Positioned(
-                bottom: 100 - (40 * _orbAnimation.value),
-                right: -80 + (30 * _orbAnimation.value),
-                child: _buildOrb(300, const Color(0xFF764ba2).withValues(alpha: 0.2)),
+                top: 180 + (40 * (1 - _orbAnimation.value)),
+                left: -90 + (25 * _orbAnimation.value),
+                child: _buildOrb(260, const Color(0xFF34D399).withValues(alpha: 0.16)),
               ),
               Positioned(
-                top: 300 + (50 * (1 - _orbAnimation.value)),
-                right: 100,
-                child:
-                    _buildOrb(150, const Color(0xFFA67BFF).withValues(alpha: 0.15)),
+                bottom: 70 - (36 * _orbAnimation.value),
+                right: -40 + (24 * _orbAnimation.value),
+                child: _buildOrb(290, const Color(0xFFFBBF24).withValues(alpha: 0.13)),
+              ),
+              Positioned(
+                bottom: -70 + (22 * _orbAnimation.value),
+                left: 40,
+                child: _buildOrb(220, const Color(0xFF7DD3FC).withValues(alpha: 0.14)),
               ),
             ],
           );

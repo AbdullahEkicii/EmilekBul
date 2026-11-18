@@ -119,21 +119,27 @@ class _PastTestsScreenState extends State<PastTestsScreen>
 
                       final tests = snapshot.data!;
                       return ListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 10),
+                        padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
                         physics: const BouncingScrollPhysics(),
                         itemCount: tests.length,
                         itemBuilder: (context, index) {
-                          return _buildTestCard(tests[index]);
+                          final card = _buildTestCard(tests[index]);
+                          final showAdAfter = index == 2 ||
+                              (index > 2 && (index - 2) % 5 == 0) ||
+                              (tests.length < 3 && index == tests.length - 1);
+                          if (!showAdAfter) return card;
+                          return Column(
+                            children: [
+                              card,
+                              const Padding(
+                                padding: EdgeInsets.only(bottom: 16),
+                                child: MyNativeAd(height: 65),
+                              ),
+                            ],
+                          );
                         },
                       );
                     },
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-                  child: MyNativeAd(
-                    height: 65,
                   ),
                 ),
               ],

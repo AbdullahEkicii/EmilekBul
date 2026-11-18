@@ -10,6 +10,7 @@ import 'token_arena_screen.dart';
 import '../services/review_service.dart';
 import '../services/referral_service.dart';
 import '../widgets/rewarded_ad_manager.dart';
+import '../theme/app_theme.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/navigation_buttons.dart';
 import '../widgets/my_native_ad.dart';
@@ -385,7 +386,7 @@ class _TokenScreenState extends State<TokenScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.backgroundTop,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -405,15 +406,7 @@ class _TokenScreenState extends State<TokenScreen>
           // Background
           Container(
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFF0F172A),
-                  Color(0xFF1E293B),
-                  Color(0xFF0F172A)
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              gradient: AppColors.airyBackgroundGradient,
             ),
           ),
           _buildBackgroundOrbs(),
@@ -437,6 +430,10 @@ class _TokenScreenState extends State<TokenScreen>
                         _buildWatchAdCard(),
                         const SizedBox(height: 16),
                         _buildAdGoalCard(),
+                        const SizedBox(height: 16),
+                        const MyNativeAd(
+                          height: 65,
+                        ),
                         const SizedBox(height: 16),
                         _buildArenaCard(),
                         const SizedBox(height: 16),

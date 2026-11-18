@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
+import '../constants/app_categories.dart';
 import '../services/adaptive_service.dart';
 
 /// Kategori ekranında, yeterli cevap verilmişse en zayıf konuyu gösteren kart.
@@ -51,9 +52,13 @@ class _WeakTopicCardState extends State<WeakTopicCard> {
 
   @override
   Widget build(BuildContext context) {
+    EasyLocalization.of(context)?.locale;
+    Localizations.maybeLocaleOf(context);
     final weak = _weak;
     if (weak == null) return const SizedBox.shrink();
     final pct = (weak.accuracy * 100).round();
+    final catKey = AppCategories.getCategoryKey(weak.category);
+    final localizedCat = catKey.isNotEmpty ? catKey.tr() : weak.category;
 
     return Container(
       width: double.infinity,
@@ -79,7 +84,7 @@ class _WeakTopicCardState extends State<WeakTopicCard> {
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 2),
                 Text(
-                  'adaptive.weak_body'.tr(args: [weak.category, '$pct', '${weak.level}']),
+                  'adaptive.weak_body'.tr(args: [localizedCat, '$pct', '${weak.level}']),
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 12.5),
                 ),
               ],

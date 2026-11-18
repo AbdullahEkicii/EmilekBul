@@ -9,6 +9,7 @@ import '../services/sound_service.dart';
 import '../services/performance_service.dart';
 import '../constants/app_categories.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/my_native_ad.dart';
 import '../services/bot_room_service.dart';
 import '../services/analytics_service.dart';
 import 'package:flutter/material.dart';
@@ -869,6 +870,10 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                         ),
                     ],
                   ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 4, 16, 4),
+                  child: MyNativeAd(height: 60),
                 ),
               ],
             ),

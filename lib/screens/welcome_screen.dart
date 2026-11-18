@@ -1,4 +1,8 @@
 import '../widgets/discover_card.dart';
+import '../widgets/themed_event_card.dart';
+import '../features/home/widgets/home_action_buttons.dart';
+import '../features/home/widgets/quests_panel.dart';
+import '../theme/app_theme.dart';
 import '../services/retention_engine.dart';
 import '../widgets/daily_goal_card.dart';
 import '../widgets/glass_surface.dart';
@@ -7,12 +11,9 @@ import '../services/whats_new_service.dart';
 import '../services/analytics_service.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../widgets/glass_alert_dialog.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'basari_hesapla_screen.dart';
-import 'kategori_screen.dart';
 import 'account_screen.dart';
 import 'token_screen.dart';
 import '../main.dart';
@@ -20,19 +21,18 @@ import '../services/update_control.dart';
 import '../services/startup_dialog_queue.dart';
 import '../widgets/guest_link_prompt.dart';
 import '../services/user_service.dart';
+import '../services/token_service.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/background_orbs.dart';
-import 'tier_list_screen.dart';
 import 'board_mode_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_utils.dart';
 import '../services/notification_service.dart';
 import '../services/notification_permission_manager.dart';
+import 'main_shell.dart';
 import 'shop_screen.dart';
 import '../widgets/language_selector_button.dart';
 import 'language_selection_screen.dart';
-import '../services/quest_service.dart';
-import '../models/quest.dart';
 import '../services/achievement_service.dart';
 import '../services/streak_service.dart';
 import '../services/cloud_state_service.dart';
@@ -78,7 +78,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   late Animation<double> _pulsingAnimation;
 
   bool _showOnboardingGuide = false;
-  bool _showMoreHome = false;
 
   User? currentUser;
   bool _isCheckingAuth = true;
@@ -686,6 +685,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   }
 
   Future<void> _loadUserData() async {
+    await TokenService.getTokenAmount();
     if (currentUser == null) return;
     try {
       final avatarIndex =
@@ -696,9 +696,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           .get();
       final data = userDoc.data();
       if (data != null) {
-        final tokens = data['tokens'] as int? ?? 50;
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setInt('user_tokens', tokens);
+        final remoteTokens = (data['tokens'] as num?)?.toInt();
+        if (remoteTokens != null) {
+          await TokenService.updateTokenAmount(remoteTokens, syncRemote: false);
+        }
         final referralCount = (data['referralCount'] as num?)?.toInt() ?? 0;
         if (referralCount > 0 && mounted) {
           await AchievementService.checkAndUnlockReferralAchievements(
@@ -897,8 +898,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     return GestureDetector(
       onTap: () {
         HapticService.light();
-        Navigator.push(
-            context, MaterialPageRoute(builder: (_) => const LeagueScreen()));
+        if (!MainShell.selectTabOf(context, 2)) {
+          Navigator.push(
+              context, MaterialPageRoute(builder: (_) => const LeagueScreen()));
+        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -968,36 +971,41 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           _loadUserData();
         }
       },
-      child: StreamBuilder<DocumentSnapshot>(
-        stream: uid != null
-            ? (_profileStream ??= UserService.getUserProfileStream(uid))
-            : null,
-        builder: (context, snapshot) {
-          int tokens = 50;
-          if (snapshot.hasData &&
-              snapshot.data != null &&
-              snapshot.data!.exists) {
-            final data = snapshot.data!.data() as Map<String, dynamic>?;
-            tokens = (data?['tokens'] as num?)?.toInt() ?? 50;
-          }
+      child: ValueListenableBuilder<int>(
+        valueListenable: TokenService.balanceNotifier,
+        builder: (context, localTokens, _) => StreamBuilder<DocumentSnapshot>(
+          stream: uid != null
+              ? (_profileStream ??= UserService.getUserProfileStream(uid))
+              : null,
+          builder: (context, snapshot) {
+            int tokens = localTokens;
+            if (snapshot.hasData &&
+                snapshot.data != null &&
+                snapshot.data!.exists) {
+              final data = snapshot.data!.data() as Map<String, dynamic>?;
+              final remoteTokens = (data?['tokens'] as num?)?.toInt();
+              if (remoteTokens != null) {
+                tokens = remoteTokens;
+              }
+            }
 
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Colors.amber.shade900.withValues(alpha: 0.4),
-                  Colors.orange.shade800.withValues(alpha: 0.3),
+                  AppColors.amber.withValues(alpha: 0.24),
+                  AppColors.surfaceElevated.withValues(alpha: 0.72),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.amber.withValues(alpha: 0.6)),
+              border: Border.all(color: AppColors.amber.withValues(alpha: 0.55)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.amber.withValues(alpha: 0.15),
-                  blurRadius: 8,
+                  color: AppColors.amber.withValues(alpha: 0.14),
+                  blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
               ],
@@ -1025,6 +1033,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             ),
           );
         },
+        ),
       ),
     );
   }
@@ -1147,16 +1156,18 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
           colors: [
-            Colors.amber.shade900.withValues(alpha: 0.4),
-            Colors.deepOrange.shade800.withValues(alpha: 0.3),
+            AppColors.amber.withValues(alpha: 0.22),
+            AppColors.surfaceElevated.withValues(alpha: 0.78),
           ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
+        border: Border.all(color: AppColors.amber.withValues(alpha: 0.45)),
         boxShadow: [
           BoxShadow(
-            color: Colors.amber.withValues(alpha: 0.15),
-            blurRadius: 15,
-            spreadRadius: 1,
+            color: AppColors.amber.withValues(alpha: 0.12),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           )
         ],
       ),
@@ -1250,11 +1261,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
           colors: [
-            Colors.indigo.shade900.withValues(alpha: 0.4),
-            Colors.teal.shade800.withValues(alpha: 0.3),
+            AppColors.accent.withValues(alpha: 0.20),
+            AppColors.success.withValues(alpha: 0.14),
+            AppColors.surfaceElevated.withValues(alpha: 0.78),
           ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.4)),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.42)),
       ),
       child: Material(
         color: Colors.transparent,
@@ -1306,14 +1320,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
   Widget _buildLoadingScreen() {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.backgroundTop,
       body: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF0F172A)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          gradient: AppColors.airyBackgroundGradient,
         ),
         child: Center(
           child: Column(
@@ -1426,43 +1436,39 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    EasyLocalization.of(context)?.locale;
+    Localizations.maybeLocaleOf(context);
     if (_isCheckingAuth) {
       return _buildLoadingScreen();
     }
     return Scaffold(
       extendBodyBehindAppBar: true,
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.backgroundTop,
       body: Stack(
         children: [
-          // Background Gradient
+          // Ferah gökyüzü-safir arka plan gradyanı
           Container(
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFF0F172A),
-                  Color(0xFF1E293B),
-                  Color(0xFF0F172A)
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              gradient: AppColors.airyBackgroundGradient,
             ),
           ),
 
-          // Sunlight Glow Effect
+          // Üstten gelen yumuşak gün ışığı ve gökyüzü aydınlığı
           Positioned(
-            top: -200,
-            left: -200,
+            top: -190,
+            left: -170,
             child: Container(
-              width: 500,
-              height: 500,
+              width: 480,
+              height: 480,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFFFFB75E).withValues(alpha: 0.25),
-                    const Color(0xFFFFB75E).withValues(alpha: 0.0),
+                    const Color(0xFFFDE68A).withValues(alpha: 0.18),
+                    const Color(0xFF7DD3FC).withValues(alpha: 0.08),
+                    const Color(0xFF7DD3FC).withValues(alpha: 0.0),
                   ],
+                  stops: const [0.0, 0.45, 1.0],
                 ),
               ),
             ),
@@ -1472,6 +1478,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           const BackgroundOrbs(),
 
           SafeArea(
+            bottom: false,
             child: Column(
               children: [
                 // Top Action Bar
@@ -1519,13 +1526,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 ),
 
                 Expanded(
-                  child: Center(
-                    child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Logo Section
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                          // Logo Section (kompakt üst alan: içerik ve günlük hedef ilk ekranda görünür kalır)
                           SlideTransition(
                             position: _headerSlideAnimation,
                             child: FadeTransition(
@@ -1533,30 +1539,30 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               child: Hero(
                                 tag: 'app_logo',
                                 child: Container(
-                                  padding: const EdgeInsets.all(20),
+                                  padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
                                         color:
                                             Colors.white.withValues(alpha: 0.1),
-                                        blurRadius: 40,
-                                        spreadRadius: 5,
+                                        blurRadius: 32,
+                                        spreadRadius: 3,
                                       ),
                                     ],
                                   ),
                                   child: Image.asset(
                                     'lib/assets/app_icon.png',
-                                    width: 140,
-                                    height: 140,
-                                    cacheWidth: 420,
-                                    cacheHeight: 420,
+                                    width: 84,
+                                    height: 84,
+                                    cacheWidth: 252,
+                                    cacheHeight: 252,
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 12),
 
                           // Title Section
                           SlideTransition(
@@ -1567,26 +1573,26 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 children: [
                                   Text(
                                     'app_title'.tr(),
-                                    style: TextStyle(
-                                      fontSize: 48,
+                                    style: const TextStyle(
+                                      fontSize: 34,
                                       fontWeight: FontWeight.w900,
                                       color: Colors.white,
-                                      letterSpacing: -1,
+                                      letterSpacing: -0.8,
                                     ),
                                   ),
-                                  const SizedBox(height: 12),
+                                  const SizedBox(height: 8),
                                   GlassContainer(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 20, vertical: 8),
+                                        horizontal: 16, vertical: 6),
                                     borderRadius: 30,
                                     opacity: 0.1,
                                     child: Text(
                                       'welcome_screen.app_subtitle'.tr(),
-                                      style: TextStyle(
-                                        fontSize: 14,
+                                      style: const TextStyle(
+                                        fontSize: 13,
                                         fontWeight: FontWeight.w600,
                                         color: Colors.white70,
-                                        letterSpacing: 0.5,
+                                        letterSpacing: 0.4,
                                       ),
                                     ),
                                   ),
@@ -1594,13 +1600,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               ),
                             ),
                           ),
-                          const SizedBox(height: 60),
+                          const SizedBox(height: 24),
 
                           // Main Actions
                           ScaleTransition(
                             scale: _buttonScaleAnimation,
                             child: Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 40),
+                              padding: const EdgeInsets.symmetric(horizontal: 32),
                               child: Column(
                                 children: [
                                   if (_showOnboardingGuide)
@@ -1657,32 +1663,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                           (category, difficulty, duration,
                                               {bool isDuel = false}) async {
                                         final navigator = Navigator.of(context);
-                                        final messenger =
-                                            ScaffoldMessenger.of(context);
                                         final prefs = await SharedPreferences
                                             .getInstance();
-                                        final offlineTaken = prefs.getInt(
-                                                'offline_tests_taken') ??
-                                            0;
-
-                                        if (offlineTaken >= 10) {
-                                          final hasInternet = await AppUtils
-                                              .hasInternetConnection();
-                                          if (!hasInternet) {
-                                            messenger.showSnackBar(
-                                              SnackBar(
-                                                content: Text(
-                                                    'errors.no_internet_ai'
-                                                        .tr()),
-                                                backgroundColor:
-                                                    Colors.redAccent,
-                                                duration:
-                                                    const Duration(seconds: 3),
-                                              ),
-                                            );
-                                            return;
-                                          }
-                                        }
 
                                         if (_showOnboardingGuide) {
                                           if (mounted) {
@@ -1705,23 +1687,36 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                       text: 'welcome.start_button'.tr(),
                                     ),
                                   ),
-                                  const SizedBox(height: 14),
+                                  const SizedBox(height: 12),
                                   QuickMatchButton(
                                     onTap: () => QuickMatchDialog.show(context),
                                   ),
-                                  const SizedBox(height: 12),
+                                  const SizedBox(height: 10),
                                   FriendRaceButton(
                                     onTap: () =>
                                         FriendRaceEntryDialog.show(context),
                                   ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                          child: BasariButton(
+                                              onStart: widget.onStart)),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                          child: TierListButton(
+                                              onPressed: widget.onStart)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _buildShopButton(),
                                 ],
                               ),
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 20),
 
-                          // Secondary Actions
-                          // Secondary Actions
+                          // Retention & Daily Loop (doğrudan görünür)
                           ScaleTransition(
                             scale: _buttonScaleAnimation,
                             child: Padding(
@@ -1729,42 +1724,38 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   const EdgeInsets.symmetric(horizontal: 20),
                               child: Column(
                                 children: [
+                                  DailyGoalCard(onTokensChanged: _loadUserData),
+                                  const SizedBox(height: 12),
+                                  ThemedEventCard(
+                                    onTap: (event) {
+                                      Navigator.pushReplacement(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => QuizFlow(
+                                            initialCategory: event.categoryName,
+                                            initialDifficulty: 'Orta',
+                                            initialDuration: 30,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 12),
                                   _buildFeaturedDailyCard(),
                                   const SizedBox(height: 12),
-                                  _buildMoreToggle(),
-                                  if (_showMoreHome) ...[
-                                    const SizedBox(height: 12),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                            child: BasariButton(
-                                                onStart: widget.onStart)),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                            child: TierListButton(
-                                                onPressed: widget.onStart)),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _buildBoardModeCard(),
-                                    const SizedBox(height: 12),
-                                    const DiscoverCard(),
-                                    DailyGoalCard(
-                                        onTokensChanged: _loadUserData),
-                                    const SizedBox(height: 12),
-                                    _buildShopButton(),
-                                    const SizedBox(height: 16),
-                                    QuestsPanel(),
-                                  ],
+                                  _buildBoardModeCard(),
+                                  const SizedBox(height: 12),
+                                  DiscoverCard(),
+                                  const SizedBox(height: 12),
+                                  QuestsPanel(),
                                 ],
                               ),
                             ),
                           ),
-                          const SizedBox(height: 40),
+                          const SizedBox(height: 118),
                         ],
                       ),
                     ),
-                  ),
                 ),
               ],
             ),
@@ -1774,44 +1765,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     );
   }
 
-  /// Ana ekranı sadeleştirir: ikincil kartlar (keşfet, mağaza, görevler, rozet) bu düğmenin arkasında.
-  Widget _buildMoreToggle() {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () => setState(() => _showMoreHome = !_showMoreHome),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.explore_rounded,
-                color: Color(0xFF818CF8), size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'welcome_screen.more_home'.tr(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-            AnimatedRotation(
-              turns: _showMoreHome ? 0.5 : 0,
-              duration: const Duration(milliseconds: 200),
-              child: const Icon(Icons.keyboard_arrow_down_rounded,
-                  color: Colors.white70),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  /// Mağaza kısayolu — ana ekranda My Tests ve Leaderboard ile birlikte doğrudan görünür.
 
   /// Güncelleme sonrası ilk açılışta (yeni kurulumda değil) "Yenilikler" penceresini bir kez gösterir.
   Future<void> _maybeShowWhatsNew() async {
@@ -1978,8 +1932,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           if (!hasSeen && mounted) {
             Future.delayed(const Duration(milliseconds: 1600), () {
               if (!mounted ||
-                  !StartupDialogQueue.tryClaim(StartupDialogType.monthlyWinner))
+                  !StartupDialogQueue.tryClaim(StartupDialogType.monthlyWinner)) {
                 return;
+              }
               _showWinnerDialog(winner);
               // Bir kere gösterdikten sonra işaretle
               prefs.setBool('seen_winner_$yearMonth', true);
@@ -1993,35 +1948,45 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   }
 
   Widget _buildShopButton() {
-    return GestureDetector(
-      onTap: () {
-        HapticService.light();
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const ShopScreen()),
-        );
-      },
-      child: SizedBox(
-        width: double.infinity,
-        child: GlassContainer(
-          borderRadius: 20,
-          opacity: 0.15,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Column(
-            children: [
-              const Icon(Icons.shopping_bag_rounded,
-                  color: Colors.amber, size: 22),
-              const SizedBox(height: 4),
-              Text(
-                'welcome_screen.shop'.tr(),
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                ),
+    return GlassContainer(
+      opacity: 0.12,
+      blur: 10,
+      borderRadius: 24,
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: () {
+          HapticService.light();
+          if (!MainShell.selectTabOf(context, 3)) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ShopScreen()),
+            );
+          }
+        },
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(AppRadius.small),
               ),
-            ],
-          ),
+              child: const Icon(Icons.shopping_bag_rounded,
+                  color: Colors.amber, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'welcome_screen.shop'.tr(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -2112,776 +2077,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class TierListButton extends StatelessWidget {
-  final VoidCallback onPressed;
-  const TierListButton({super.key, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassContainer(
-      opacity: 0.1,
-      blur: 10,
-      borderRadius: 24,
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: () {
-          HapticService.light();
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => PuanlarEkrani(),
-            ),
-          );
-        },
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.emoji_events_rounded,
-                  color: Color(0xFFFFD700), size: 18),
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                "welcome_screen.leaderboard".tr(),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.visible,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.2,
-                  height: 1.1,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class StartButton extends StatelessWidget {
-  final VoidCallback onPressed;
-  final void Function(String, String, int, {bool isDuel}) onPressedd;
-  final String text;
-
-  const StartButton({
-    required this.onPressedd,
-    required this.onPressed,
-    this.text = 'Quiz',
-    super.key,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFE6A141).withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () async {
-              HapticService.medium();
-              final hasInternet = await AppUtils.hasInternetConnection();
-              if (!hasInternet && context.mounted) {
-                _showOfflineDialog(context, onStart: onPressed);
-                return;
-              }
-              if (context.mounted) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => KategoriScreen(
-                        onStartQuiz: onPressedd, onStart: onPressed),
-                  ),
-                );
-              }
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFFFB75E), Color(0xFFED8F03)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.2), width: 1.5),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.play_arrow_rounded,
-                        color: Colors.white, size: 28),
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    text,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-void _showOfflineDialog(BuildContext context, {required VoidCallback onStart}) {
-  showDialog(
-    context: context,
-    builder: (context) => GlassAlertDialog(
-      backgroundColor: const Color(0xFF1E293B),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      title: Row(
-        children: [
-          const Icon(Icons.wifi_off_rounded, color: Colors.orangeAccent),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'errors.no_internet_title'.tr(),
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-      content: Text(
-        'errors.offline_only_past_tests'.tr(),
-        style:
-            const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text('common.cancel'.tr(),
-              style: const TextStyle(color: Colors.grey)),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.pop(context);
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => BasariHesaplaScreen(onStart: onStart),
-              ),
-            );
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF6366F1),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          child: Text('past_tests.view_past_tests'.tr(),
-              style: const TextStyle(color: Colors.white)),
-        ),
-      ],
-    ),
-  );
-}
-
-class QuickMatchButton extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const QuickMatchButton({required this.onTap, super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFFF5252).withValues(alpha: 0.35),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () async {
-              HapticService.medium();
-              final hasInternet = await AppUtils.hasInternetConnection();
-              if (!hasInternet && context.mounted) {
-                _showOfflineDialog(context, onStart: () {});
-                return;
-              }
-              onTap();
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFFF9F43), Color(0xFFFF5252)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.25), width: 1.5),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.flash_on_rounded,
-                        color: Colors.white, size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  Flexible(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'duel.quick_match'.tr(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900),
-                        ),
-                        Text(
-                          'duel.quick_match_sub'.tr(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.85),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class FriendRaceButton extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const FriendRaceButton({required this.onTap, super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF6366F1).withValues(alpha: 0.35),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () async {
-              HapticService.medium();
-              final hasInternet = await AppUtils.hasInternetConnection();
-              if (!hasInternet && context.mounted) {
-                _showOfflineDialog(context, onStart: () {});
-                return;
-              }
-              onTap();
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF818CF8), Color(0xFF4F46E5)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.25),
-                  width: 1.5,
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.bolt_rounded,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'duel.friend_race'.tr(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFD56B),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text(
-                      '1v1 ⚡',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class BasariButton extends StatelessWidget {
-  final VoidCallback onStart;
-  const BasariButton({required this.onStart, super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassContainer(
-      opacity: 0.1,
-      blur: 10,
-      borderRadius: 24,
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: () {
-          HapticService.light();
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => BasariHesaplaScreen(onStart: onStart),
-            ),
-          );
-        },
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.history_rounded,
-                  color: Colors.blueAccent, size: 18),
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                'welcome_screen.my_tests'.tr(),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.visible,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.2,
-                  height: 1.1,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class QuestsPanel extends StatefulWidget {
-  const QuestsPanel({super.key});
-
-  @override
-  State<QuestsPanel> createState() => _QuestsPanelState();
-}
-
-class _QuestsPanelState extends State<QuestsPanel> {
-  List<Quest> _quests = [];
-  bool _isLoading = true;
-  String _activeTab = 'daily'; // 'daily' or 'weekly'
-
-  @override
-  void initState() {
-    super.initState();
-    _loadQuests();
-  }
-
-  Future<void> _loadQuests() async {
-    try {
-      await QuestService.initializeQuests();
-      final quests = await QuestService.getActiveQuests();
-      if (mounted) {
-        setState(() {
-          _quests = quests;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Quests load error: $e');
-    }
-  }
-
-  Future<void> _claimReward(String questId) async {
-    try {
-      final success = await QuestService.claimQuestReward(questId);
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('quests.reward_claimed'.tr()),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-        _loadQuests();
-      }
-    } catch (e) {
-      debugPrint('Claim reward error: $e');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(20.0),
-          child: CircularProgressIndicator(color: Colors.amber),
-        ),
-      );
-    }
-
-    final filteredQuests = _quests.where((q) => q.type == _activeTab).toList();
-
-    return GlassContainer(
-      borderRadius: 24,
-      padding: const EdgeInsets.all(20),
-      opacity: 0.08,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    const Icon(Icons.star_rounded,
-                        color: Colors.amberAccent, size: 24),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'quests.title'.tr(),
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Tab buttons
-              Row(
-                children: [
-                  _buildTabButton('daily', 'quests.daily'.tr()),
-                  const SizedBox(width: 8),
-                  _buildTabButton('weekly', 'quests.weekly'.tr()),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (filteredQuests.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20.0),
-              child: Center(
-                child: Text(
-                  'quests.empty'.tr(),
-                  style: const TextStyle(color: Colors.white60),
-                ),
-              ),
-            )
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: EdgeInsets.zero,
-              itemCount: filteredQuests.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final quest = filteredQuests[index];
-                return _buildQuestItem(quest);
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabButton(String tab, String label) {
-    final isActive = _activeTab == tab;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _activeTab = tab;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isActive
-              ? Colors.amberAccent.withValues(alpha: 0.2)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isActive
-                ? Colors.amberAccent.withValues(alpha: 0.5)
-                : Colors.white24,
-            width: 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isActive ? Colors.amberAccent : Colors.white60,
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuestItem(Quest quest) {
-    final bool isCompleted = quest.currentProgress >= quest.targetProgress;
-    final progressVal =
-        (quest.currentProgress / quest.targetProgress).clamp(0.0, 1.0);
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isCompleted && !quest.isClaimed
-              ? Colors.amberAccent.withValues(alpha: 0.3)
-              : Colors.white.withValues(alpha: 0.05),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          // Icon
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: isCompleted
-                  ? (quest.isClaimed
-                      ? Colors.green.withValues(alpha: 0.1)
-                      : Colors.amber.withValues(alpha: 0.1))
-                  : Colors.white.withValues(alpha: 0.05),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              isCompleted
-                  ? (quest.isClaimed
-                      ? Icons.check_circle_outline_rounded
-                      : Icons.star_rounded)
-                  : Icons.bolt_rounded,
-              color: isCompleted
-                  ? (quest.isClaimed ? Colors.greenAccent : Colors.amberAccent)
-                  : Colors.grey,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  QuestService.getQuestTitle(quest.id),
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    decoration:
-                        quest.isClaimed ? TextDecoration.lineThrough : null,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                // Progress bar
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: progressVal,
-                    minHeight: 6,
-                    backgroundColor: Colors.white10,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      isCompleted ? Colors.greenAccent : Colors.amberAccent,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${quest.currentProgress}/${quest.targetProgress}',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Action Button / Reward Badge
-          _buildQuestAction(quest, isCompleted),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuestAction(Quest quest, bool isCompleted) {
-    if (quest.isClaimed) {
-      return Text(
-        'quests.claimed'.tr().toUpperCase(),
-        style: const TextStyle(
-          color: Colors.greenAccent,
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-        ),
-      );
-    }
-
-    if (isCompleted) {
-      return ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.amberAccent,
-          foregroundColor: Colors.black,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          elevation: 4,
-          shadowColor: Colors.amberAccent.withValues(alpha: 0.4),
-        ),
-        onPressed: () => _claimReward(quest.id),
-        child: Text(
-          'quests.claim'.tr(),
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '+${quest.rewardTokens}',
-            style: const TextStyle(
-              color: Colors.amberAccent,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(width: 2),
-          const Icon(
-            Icons.generating_tokens_outlined,
-            color: Colors.amberAccent,
-            size: 14,
-          ),
-        ],
       ),
     );
   }

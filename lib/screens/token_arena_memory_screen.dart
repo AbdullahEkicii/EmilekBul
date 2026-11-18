@@ -1,142 +1,255 @@
 import 'dart:math';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../services/haptic_service.dart';
+import '../services/sound_service.dart';
 import '../services/token_arena_rules.dart';
 import '../services/token_economy.dart';
+import '../theme/app_theme.dart';
 import 'token_arena_common.dart';
 
-/// Hafıza dizisi: gösterilen renk dizisini aynı sırayla tekrarla. Tek hata kaybettirir.
+/// Hafıza Dizisi: 5 adımlı neon renk dizisini hatasız tekrarla (1.8x ödeme).
 class TokenArenaMemoryScreen extends StatefulWidget {
-  const TokenArenaMemoryScreen({super.key});
+  final int initialStake;
+
+  const TokenArenaMemoryScreen({
+    super.key,
+    this.initialStake = TokenEconomy.miniGameStake,
+  });
 
   @override
   State<TokenArenaMemoryScreen> createState() => _TokenArenaMemoryScreenState();
 }
 
 class _TokenArenaMemoryScreenState extends State<TokenArenaMemoryScreen> {
-  static const _id = 'memory';
   static const _colors = [
-    Color(0xFFEF4444),
-    Color(0xFF10B981),
-    Color(0xFF3B82F6),
-    Color(0xFFFACC15),
+    Color(0xFFFF453A),
+    Color(0xFF0A84FF),
+    Color(0xFF30D158),
+    Color(0xFFFFD60A),
+  ];
+  static const _icons = [
+    Icons.whatshot_rounded,
+    Icons.bolt_rounded,
+    Icons.eco_rounded,
+    Icons.star_rounded,
   ];
 
-  final Random _random = Random();
-  List<int> _sequence = const [];
-  int _showIndex = -1; // -1: gösterim yok
-  int _inputStep = 0;
+  final _rng = Random();
+  late int _stake;
+  int _balance = 0;
+
+  List<int> _seq = const [];
+  int _step = 0;
+  int? _lit;
   bool _showing = false;
   bool _playing = false;
-  bool _busy = false;
   bool? _won;
-  int _generation = 0; // eski zamanlayıcıları iptal etmek için
+  int _payout = 0;
 
   @override
-  void dispose() {
-    _generation++;
-    super.dispose();
+  void initState() {
+    super.initState();
+    _stake = widget.initialStake;
+    _refreshBalance();
+  }
+
+  Future<void> _refreshBalance() async {
+    final bal = await loadArenaBalance();
+    if (mounted) setState(() => _balance = bal);
   }
 
   Future<void> _start() async {
-    if (_busy || _playing || _showing) return;
-    setState(() => _busy = true);
-    final ok = await arenaStake(context, _id);
-    if (!mounted) return;
-    setState(() => _busy = false);
-    if (!ok) return;
-    _sequence = TokenArenaRules.buildSequence(_random);
+    if (!await arenaStake(context, 'memory', stake: _stake)) return;
+    final seq = TokenArenaRules.buildSequence(_rng);
     setState(() {
-      _won = null;
+      _seq = seq;
+      _step = 0;
       _playing = true;
-      _inputStep = 0;
+      _showing = true;
+      _won = null;
+      _payout = 0;
     });
-    _showSequence(++_generation);
-  }
+    _refreshBalance();
 
-  Future<void> _showSequence(int gen) async {
-    setState(() => _showing = true);
-    for (var i = 0; i < _sequence.length; i++) {
-      await Future.delayed(const Duration(milliseconds: 350));
-      if (!mounted || gen != _generation) return;
-      setState(() => _showIndex = i);
-      await Future.delayed(const Duration(milliseconds: 600));
-      if (!mounted || gen != _generation) return;
-      setState(() => _showIndex = -1);
+    for (final c in seq) {
+      if (!mounted) return;
+      await Future.delayed(const Duration(milliseconds: 220));
+      if (!mounted) return;
+      setState(() => _lit = c);
+      HapticService.selection();
+      await Future.delayed(const Duration(milliseconds: 440));
+      if (!mounted) return;
+      setState(() => _lit = null);
     }
-    if (!mounted || gen != _generation) return;
-    setState(() => _showing = false);
+    if (mounted) setState(() => _showing = false);
   }
 
-  void _tap(int color) {
+  Future<void> _tap(int color) async {
     if (!_playing || _showing) return;
-    if (!TokenArenaRules.memoryTapCorrect(_sequence, _inputStep, color)) {
-      _finish(false);
+    setState(() => _lit = color);
+    Future.delayed(const Duration(milliseconds: 160), () {
+      if (mounted) setState(() => _lit = null);
+    });
+
+    if (!TokenArenaRules.memoryTapCorrect(_seq, _step, color)) {
+      setState(() {
+        _playing = false;
+        _won = false;
+        _payout = 0;
+      });
+      await arenaFinish('memory', false, stake: _stake);
+      _refreshBalance();
       return;
     }
-    final next = _inputStep + 1;
-    if (next >= _sequence.length) {
-      _finish(true);
-    } else {
-      setState(() => _inputStep = next);
-    }
-  }
 
-  Future<void> _finish(bool won) async {
-    _generation++;
-    setState(() {
-      _playing = false;
-      _won = won;
-      _showIndex = -1;
-    });
-    await arenaFinish(_id, won);
+    final nextStep = _step + 1;
+    if (nextStep >= _seq.length) {
+      final paid = await arenaFinish('memory', true, stake: _stake);
+      setState(() {
+        _step = nextStep;
+        _playing = false;
+        _won = true;
+        _payout = paid;
+      });
+      _refreshBalance();
+      return;
+    }
+
+    SoundService.playCorrect();
+    HapticService.light();
+    setState(() => _step = nextStep);
   }
 
   @override
   Widget build(BuildContext context) {
-    final hint = _showing
+    final promptText = _showing
         ? 'mg.watch'.tr()
-        : _playing
-            ? 'mg.your_turn'.tr()
-            : 'mg.memory_desc'.tr();
+        : (_playing ? 'mg.your_turn'.tr() : 'mg.memory_ready'.tr());
+
     return ArenaScaffold(
       title: 'mg.memory'.tr(),
+      balance: _balance,
+      accentColor: AppColors.purple,
+      ruleSummary: 'mg.memory_rule'.tr(),
+      onBalanceTap: () => openTokenEarnScreen(context, onReturned: _refreshBalance),
       child: Column(
         children: [
-          Text(hint, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.surface.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: (_showing ? AppColors.amber : AppColors.purple)
+                    .withValues(alpha: 0.4),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  promptText,
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: _showing ? AppColors.amber : Colors.white,
+                  ),
+                ),
+                Row(
+                  children: List.generate(TokenArenaRules.memoryLength, (i) {
+                    final filled = i < _step;
+                    return Container(
+                      width: 12,
+                      height: 12,
+                      margin: const EdgeInsets.only(left: 6),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: filled ? AppColors.success : Colors.white24,
+                        boxShadow: filled
+                            ? [
+                                BoxShadow(
+                                  color: AppColors.success.withValues(alpha: 0.5),
+                                  blurRadius: 6,
+                                ),
+                              ]
+                            : null,
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           Expanded(
             child: GridView.count(
               crossAxisCount: 2,
               mainAxisSpacing: 14,
               crossAxisSpacing: 14,
-              children: [
-                for (var c = 0; c < _colors.length; c++)
-                  GestureDetector(
-                    onTap: () => _tap(c),
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 150),
-                      opacity: _showIndex >= 0 && _sequence[_showIndex] == c ? 1 : 0.35,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: _colors[c],
-                          borderRadius: BorderRadius.circular(18),
-                        ),
+              children: List.generate(_colors.length, (i) {
+                final active = _lit == i;
+                final base = _colors[i];
+                return GestureDetector(
+                  onTap: () => _tap(i),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    decoration: BoxDecoration(
+                      color: active ? base : base.withValues(alpha: 0.24),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: active ? Colors.white : base.withValues(alpha: 0.7),
+                        width: active ? 3 : 1.5,
+                      ),
+                      boxShadow: active
+                          ? [
+                              BoxShadow(
+                                color: base.withValues(alpha: 0.75),
+                                blurRadius: 28,
+                                spreadRadius: 2,
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Center(
+                      child: Icon(
+                        _icons[i],
+                        size: active ? 52 : 40,
+                        color: active ? Colors.white : base.withValues(alpha: 0.85),
                       ),
                     ),
                   ),
-              ],
+                );
+              }),
             ),
           ),
-          const SizedBox(height: 16),
           if (_won != null) ...[
-            ArenaResultBanner(won: _won!),
-            const SizedBox(height: 14),
+            ArenaResultBanner(
+              won: _won!,
+              stake: _stake,
+              payoutAmount: _payout,
+              currentBalance: _balance,
+              onEarnTokens: () =>
+                  openTokenEarnScreen(context, onReturned: _refreshBalance),
+            ),
+            const SizedBox(height: 12),
           ],
-          ArenaPlayButton(
-            label: _playing || _showing ? 'mg.your_turn'.tr() : 'mg.play'.tr(args: ['${TokenEconomy.miniGameStake}']),
-            onPressed: _playing || _showing || _busy ? null : _start,
-          ),
+          if (!_playing) ...[
+            ArenaStakeSelector(
+              selectedStake: _stake,
+              onSelected: (v) => setState(() => _stake = v),
+              accentColor: AppColors.purple,
+            ),
+            const SizedBox(height: 12),
+            ArenaPlayButton(
+              label: 'mg.play'.tr(args: ['$_stake']),
+              onPressed: _start,
+              color: AppColors.purple,
+            ),
+          ],
         ],
       ),
     );

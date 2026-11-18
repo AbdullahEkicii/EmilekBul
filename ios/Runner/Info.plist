@@ -79,7 +79,7 @@
 
 	<!-- Google Mobile Ads (AdMob) -->
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-2034009761866400~2519615493</string>
+	<string>ca-app-pub-2034009761866400~8639341567</string>
 
 	<!-- SKAdNetworkItems for AdMob & Ad Networks -->
 	<key>SKAdNetworkItems</key>

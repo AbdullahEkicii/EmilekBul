@@ -13,6 +13,7 @@ import '../services/sound_service.dart';
 import '../services/performance_service.dart';
 import '../services/fullscreen_service.dart';
 import '../services/achievement_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/navigation_buttons.dart';
 import '../widgets/my_native_ad.dart';
@@ -309,17 +310,13 @@ class _AccountScreenState extends State<AccountScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.backgroundTop,
       body: Stack(
         children: [
           // Background Gradient
           Container(
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-              ),
+              gradient: AppColors.airyBackgroundGradient,
             ),
           ),
           _buildBackgroundOrbs(),

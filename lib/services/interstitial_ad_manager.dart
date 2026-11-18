@@ -73,14 +73,33 @@ class InterstitialAdManager {
     );
   }
 
+  static int _miniGameRounds = 0;
+
+  /// Mini-oyun (Token Arena) turları çok kısa sürdüğü için her 3 turda bir
+  /// normal test sayacını artırır ve mevcut soğuma/frekans kurallarına uyar.
+  static Future<void> onMiniGameRoundFinished({
+    required String source,
+    VoidCallback? onDone,
+  }) async {
+    _miniGameRounds++;
+    if (_miniGameRounds % 3 == 0) {
+      await onTestFinished(source: source, onDone: onDone);
+    } else {
+      onDone?.call();
+    }
+  }
+
   /// Bir test bittiğinde çağrılır. Reklam gösterilirse kapandıktan sonra,
   /// gösterilmezse hemen [onDone] çalışır. [source]: 'solo' veya 'duel'.
-  static Future<void> onTestFinished({required String source, required VoidCallback onDone}) async {
+  static Future<void> onTestFinished({
+    required String source,
+    VoidCallback? onDone,
+  }) async {
     var called = false;
     void finish() {
       if (called) return;
       called = true;
-      onDone();
+      onDone?.call();
     }
 
     try {

@@ -1,6 +1,7 @@
 import '../models/question.dart';
 import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'offline_category_questions.dart';
 
 class OfflineQuizService {
   static final Map<String, List<Question>> _offlineQuestions = {
@@ -125,6 +126,31 @@ class OfflineQuizService {
       Question(question: "ما هو أطول نهر في العالم؟", options: ["الأمازون", "النيل", "يانغتسي", "الميسيسيبي"], correctIndex: 1),
     ],
   };
+
+  /// Kategori bazlı çevrimdışı başlangıç soruları döner (yetersizse genel havuzdan tamamlar).
+  static List<Question> getCategoryQuestions({
+    required String category,
+    required String languageCode,
+    int count = 5,
+    Set<String> exclude = const {},
+  }) {
+    final lang = languageCode.split(RegExp('[_-]')).first.toLowerCase();
+    final langMap = offlineCategoryQuestions[lang] ?? offlineCategoryQuestions['en']!;
+    final catList = List<Question>.from(langMap[category] ?? const [])
+      ..shuffle(Random());
+    final picked = catList.where((q) => !exclude.contains(q.question)).take(count).toList();
+    if (picked.length < count) {
+      final seen = {...exclude, ...picked.map((q) => q.question)};
+      picked.addAll(
+        getFallbackQuestions(
+          languageCode: languageCode,
+          count: count - picked.length,
+          exclude: seen,
+        ),
+      );
+    }
+    return picked;
+  }
 
   /// Son çare: hazır başlangıç sorularından [exclude] içindekileri tekrarlamadan
   /// en fazla [count] soru döndürür. Dil yoksa 'en'e düşer. Hata fırlatmaz.

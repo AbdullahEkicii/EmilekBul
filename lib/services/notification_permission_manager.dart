@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'analytics_service.dart';
+import 'push_notification_service.dart';
 
 class NotificationPermissionManager {
   static bool _hasCheckedCount = false;
@@ -86,6 +87,9 @@ class NotificationPermissionManager {
       result: allPermissionsGranted ? 'granted' : 'denied',
       trigger: trigger,
     );
+    if (allPermissionsGranted) {
+      PushNotificationService.onPermissionGranted().catchError((_) {});
+    }
     return allPermissionsGranted;
   }
 

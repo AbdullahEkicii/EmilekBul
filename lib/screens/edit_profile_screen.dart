@@ -5,8 +5,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/user_service.dart';
 import 'shop_screen.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/my_native_ad.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../constants/app_constants.dart';
+import '../theme/app_theme.dart';
 import '../utils/app_utils.dart';
 import 'package:emilekbul/services/haptic_service.dart';
 
@@ -36,11 +38,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   List<String> _ownedTitles = [];
 
   // Tema Renkleri
-  static const Color primaryDark = Color(0xFF0F172A);
-  static const Color secondaryDark = Color(0xFF1E293B);
-  static const Color neonPurple = Color(0xFF8B5FFF);
-  static const Color neonBlue = Color(0xFF4ECDC4);
-  static const Color neonPink = Color(0xFFFF6B9D);
+  static const Color primaryDark = AppColors.backgroundTop;
+  static const Color secondaryDark = AppColors.backgroundMiddle;
+  static const Color neonPurple = AppColors.purple;
+  static const Color neonBlue = AppColors.accent;
+  static const Color neonPink = AppColors.danger;
 
   @override
   void initState() {
@@ -681,7 +683,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 40),
+                          const SizedBox(height: 24),
+                          const MyNativeAd(height: 65),
+                          const SizedBox(height: 24),
                         ],
                       ),
                     ),

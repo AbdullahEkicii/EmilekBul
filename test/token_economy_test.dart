@@ -19,6 +19,13 @@ void main() {
         expect(v, greaterThan(0));
       }
     });
+
+    test('sıkılaştırılmış ekonomi jeton kıtlığını korur', () {
+      expect(TokenEconomy.offlineQuizReward, lessThan(TokenEconomy.quizEntryCost));
+      expect(TokenEconomy.dailyRewardAmount, lessThan(TokenEconomy.duelEntryCost));
+      expect(TokenEconomy.miniGamePayoutMultiplier, lessThan(2.0));
+      expect(TokenEconomy.arenaStakes, [25, 50, 100]);
+    });
   });
 
   group('TokenEconomy kazanımları', () {
@@ -30,8 +37,9 @@ void main() {
       expect(TokenEconomy.referrerRewardCap, greaterThan(0));
     });
 
-    test('hoşgeldin ve günlük ödül eski değerlerin altında', () {
-      expect(TokenEconomy.welcomeBonus, lessThan(100));
+    test('başlangıç bakiyesi 0 ve hoşgeldin hediyesi 40 jeton', () {
+      expect(TokenEconomy.startingTokens, 0);
+      expect(TokenEconomy.welcomeBonus, 40);
       expect(TokenEconomy.dailyRewardAmount, lessThan(50));
     });
 
@@ -60,6 +68,17 @@ void main() {
             watchedToday: TokenEconomy.adGoalCount, claimedToday: true),
         isFalse,
       );
+    });
+  });
+
+  group('offlinePerformanceBonus', () {
+    test('kusursuz, yüksek ve orta doğruluk oranlarına doğru bonus verir', () {
+      expect(TokenEconomy.offlinePerformanceBonus(score: 5, totalQuestions: 5), 15);
+      expect(TokenEconomy.offlinePerformanceBonus(score: 4, totalQuestions: 5), 8);
+      expect(TokenEconomy.offlinePerformanceBonus(score: 3, totalQuestions: 5), 4);
+      expect(TokenEconomy.offlinePerformanceBonus(score: 2, totalQuestions: 5), 0);
+      expect(TokenEconomy.offlinePerformanceBonus(score: 0, totalQuestions: 5), 0);
+      expect(TokenEconomy.offlinePerformanceBonus(score: 5, totalQuestions: 0), 0);
     });
   });
 }

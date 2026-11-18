@@ -12,12 +12,16 @@ import '../models/question.dart';
 import '../services/ai_api_service.dart';
 import '../services/database_helper.dart';
 import '../services/haptic_service.dart';
+import '../services/interstitial_ad_manager.dart';
 import '../services/league_service.dart';
 import '../services/offline_quiz_service.dart';
+import '../services/rewarded_boost.dart';
 import '../services/sound_service.dart';
 import '../services/token_service.dart';
 import '../utils/app_motion.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/my_native_ad.dart';
+import '../widgets/rewarded_ad_manager.dart';
 
 enum _Phase { idle, loading, running, finished }
 
@@ -92,6 +96,10 @@ class _SpeedRoundScreenState extends State<SpeedRoundScreen> with WidgetsBinding
   int? _selected; // Cevaplanan şık (geri bildirim süresince kilitli)
   bool _rewardedNow = false;
   bool _paused = false;
+  final RewardedBoost _rewardedBoost = RewardedBoost();
+  int _lastPayout = 0;
+  bool _doubleRewardClaimed = false;
+  bool _doubleRewardLoading = false;
 
   Timer? _timer;
   Timer? _flashTimer;
@@ -101,6 +109,7 @@ class _SpeedRoundScreenState extends State<SpeedRoundScreen> with WidgetsBinding
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadBest();
+    _rewardedBoost.load();
   }
 
   @override
@@ -164,6 +173,9 @@ class _SpeedRoundScreenState extends State<SpeedRoundScreen> with WidgetsBinding
       _timeLeft = SpeedRoundScreen.roundSeconds;
       _selected = null;
       _rewardedNow = false;
+      _lastPayout = 0;
+      _doubleRewardClaimed = false;
+      _doubleRewardLoading = false;
       _paused = false;
       _phase = _Phase.running;
     });
@@ -236,6 +248,7 @@ class _SpeedRoundScreenState extends State<SpeedRoundScreen> with WidgetsBinding
     // Doğru cevap başına jeton (giriş ücreti düşüldükten sonra)
     final payout = score * TokenEconomy.speedRoundTokensPerCorrect;
     if (payout > 0) {
+      _rewardedBoost.load();
       await TokenService.addTokens(payout, source: 'speed_round_play');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -258,6 +271,25 @@ class _SpeedRoundScreenState extends State<SpeedRoundScreen> with WidgetsBinding
     setState(() {
       _best = best;
       _rewardedNow = rewarded;
+      _lastPayout = payout;
+    });
+
+    unawaited(InterstitialAdManager.onTestFinished(source: 'speed_round'));
+  }
+
+  Future<void> _claimDoubleReward(int payout) async {
+    if (_doubleRewardClaimed || _doubleRewardLoading || payout <= 0) return;
+    setState(() => _doubleRewardLoading = true);
+    final claimed = await claimDoubleRewardWithAd(
+      context,
+      boost: _rewardedBoost,
+      payout: payout,
+      tokenSource: 'speed_round_double_reward',
+    );
+    if (!mounted) return;
+    setState(() {
+      _doubleRewardLoading = false;
+      if (claimed) _doubleRewardClaimed = true;
     });
   }
 
@@ -282,6 +314,10 @@ class _SpeedRoundScreenState extends State<SpeedRoundScreen> with WidgetsBinding
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: _buildBody(context.locale.languageCode),
                 ),
+              ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 4, 16, 6),
+                child: MyNativeAd(height: 65),
               ),
             ],
           ),
@@ -509,7 +545,16 @@ class _SpeedRoundScreenState extends State<SpeedRoundScreen> with WidgetsBinding
                 ],
               ),
             ),
-            const SizedBox(height: 28),
+            if (!widget.tournamentMode && _lastPayout > 0) ...[
+              const SizedBox(height: 16),
+              DoubleRewardCard(
+                payout: _lastPayout,
+                claimed: _doubleRewardClaimed,
+                loading: _doubleRewardLoading,
+                onTap: () => _claimDoubleReward(_lastPayout),
+              ),
+            ],
+            const SizedBox(height: 24),
             if (widget.tournamentMode)
               _buildPrimaryButton(
                 'tournament.submit_round'.tr(),
@@ -558,6 +603,129 @@ class _SpeedRoundScreenState extends State<SpeedRoundScreen> with WidgetsBinding
           label,
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16),
         ),
+      ),
+    );
+  }
+}
+
+/// Soğuma süresi ve reklam hazırlığını kontrol edip ödüllü reklamla [payout] kadar ek jeton verir.
+Future<bool> claimDoubleRewardWithAd(
+  BuildContext context, {
+  required RewardedBoost boost,
+  required int payout,
+  required String tokenSource,
+}) async {
+  try {
+    final cooldown = await RewardedAdManager.getRemainingCooldown();
+    if (!context.mounted) return false;
+    if (cooldown > Duration.zero) {
+      final mins = cooldown.inMinutes.remainder(60).toString().padLeft(2, '0');
+      final secs = cooldown.inSeconds.remainder(60).toString().padLeft(2, '0');
+      final formatted = cooldown.inHours > 0
+          ? '${cooldown.inHours}:$mins:$secs'
+          : '$mins:$secs';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('token.reward_ad_cooldown'.tr(args: [formatted]))),
+      );
+      return false;
+    }
+    if (!boost.isReady) {
+      boost.load();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('common.ad_not_ready'.tr())),
+      );
+      return false;
+    }
+    final ok = await boost.showAndWait();
+    if (!context.mounted) return false;
+    if (ok) {
+      await TokenService.addTokens(payout, source: tokenSource);
+      HapticService.celebrate();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('result.double_reward_done'.tr(args: ['$payout'])),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+      boost.load();
+      return true;
+    }
+    boost.load();
+    return false;
+  } catch (e) {
+    debugPrint('Double reward claim error: $e');
+    return false;
+  }
+}
+
+/// Tur sonucu kazanılan jetonları ödüllü reklamla ikiye katlama kartı.
+class DoubleRewardCard extends StatelessWidget {
+  final int payout;
+  final bool claimed;
+  final bool loading;
+  final VoidCallback onTap;
+
+  const DoubleRewardCard({
+    super.key,
+    required this.payout,
+    required this.claimed,
+    required this.loading,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFFFFD56B).withValues(alpha: 0.2),
+            const Color(0xFFFF9F43).withValues(alpha: 0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFFFFD56B).withValues(alpha: 0.45),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.ondemand_video_rounded,
+              color: Color(0xFFFFD56B), size: 26),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              claimed
+                  ? 'result.double_reward_done'.tr(args: ['$payout'])
+                  : 'result.double_reward_desc'.tr(args: ['$payout']),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  height: 1.3),
+            ),
+          ),
+          if (!claimed) ...[
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: loading ? null : onTap,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFD56B),
+                foregroundColor: Colors.black,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
+              child: Text('result.double_reward_button'.tr(),
+                  style: const TextStyle(fontWeight: FontWeight.w900)),
+            ),
+          ],
+        ],
       ),
     );
   }

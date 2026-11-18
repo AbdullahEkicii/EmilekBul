@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/question.dart';
 import '../services/database_helper.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/my_native_ad.dart';
 
 /// Yanlışlarım: son 14 günde yanlış cevaplanan soruları, doğru cevaplarıyla birlikte gösterir.
 /// Yalnızca [requiredTests] ve üzeri test çözmüş kullanıcılara açılır.
@@ -41,41 +42,64 @@ class _WrongAnswersScreenState extends State<WrongAnswersScreen> {
           ),
         ),
         child: SafeArea(
-          child: FutureBuilder<List<Question>>(
-            future: _questions,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)));
-              }
-              final questions = snapshot.data ?? const <Question>[];
-              if (questions.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Text(
-                      'wrong_review.empty'.tr(),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
-                    ),
-                  ),
-                );
-              }
-              return ListView.separated(
-                padding: const EdgeInsets.all(20),
-                physics: const BouncingScrollPhysics(),
-                itemCount: questions.length + 1,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    return Text(
-                      'wrong_review.subtitle'.tr(),
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
+          child: Column(
+            children: [
+              Expanded(
+                child: FutureBuilder<List<Question>>(
+                  future: _questions,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState != ConnectionState.done) {
+                      return const Center(
+                          child: CircularProgressIndicator(
+                              color: Color(0xFF6366F1)));
+                    }
+                    final questions = snapshot.data ?? const <Question>[];
+                    if (questions.isEmpty) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Text(
+                            'wrong_review.empty'.tr(),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.6),
+                                fontSize: 14),
+                          ),
+                        ),
+                      );
+                    }
+                    return ListView.separated(
+                      padding: const EdgeInsets.all(20),
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: questions.length + 1,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        if (index == 0) {
+                          return Text(
+                            'wrong_review.subtitle'.tr(),
+                            style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.6),
+                                fontSize: 13),
+                          );
+                        }
+                        final qIdx = index - 1;
+                        final card = _buildQuestionCard(questions[qIdx]);
+                        final showAdAfter = (qIdx + 1) % 4 == 0 ||
+                            (qIdx == questions.length - 1 && questions.length < 4);
+                        if (!showAdAfter) return card;
+                        return Column(
+                          children: [
+                            card,
+                            const SizedBox(height: 12),
+                            const MyNativeAd(height: 65),
+                          ],
+                        );
+                      },
                     );
-                  }
-                  return _buildQuestionCard(questions[index - 1]);
-                },
-              );
-            },
+                  },
+                ),
+              ),
+            ],
           ),
         ),
       ),

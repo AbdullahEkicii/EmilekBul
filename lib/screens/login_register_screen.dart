@@ -1,3 +1,4 @@
+import 'dart:math';
 import '../services/performance_service.dart';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -5,15 +6,18 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth.dart';
 import '../services/user_service.dart';
+import '../services/token_economy.dart';
 import '../services/token_service.dart';
-import 'welcome_screen.dart';
+import '../main.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../services/game_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/my_native_ad.dart';
 import '../widgets/language_selector_button.dart';
 import '../services/analytics_service.dart';
+import '../theme/app_theme.dart';
 // import 'package:email_otp/email_otp/email_otp.dart'; // Removed for Firebase flow
 
 class LoginRegisterScreen extends StatefulWidget {
@@ -233,10 +237,9 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen>
 
         if (mounted) {
           _showSuccessSnackBar('auth.google_success'.tr());
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (context) => WelcomeScreen(onStart: widget.onStart)),
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const QuizFlow()),
+            (route) => false,
           );
         }
       }
@@ -318,11 +321,9 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen>
           if (mounted) {
             setState(() => isLoading = false);
             _showSuccessSnackBar('auth.welcome_back'.tr());
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => WelcomeScreen(onStart: widget.onStart),
-              ),
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => const QuizFlow()),
+              (route) => false,
             );
           }
         } else {
@@ -417,11 +418,9 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen>
           if (mounted) {
             setState(() => isLoading = false);
             _showSuccessSnackBar('auth.register_success'.tr());
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => WelcomeScreen(onStart: widget.onStart),
-              ),
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => const QuizFlow()),
+              (route) => false,
             );
           }
         }
@@ -554,11 +553,15 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen>
   Future<void> _syncTokens(String uid) async {
     try {
       final userDoc = await _firestore.collection('users').doc(uid).get();
-      if (userDoc.exists) {
-        final tokens = userDoc.data()?['tokens'] as int? ?? 30;
-        await TokenService.updateTokenAmount(tokens);
+      final remoteTokens =
+          (userDoc.data()?['tokens'] as num?)?.toInt();
+      if (userDoc.exists && remoteTokens != null) {
+        await TokenService.updateTokenAmount(remoteTokens, syncRemote: false);
       } else {
-        await TokenService.updateTokenAmount(30);
+        final localTokens = await TokenService.getTokenAmount();
+        await TokenService.updateTokenAmount(
+          max(localTokens, TokenEconomy.startingTokens),
+        );
       }
     } catch (e) {
       debugPrint('Token sync error: $e');
@@ -568,21 +571,13 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A), // Midnight Blue Base
+      backgroundColor: AppColors.backgroundTop,
       body: Stack(
         children: [
           // Gradient Background
           Container(
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFF0F172A),
-                  Color(0xFF1E293B),
-                  Color(0xFF0F172A)
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              gradient: AppColors.airyBackgroundGradient,
             ),
           ),
 
@@ -690,13 +685,13 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen>
                                             'auth.google_success'.tr());
 
                                         if (context.mounted) {
-                                          Navigator.pushReplacement(
-                                            context,
+                                          Navigator.of(context)
+                                              .pushAndRemoveUntil(
                                             MaterialPageRoute(
                                               builder: (context) =>
-                                                  WelcomeScreen(
-                                                      onStart: widget.onStart),
+                                                  const QuizFlow(),
                                             ),
+                                            (route) => false,
                                           );
                                         }
                                       } else if (mounted) {
@@ -941,7 +936,9 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen>
                               style:
                                   GoogleFonts.poppins(color: Colors.white38)),
                         ),
-                      )
+                      ),
+                    const SizedBox(height: 20),
+                    const MyNativeAd(height: 65),
                   ],
                 ),
               ),

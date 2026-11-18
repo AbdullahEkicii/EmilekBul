@@ -4,14 +4,20 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/league_service.dart';
+import '../theme/app_theme.dart';
 import '../services/user_service.dart';
 import '../utils/app_utils.dart';
+import '../widgets/background_orbs.dart';
+import '../widgets/friends_dialog.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/my_native_ad.dart';
 import '../widgets/navigation_buttons.dart';
+import 'tournament_screen.dart';
 
 class LeagueScreen extends StatefulWidget {
-  const LeagueScreen({super.key});
+  final bool embedded;
+
+  const LeagueScreen({super.key, this.embedded = false});
 
   @override
   State<LeagueScreen> createState() => _LeagueScreenState();
@@ -62,46 +68,91 @@ class _LeagueScreenState extends State<LeagueScreen> {
 
   @override
   Widget build(BuildContext context) {
+    EasyLocalization.of(context)?.locale;
+    Localizations.maybeLocaleOf(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              child: Row(
-                children: [
-                  const AppBackButton(),
-                  const SizedBox(width: 10),
-                  Text(
-                    'league.title'.tr(),
-                    style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
+      backgroundColor: AppColors.backgroundTop,
+      body: Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              gradient: AppColors.airyBackgroundGradient,
             ),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: ListView(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                        children: [
-                          _buildHeaderCard(),
-                          const SizedBox(height: 16),
-                          if (_entries.isEmpty) _buildEmpty() else ..._buildRows(),
-                        ],
+          ),
+          const BackgroundOrbs(),
+          SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: Row(
+                    children: [
+                      if (!widget.embedded) ...[
+                        const AppBackButton(),
+                        const SizedBox(width: 10),
+                      ],
+                      Expanded(
+                        child: Text(
+                          'league.title'.tr(),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold),
+                        ),
                       ),
-                    ),
+                      IconButton(
+                        tooltip: 'friends.title'.tr(),
+                        onPressed: () => FriendsDialog.show(context),
+                        icon: const Icon(Icons.group_rounded,
+                            color: Colors.white70),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const TournamentScreen()),
+                        ),
+                        icon: const Icon(Icons.emoji_events_rounded,
+                            color: AppColors.goldSoft, size: 18),
+                        label: Text(
+                          'league.open_tournaments'.tr(),
+                          style: const TextStyle(
+                              color: AppColors.goldSoft,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: _loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : RefreshIndicator(
+                          onRefresh: _load,
+                          child: ListView(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 118),
+                            physics: const AlwaysScrollableScrollPhysics(
+                                parent: BouncingScrollPhysics()),
+                            children: [
+                              _buildHeaderCard(),
+                              if (_entries.length <= 5) ...[
+                                const SizedBox(height: 12),
+                                const MyNativeAd(height: 65),
+                              ],
+                              const SizedBox(height: 14),
+                              if (_entries.isEmpty)
+                                _buildEmpty()
+                              else
+                                ..._buildRows(),
+                            ],
+                          ),
+                        ),
+                ),
+              ],
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              child: MyNativeAd(height: 65),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -180,7 +231,8 @@ class _LeagueScreenState extends State<LeagueScreen> {
 
   List<Widget> _buildRows() {
     final myUid = FirebaseAuth.instance.currentUser?.uid;
-    return List.generate(_entries.length, (i) {
+    final rows = <Widget>[];
+    for (int i = 0; i < _entries.length; i++) {
       final entry = _entries[i];
       final rank = i + 1;
       final isMe = entry.uid == myUid;
@@ -193,53 +245,70 @@ class _LeagueScreenState extends State<LeagueScreen> {
               : Colors.white24;
       final hasAvatar = UserService.hasAvatar(entry.avatarIndex);
 
-      return Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: isMe ? _league.color.withValues(alpha: 0.14) : Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isMe ? _league.color.withValues(alpha: 0.7) : Colors.white12),
-        ),
-        child: Row(
-          children: [
-            Container(width: 4, height: 32, decoration: BoxDecoration(color: zoneColor, borderRadius: BorderRadius.circular(2))),
-            const SizedBox(width: 10),
-            SizedBox(
-              width: 28,
-              child: Text(
-                '$rank',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15),
-              ),
+      rows.add(
+        Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: isMe
+                ? _league.color.withValues(alpha: 0.22)
+                : AppColors.surfaceElevated.withValues(alpha: 0.45),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isMe
+                  ? _league.color.withValues(alpha: 0.75)
+                  : Colors.white.withValues(alpha: 0.14),
             ),
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: const Color(0xFF1E293B),
-              backgroundImage: hasAvatar
-                  ? ResizeImage(AssetImage(UserService.getAvatarPath(entry.avatarIndex)), width: 72, height: 72)
-                  : null,
-              child: hasAvatar ? null : const Icon(Icons.person_rounded, size: 18, color: Colors.white70),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                AppUtils.localizeUsername(entry.username),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: isMe ? FontWeight.w900 : FontWeight.w600,
-                  fontSize: 14,
+          ),
+          child: Row(
+            children: [
+              Container(width: 4, height: 32, decoration: BoxDecoration(color: zoneColor, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 28,
+                child: Text(
+                  '$rank',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15),
                 ),
               ),
-            ),
-            Text(
-              '${entry.weeklyPoints} ${'league.points'.tr()}',
-              style: TextStyle(color: _league.color, fontWeight: FontWeight.bold, fontSize: 13),
-            ),
-          ],
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.surface,
+                backgroundImage: hasAvatar
+                    ? ResizeImage(AssetImage(UserService.getAvatarPath(entry.avatarIndex)), width: 72, height: 72)
+                    : null,
+                child: hasAvatar ? null : const Icon(Icons.person_rounded, size: 18, color: Colors.white70),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  AppUtils.localizeUsername(entry.username),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: isMe ? FontWeight.w900 : FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              Text(
+                '${entry.weeklyPoints} ${'league.points'.tr()}',
+                style: TextStyle(color: _league.color, fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+            ],
+          ),
         ),
       );
-    });
+      if (_entries.length > 5 && (i == 4 || i == 11)) {
+        rows.add(
+          const Padding(
+            padding: EdgeInsets.only(bottom: 10),
+            child: MyNativeAd(height: 65),
+          ),
+        );
+      }
+    }
+    return rows;
   }
 }

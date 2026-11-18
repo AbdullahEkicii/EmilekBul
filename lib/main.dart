@@ -7,16 +7,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/ads_service.dart';
 import 'services/interstitial_ad_manager.dart';
+import 'widgets/rewarded_ad_manager.dart';
 import 'theme/app_theme.dart';
 import 'screens/animated_splash_screen.dart';
-import 'screens/welcome_screen.dart';
-import 'screens/kategori_screen.dart';
+import 'screens/main_shell.dart';
 import 'screens/quiz_screen.dart';
 import 'screens/loading_screen.dart';
 import 'models/question.dart';
 import 'services/question_pool_service.dart';
 import 'screens/test_sonucu_screen.dart';
 import 'services/notification_service.dart';
+import 'services/push_notification_service.dart';
 
 import 'services/analytics_service.dart';
 import 'services/user_service.dart';
@@ -41,7 +42,7 @@ void main() async {
   try {
     await Future.wait([
       Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform),
-      dotenv.load(),
+      dotenv.load().catchError((_) {}),
       EasyLocalization.ensureInitialized(),
       PerformanceService.init(),
     ]);
@@ -87,8 +88,10 @@ void main() async {
   Future(() async {
     await AdsService.init();
     InterstitialAdManager.warmUp();
+    RewardedAdManager.warmUp();
   });
   NotificationService.init().catchError((e) => debugPrint("Notif init error: $e"));
+  PushNotificationService.init().catchError((e) => debugPrint("Push init error: $e"));
 
   debugPrint('Startup: runApp öncesi ${startupWatch.elapsedMilliseconds} ms');
   WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -169,6 +172,7 @@ class QuizFlow extends StatefulWidget {
   final String? initialDifficulty;
   final int? initialDuration;
   final bool isOnboarding;
+  final int initialTabIndex;
 
   const QuizFlow({
     super.key,
@@ -176,6 +180,7 @@ class QuizFlow extends StatefulWidget {
     this.initialDifficulty,
     this.initialDuration,
     this.isOnboarding = false,
+    this.initialTabIndex = 0,
   });
 
   @override
@@ -183,7 +188,9 @@ class QuizFlow extends StatefulWidget {
 }
 
 class _QuizFlowState extends State<QuizFlow> {
-  String? _screenState; // welcome, category, quiz, result
+  final GlobalKey<MainShellState> _mainShellKey = GlobalKey<MainShellState>();
+  String? _screenState; // welcome, quiz, result
+  late int _activeTabIndex;
   bool _loading = false;
   bool _isDataReady = false;
 
@@ -204,6 +211,7 @@ class _QuizFlowState extends State<QuizFlow> {
   @override
   void initState() {
     super.initState();
+    _activeTabIndex = widget.initialTabIndex.clamp(0, 3);
 
     // Bildirim izinlerini kontrol et ve planla (UI render olduktan sonra)
     // NOT: Artık bu işlem WelcomeScreen veya LoginRegisterScreen içinde yapılıyor
@@ -295,8 +303,10 @@ class _QuizFlowState extends State<QuizFlow> {
   void _showCategoryScreen() {
     AnalyticsService.logScreenView(screenName: 'quiz_flow_category');
     setState(() {
-      _screenState = 'category';
+      _activeTabIndex = 1;
+      _screenState = 'welcome';
     });
+    _mainShellKey.currentState?.selectTab(1);
   }
 
   Future<void> _startQuiz(
@@ -367,10 +377,9 @@ class _QuizFlowState extends State<QuizFlow> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        if (_screenState != 'welcome' &&
-            _screenState != 'category' &&
-            _screenState != 'result') {
-          _screenState = 'category';
+        if (_screenState != 'welcome' && _screenState != 'result') {
+          _activeTabIndex = 1;
+          _screenState = 'welcome';
         }
       });
       
@@ -456,6 +465,7 @@ class _QuizFlowState extends State<QuizFlow> {
 
   void _onBackToWelcome() {
     setState(() {
+      _activeTabIndex = 0;
       _screenState = 'welcome';
       _questions = [];
       _userAnswers = [];
@@ -465,6 +475,7 @@ class _QuizFlowState extends State<QuizFlow> {
       _isOnboarding = false;
       _currentQuestionCount = 5;
     });
+    _mainShellKey.currentState?.selectTab(0);
   }
 
   void _onStartQuizTransition() {
@@ -476,14 +487,16 @@ class _QuizFlowState extends State<QuizFlow> {
 
   @override
   Widget build(BuildContext context) {
+    EasyLocalization.of(context)?.locale;
+    Localizations.maybeLocaleOf(context);
     if (_loading) {
       // If we are doing the initial guest login, just show a blank dark screen
       // so it seamlessly transitions from AnimatedSplashScreen without a 3rd splash
       if (_screenState == null) {
         return const Scaffold(
-          backgroundColor: Color(0xFF0F172A),
+          backgroundColor: AppColors.backgroundTop,
           body: Center(
-            child: CircularProgressIndicator(color: Colors.blueAccent),
+            child: CircularProgressIndicator(color: AppColors.accent),
           ),
         );
       }
@@ -494,11 +507,11 @@ class _QuizFlowState extends State<QuizFlow> {
     }
     switch (_screenState) {
       case 'welcome':
-        return WelcomeScreen(onStart: _showCategoryScreen, skipLoading: true);
-      case 'category':
-        return KategoriScreen(
-          onStartQuiz: _startQuiz,
+        return MainShell(
+          key: _mainShellKey,
+          initialIndex: _activeTabIndex,
           onStart: _showCategoryScreen,
+          onStartQuiz: _startQuiz,
         );
       case 'quiz':
         if (_questions.isEmpty) {
@@ -509,7 +522,8 @@ class _QuizFlowState extends State<QuizFlow> {
               if (!mounted) return;
               setState(() {
                 _loading = false;
-                _screenState = 'category';
+                _activeTabIndex = 1;
+                _screenState = 'welcome';
               });
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(

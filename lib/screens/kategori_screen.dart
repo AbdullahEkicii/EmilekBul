@@ -1,5 +1,5 @@
 import '../widgets/weak_topic_card.dart';
-import 'package:emilekbul/screens/welcome_screen.dart';
+import '../widgets/themed_event_card.dart';
 import 'package:flutter/material.dart';
 import '../widgets/glass_alert_dialog.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -7,8 +7,12 @@ import 'package:emilekbul/services/database_helper.dart';
 import 'package:emilekbul/widgets/token_widget.dart';
 import 'package:emilekbul/services/token_service.dart';
 import 'package:emilekbul/widgets/glass_container.dart';
+import 'package:emilekbul/widgets/background_orbs.dart';
 import 'package:emilekbul/widgets/navigation_buttons.dart';
 import 'package:emilekbul/widgets/my_native_ad.dart';
+import '../main.dart';
+import '../theme/app_theme.dart';
+import 'main_shell.dart';
 
 import '../models/category_model.dart';
 import '../constants/app_categories.dart';
@@ -21,11 +25,13 @@ import 'package:emilekbul/services/haptic_service.dart';
 class KategoriScreen extends StatefulWidget {
   final Function(String category, String difficulty, int duration, {bool isDuel}) onStartQuiz;
   final VoidCallback onStart;
+  final bool embedded;
 
   const KategoriScreen({
     super.key,
     required this.onStartQuiz,
     required this.onStart,
+    this.embedded = false,
   });
 
   @override
@@ -81,7 +87,7 @@ class _KategoriScreenState extends State<KategoriScreen>
     ),
     DifficultyItem(
       "Imkansız",
-      const Color(0xFF22223B),
+      const Color(0xFFA78BFA),
       Icons.warning_amber_rounded,
       "category_ui.difficulty_desc.impossible",
       45,
@@ -261,91 +267,110 @@ class _KategoriScreenState extends State<KategoriScreen>
 
   @override
   Widget build(BuildContext context) {
+    EasyLocalization.of(context)?.locale;
+    Localizations.maybeLocaleOf(context);
+    final topInset = MediaQuery.paddingOf(context).top;
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.backgroundTop,
       body: Stack(
         children: [
           Container(
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: SafeArea(
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: CustomScrollView(
-                  controller: _scrollController,
-                  physics: const ClampingScrollPhysics(),
-                  slivers: [
-                    const SliverToBoxAdapter(child: SizedBox(height: 10)),
-                    SliverToBoxAdapter(child: _buildHeader()),
-                    const SliverToBoxAdapter(child: SizedBox(height: 20)),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                        child: RepaintBoundary(child: _buildCategorySection()),
-                      ),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                    const SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 20.0),
-                        child: MyNativeAd(
-                          height: 70,
-                          keepDuringGrace: true,
-                        ),
-                      ),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                        child:
-                            RepaintBoundary(child: _buildDifficultySection()),
-                      ),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 32)),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                        child: _buildQuizPreview(),
-                      ),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 32)),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                        child: _buildActionButtons(),
-                      ),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 20)),
-                  ],
-                ),
-              ),
+              gradient: AppColors.airyBackgroundGradient,
             ),
           ),
-          Positioned(
-            top: 16,
-            left: 14,
-            child: AppHomeButton(
-              onTap: () {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                    builder: (context) => WelcomeScreen(
-                      onStart: widget.onStart,
-                      skipLoading: true,
+          const BackgroundOrbs(),
+          SafeArea(
+            bottom: false,
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: CustomScrollView(
+                controller: _scrollController,
+                physics: const ClampingScrollPhysics(),
+                slivers: [
+                  const SliverToBoxAdapter(child: SizedBox(height: 10)),
+                  SliverToBoxAdapter(child: _buildHeader()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                      child: ThemedEventCard(
+                        onTap: (event) {
+                          setState(() => _selectedCategory = event.categoryName);
+                        },
+                      ),
                     ),
                   ),
-                  (route) => false,
-                );
-              },
+                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                      child: RepaintBoundary(child: _buildCategorySection()),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20.0),
+                      child: MyNativeAd(
+                        height: 70,
+                        keepDuringGrace: true,
+                      ),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                      child: RepaintBoundary(child: _buildDifficultySection()),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                      child: _buildQuizPreview(),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                      child: _buildActionButtons(),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20.0),
+                      child: MyNativeAd(height: 65),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 118)),
+                ],
+              ),
             ),
           ),
+          if (!widget.embedded)
+            Positioned(
+              top: topInset + 10,
+              left: 14,
+              child: AppHomeButton(
+                onTap: () {
+                  if (MainShell.selectTabOf(context, 0)) return;
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                  } else {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => const QuizFlow()),
+                      (route) => false,
+                    );
+                  }
+                },
+              ),
+            ),
           Positioned(
-            top: 14,
+            top: topInset + 10,
             right: 14,
             child: GlassContainer(
               borderRadius: 50,
@@ -366,9 +391,8 @@ class _KategoriScreenState extends State<KategoriScreen>
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
         child: Column(
           children: [
-            Hero(
-              tag: 'app_logo',
-              child: Container(
+            if (widget.embedded)
+              Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.1),
@@ -377,8 +401,21 @@ class _KategoriScreenState extends State<KategoriScreen>
                 ),
                 child: Image.asset('lib/assets/app_icon.png',
                     width: 40, height: 40, cacheWidth: 120, cacheHeight: 120),
+              )
+            else
+              Hero(
+                tag: 'app_logo',
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                  ),
+                  child: Image.asset('lib/assets/app_icon.png',
+                      width: 40, height: 40, cacheWidth: 120, cacheHeight: 120),
+                ),
               ),
-            ),
             const SizedBox(height: 16),
             Text(
               'category_ui.title'.tr(),
@@ -1319,7 +1356,7 @@ class _KategoriScreenState extends State<KategoriScreen>
                               showDialog(
                                 context: context,
                                 builder: (ctx) => GlassAlertDialog(
-                                  backgroundColor: const Color(0xFF1E293B),
+                                  backgroundColor: AppColors.dialogSurface,
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                                   title: Row(
                                     children: [
@@ -1341,7 +1378,7 @@ class _KategoriScreenState extends State<KategoriScreen>
                                     ElevatedButton(
                                       onPressed: () => Navigator.pop(ctx),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFF6366F1),
+                                        backgroundColor: AppColors.accent,
                                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                       ),
                                       child: Text('common.ok'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -1396,7 +1433,7 @@ class _KategoriScreenState extends State<KategoriScreen>
                             Icons.play_arrow_rounded,
                             size: 28,
                             color: isEnabled
-                                ? const Color(0xFF667eea)
+                                ? AppColors.backgroundMiddle
                                 : Colors.white,
                           ),
                           const SizedBox(width: 8),
@@ -1406,7 +1443,7 @@ class _KategoriScreenState extends State<KategoriScreen>
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
                               color: isEnabled
-                                  ? const Color(0xFF667eea)
+                                  ? AppColors.backgroundMiddle
                                   : Colors.white,
                             ),
                           ),

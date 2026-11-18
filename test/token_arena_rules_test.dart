@@ -23,6 +23,10 @@ void main() {
         expect(TokenArenaRules.drawCard(r), inInclusiveRange(1, 13));
       }
     });
+
+    test('kasa avantajı korunur (EV < 1.0)', () {
+      expect(TokenArenaRules.hiLoExpectedValue(), lessThan(1.0));
+    });
   });
 
   group('Hafıza dizisi', () {
@@ -49,12 +53,56 @@ void main() {
       expect(TokenArenaRules.reflexLost(TokenArenaRules.reflexMaxMisses), isFalse);
       expect(TokenArenaRules.reflexLost(TokenArenaRules.reflexMaxMisses + 1), isTrue);
     });
+
+    test('vuruş arttıkça süre penceresi daralır', () {
+      expect(TokenArenaRules.reflexWindowMs(5), lessThan(TokenArenaRules.reflexWindowMs(0)));
+    });
+  });
+
+  group('Mayınlı Kasa', () {
+    test('12 hücrede tam 4 benzersiz mayın üretir', () {
+      final mines = TokenArenaRules.generateMines(Random(7));
+      expect(mines.length, TokenArenaRules.minesBombCount);
+      for (final m in mines) {
+        expect(m, inInclusiveRange(0, TokenArenaRules.minesTotalTiles - 1));
+      }
+    });
+
+    test('tüm çekilme kademelerinde beklenen değer < 1.0 (kasa hep kazanır)', () {
+      for (var step = 1; step <= TokenArenaRules.minesMaxSafePicks; step++) {
+        expect(
+          TokenArenaRules.minesExpectedValue(step),
+          lessThan(1.0),
+          reason: 'Step $step EV kasa lehine olmalı',
+        );
+      }
+    });
+  });
+
+  group('Çarpan Ruleti', () {
+    test('beklenen değer tam 0.80 (< 1.0 kasa avantajı)', () {
+      expect(TokenArenaRules.wheelExpectedValue(), closeTo(0.80, 0.001));
+    });
+
+    test('dilim seçimi ve ödeme hesabı doğru', () {
+      final r = Random(9);
+      for (var i = 0; i < 100; i++) {
+        expect(
+          TokenArenaRules.spinWheelIndex(r),
+          inInclusiveRange(0, TokenArenaRules.wheelMultipliers.length - 1),
+        );
+      }
+      expect(TokenArenaRules.wheelPayout(100, 5), 350);
+      expect(TokenArenaRules.wheelPayout(100, 0), 0);
+    });
   });
 
   group('Ödül', () {
-    test('kazanınca bahis iki katına çıkar', () {
+    test('kazanınca 1.8x kasa avantajlı ödeme yapılır', () {
       expect(TokenArenaRules.payout(TokenEconomy.miniGameStake),
-          TokenEconomy.miniGameStake * 2);
+          (TokenEconomy.miniGameStake * 1.8).floor());
+      expect(TokenArenaRules.payout(25), 45);
+      expect(TokenArenaRules.payout(100), 180);
     });
   });
 }

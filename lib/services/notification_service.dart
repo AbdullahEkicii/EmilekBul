@@ -90,6 +90,35 @@ class NotificationService {
     }
   }
 
+  /// Sunucu taraflı FCM push mesajlarını ön planda yerel bildirim olarak gösterir.
+  static Future<void> showRemoteMessageNotification({
+    required String title,
+    required String body,
+    String payload = 'fcm',
+  }) async {
+    try {
+      final id = DateTime.now().millisecondsSinceEpoch.remainder(100000) + 9000;
+      await _notifications.show(
+        id,
+        title,
+        body,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'social_channel',
+            'Social & Events',
+            importance: Importance.max,
+            priority: Priority.high,
+            icon: 'ic_stat_notification',
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        payload: payload,
+      );
+    } catch (e) {
+      debugPrint('showRemoteMessageNotification error: $e');
+    }
+  }
+
   /// Tüm bildirimleri iptal et ve önümüzdeki 7 gün için yenilerini planla
   static Future<void> rescheduleNotifications() async {
     try {

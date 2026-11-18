@@ -2,19 +2,27 @@ import '../services/behavior_tracker.dart';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'account_screen.dart';
 import 'token_screen.dart';
 import 'edit_profile_screen.dart';
 import '../services/user_service.dart';
+import '../theme/app_theme.dart';
+import '../services/rewarded_boost.dart';
+import '../services/token_economy.dart';
 import '../services/token_service.dart';
 import '../services/achievement_service.dart';
 import '../services/analytics_service.dart';
 import '../services/streak_service.dart';
+import '../widgets/background_orbs.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/navigation_buttons.dart';
 import '../widgets/my_native_ad.dart';
+import '../widgets/rewarded_ad_manager.dart';
 
 class ShopScreen extends StatefulWidget {
-  const ShopScreen({super.key});
+  final bool embedded;
+
+  const ShopScreen({super.key, this.embedded = false});
 
   @override
   State<ShopScreen> createState() => _ShopScreenState();
@@ -28,6 +36,8 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
   bool _isBuyingFreeze = false;
   int _boosterRemaining = 0;
   bool _isBuyingBooster = false;
+  final RewardedBoost _rewardedBoost = RewardedBoost();
+  bool _isWatchingAd = false;
 
   List<Map<String, dynamic>> _avatars = [];
 
@@ -46,15 +56,22 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
     _avatars = List.generate(52, (index) {
       final avatarIdx = index + 1; // 1 to 52 (avatar_1.jpg to avatar_52.jpg)
       
-      // Zorlaştırılmış Prestij Fiyatlandırması:
-      // 1-5: 1500 (Temel başlangıç avatarları)
+      // Dengeli Fiyatlandırma:
+      // 1-3: 350 - 750 (İlk günlerde erişilebilir başlangıç avatarları)
+      // 4-5: 1200 (Kısa vadeli hedef)
       // 6-10: 2500 - 3000
       // 11-20: 4500 - 6500 (Orta seviye)
       // 21-35: 8000 - 12000 (Yüksek seviye)
       // 36-52: 15000 - 25000 (Nadir / Prestij)
       int originalCost;
-      if (index < 5) {
-        originalCost = 1500;
+      if (index == 0) {
+        originalCost = 350;
+      } else if (index == 1) {
+        originalCost = 500;
+      } else if (index == 2) {
+        originalCost = 750;
+      } else if (index < 5) {
+        originalCost = 1200;
       } else if (index < 10) {
         originalCost = 2500 + ((index * 97) % 500); // 2500 - 3000
       } else if (index < 20) {
@@ -196,7 +213,73 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
     super.initState();
     _generateShopAvatars();
     _loadUserProfile();
+    _rewardedBoost.load();
     BehaviorTracker.track('shop');
+  }
+
+  /// Mağaza içinden tek dokunuşla ödüllü reklam izleyip jeton kazandırır.
+  Future<void> _watchAdForShopTokens([StateSetter? dialogSetState]) async {
+    if (_isWatchingAd) return;
+    try {
+      final cooldown = await RewardedAdManager.getRemainingCooldown();
+      if (!mounted) return;
+      if (cooldown > Duration.zero) {
+        final mins =
+            cooldown.inMinutes.remainder(60).toString().padLeft(2, '0');
+        final secs =
+            cooldown.inSeconds.remainder(60).toString().padLeft(2, '0');
+        final formatted =
+            cooldown.inHours > 0 ? '${cooldown.inHours}:$mins:$secs' : '$mins:$secs';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('token.reward_ad_cooldown'.tr(args: [formatted])),
+            backgroundColor: Colors.orangeAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
+      if (!_rewardedBoost.isReady) {
+        _rewardedBoost.load();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('common.ad_not_ready'.tr()),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
+      setState(() => _isWatchingAd = true);
+      dialogSetState?.call(() {});
+      final ok = await _rewardedBoost.showAndWait();
+      if (!mounted) return;
+      if (ok) {
+        await TokenService.addTokens(
+          TokenEconomy.rewardedAdAmount,
+          source: 'shop_rewarded_ad',
+        );
+        await _loadUserProfile();
+        if (!mounted) return;
+        dialogSetState?.call(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('token.reward_ad_success'.tr()),
+            backgroundColor: Colors.indigo,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      _rewardedBoost.load();
+    } catch (e) {
+      debugPrint('Shop rewarded ad error: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isWatchingAd = false);
+        dialogSetState?.call(() {});
+      }
+    }
   }
 
   Future<void> _loadUserProfile() async {
@@ -286,242 +369,275 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
 
   void _showPurchaseDialog(
       String category, Map<String, dynamic> item, bool isOwned) {
-    final int userTokens = _userProfile?['tokens'] ?? 0;
     final int itemCost = item['cost'] ?? 0;
-    final bool canAfford = userTokens >= itemCost;
     final bool isOnSale = item['isOnSale'] == true;
     final int originalCost = item['originalCost'] ?? itemCost;
 
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-        child: GlassContainer(
-          useBlur: true,
-          scrim: true,
-          borderRadius: 30,
-          opacity: 0.2,
-          blur: 25,
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header Tag
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      builder: (context) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) {
+          final int userTokens = _userProfile?['tokens'] ?? 0;
+          final bool canAfford = userTokens >= itemCost;
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: GlassContainer(
+              useBlur: true,
+              scrim: true,
+              borderRadius: 30,
+              opacity: 0.2,
+              blur: 25,
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      'shop.product_detail'.tr(),
-                      style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  if (isOnSale && !isOwned)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFFF416C), Color(0xFFFF4B2B)],
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '%${item['discountPercent']} ${'shop.sale_badge'.tr()}',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // Large Preview
-              Hero(
-                tag: 'shop_${category}_${item['id']}',
-                child: _buildItemPreview(category, item, size: 140),
-              ),
-              const SizedBox(height: 20),
-
-              // Title
-              Text(
-                _getItemDisplayName(category, item),
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-
-              // Price Row
-              if (!isOwned)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  // Header Tag
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Icon(Icons.monetization_on,
-                          color: Colors.amber, size: 22),
-                      const SizedBox(width: 8),
-                      if (isOnSale) ...[
-                        Text(
-                          '$originalCost',
-                          style: const TextStyle(
-                            color: Colors.white38,
-                            fontSize: 15,
-                            decoration: TextDecoration.lineThrough,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      Text(
-                        '$itemCost Token',
-                        style: TextStyle(
-                            color: isOnSale ? const Color(0xFFFF5252) : Colors.amber,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                )
-              else
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.greenAccent.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.check_circle_rounded,
-                          color: Colors.greenAccent, size: 18),
-                      const SizedBox(width: 6),
-                      Text(
-                        'shop.owned'.tr(),
-                        style: const TextStyle(
-                            color: Colors.greenAccent,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14),
-                      ),
-                    ],
-                  ),
-                ),
-              const SizedBox(height: 28),
-
-              // Action Buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
-                      ),
-                      child: Text('shop.close'.tr(),
-                          style: const TextStyle(color: Colors.white60, fontSize: 15)),
-                    ),
-                  ),
-                  if (!isOwned) ...[
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: ElevatedButton(
-                        onPressed: canAfford
-                            ? () {
-                                Navigator.pop(context);
-                                _handlePurchase(category, item);
-                              }
-                            : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: canAfford ? Colors.blueAccent : Colors.grey.shade800,
-                          elevation: canAfford ? 6 : 0,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
-                          canAfford ? 'shop.buy'.tr() : 'shop.insufficient_funds'.tr(),
-                          style: TextStyle(
-                              color: canAfford ? Colors.white : Colors.white38,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15),
+                          'shop.product_detail'.tr(),
+                          style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      if (isOnSale && !isOwned)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFF416C), Color(0xFFFF4B2B)],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '%${item['discountPercent']} ${'shop.sale_badge'.tr()}',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Large Preview
+                  Hero(
+                    tag: 'shop_${category}_${item['id']}',
+                    child: _buildItemPreview(category, item, size: 140),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Title
+                  Text(
+                    _getItemDisplayName(category, item),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Price Row
+                  if (!isOwned)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.05)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.monetization_on,
+                              color: Colors.amber, size: 22),
+                          const SizedBox(width: 8),
+                          if (isOnSale) ...[
+                            Text(
+                              '$originalCost',
+                              style: const TextStyle(
+                                color: Colors.white38,
+                                fontSize: 15,
+                                decoration: TextDecoration.lineThrough,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          Text(
+                            '$itemCost Token',
+                            style: TextStyle(
+                                color: isOnSale
+                                    ? const Color(0xFFFF5252)
+                                    : Colors.amber,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.greenAccent.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                            color: Colors.greenAccent.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.check_circle_rounded,
+                              color: Colors.greenAccent, size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            'shop.owned'.tr(),
+                            style: const TextStyle(
+                                color: Colors.greenAccent,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 20),
+
+                  if (!isOwned && !canAfford) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _isWatchingAd
+                            ? null
+                            : () => _watchAdForShopTokens(setDialogState),
+                        icon: const Icon(Icons.play_circle_fill_rounded,
+                            color: Colors.amber, size: 20),
+                        label: Text(
+                          '${'token.watch_ad'.tr()} · +${TokenEconomy.rewardedAdAmount}',
+                          style: const TextStyle(
+                              color: Colors.amber,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          side: BorderSide(
+                              color: Colors.amber.withValues(alpha: 0.45)),
+                          backgroundColor: Colors.amber.withValues(alpha: 0.1),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
                         ),
                       ),
                     ),
-                  ],
+                    const SizedBox(height: 12),
+                  ] else
+                    const SizedBox(height: 8),
+
+                  // Action Buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(dialogCtx),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14)),
+                          ),
+                          child: Text('shop.close'.tr(),
+                              style: const TextStyle(
+                                  color: Colors.white60, fontSize: 15)),
+                        ),
+                      ),
+                      if (!isOwned) ...[
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            onPressed: canAfford
+                                ? () {
+                                    Navigator.pop(dialogCtx);
+                                    _handlePurchase(category, item);
+                                  }
+                                : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: canAfford
+                                  ? Colors.blueAccent
+                                  : Colors.grey.shade800,
+                              elevation: canAfford ? 6 : 0,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14)),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: Text(
+                              canAfford
+                                  ? 'shop.buy'.tr()
+                                  : 'shop.insufficient_funds'.tr(),
+                              style: TextStyle(
+                                  color: canAfford
+                                      ? Colors.white
+                                      : Colors.white38,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    EasyLocalization.of(context)?.locale;
+    Localizations.maybeLocaleOf(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: AppColors.backgroundTop,
       body: Stack(
         children: [
-          // BG Orbs
-          Positioned(
-            top: -100,
-            right: -100,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.blueAccent.withValues(alpha: 0.1),
-              ),
+          Container(
+            decoration: const BoxDecoration(
+              gradient: AppColors.airyBackgroundGradient,
             ),
           ),
-          Positioned(
-            bottom: 200,
-            left: -100,
-            child: Container(
-              width: 250,
-              height: 250,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.purpleAccent.withValues(alpha: 0.08),
-              ),
+          const BackgroundOrbs(),
+          SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                _buildHeader(),
+                _buildGoalBanner(),
+                _buildCategorySegmentBar(),
+                Expanded(
+                  child: _buildBody(),
+                ),
+              ],
             ),
-          ),
-          Column(
-            children: [
-              SafeArea(
-                bottom: false,
-                child: _buildHeader(),
-              ),
-              _buildGoalBanner(),
-              Expanded(
-                child: _buildBody(),
-              ),
-              _buildBottomArea(),
-            ],
           ),
         ],
       ),
@@ -578,10 +694,50 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('shop_goal.title'.tr(),
-              style: const TextStyle(
-                  color: Color(0xFFFBBF24), fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
-          const SizedBox(height: 4),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'shop_goal.title'.tr(),
+                  style: const TextStyle(
+                      color: Color(0xFFFBBF24),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1),
+                ),
+              ),
+              GestureDetector(
+                onTap: _isWatchingAd ? null : () => _watchAdForShopTokens(),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFBBF24).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: const Color(0xFFFBBF24).withValues(alpha: 0.5)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.play_circle_fill_rounded,
+                          color: Color(0xFFFBBF24), size: 14),
+                      const SizedBox(width: 5),
+                      Text(
+                        '${'token.watch_ad'.tr()} · +${TokenEconomy.rewardedAdAmount}',
+                        style: const TextStyle(
+                          color: Color(0xFFFBBF24),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
           Text('shop_goal.body'.tr(args: [name, '${cost - balance}']),
               style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 14)),
           const SizedBox(height: 8),
@@ -616,84 +772,71 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
     }
   }
 
-  Widget _buildBottomArea() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A).withValues(alpha: 0.95),
-        border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.5),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+  Widget _buildCategorySegmentBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 2),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: AppColors.surface.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+        ),
+        child: Row(
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: MyNativeAd(
-                height: 65,
-              ),
-            ),
-            _buildCustomBottomNav(),
+            Expanded(child: _buildNavItem(0, 'shop.avatars'.tr(), Icons.face)),
+            Expanded(child: _buildNavItem(1, 'shop.frames'.tr(), Icons.crop_square)),
+            Expanded(child: _buildNavItem(2, 'shop.titles'.tr(), Icons.military_tech)),
+            Expanded(child: _buildNavItem(3, 'shop.powerups'.tr(), Icons.bolt_rounded)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCustomBottomNav() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(0, 'shop.avatars'.tr(), Icons.face),
-          _buildNavItem(1, 'shop.frames'.tr(), Icons.crop_square),
-          _buildNavItem(2, 'shop.titles'.tr(), Icons.military_tech),
-          _buildNavItem(3, 'shop.powerups'.tr(), Icons.bolt_rounded),
-        ],
-      ),
-    );
-  }
-
   Widget _buildNavItem(int index, String label, IconData icon) {
     final isSelected = _selectedIndex == index;
-    final color = isSelected ? Colors.blueAccent : Colors.grey;
+    final color = isSelected ? Colors.white : AppColors.textSecondary;
 
-    return InkWell(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () {
         setState(() {
           _selectedIndex = index;
         });
       },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: isSelected
-            ? BoxDecoration(
-                color: Colors.blueAccent.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              )
-            : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: isSelected
+              ? LinearGradient(
+                  colors: [
+                    AppColors.accent.withValues(alpha: 0.34),
+                    AppColors.accentSecondary.withValues(alpha: 0.2),
+                  ],
+                )
+              : null,
+          borderRadius: BorderRadius.circular(14),
+          border: isSelected
+              ? Border.all(color: Colors.white.withValues(alpha: 0.26), width: 0.9)
+              : null,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 4),
+            Icon(icon, color: color, size: 19),
+            const SizedBox(height: 3),
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
                 label,
+                maxLines: 1,
                 style: TextStyle(
                   color: color,
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
             ),
@@ -708,8 +851,10 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       child: Row(
         children: [
-          const AppBackButton(),
-          const SizedBox(width: 10),
+          if (!widget.embedded) ...[
+            const AppBackButton(),
+            const SizedBox(width: 10),
+          ],
           Text(
             'shop.title'.tr(),
             style: const TextStyle(
@@ -719,6 +864,16 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
             ),
           ),
           const Spacer(),
+          IconButton(
+            tooltip: 'shop.open_profile'.tr(),
+            icon: const Icon(Icons.manage_accounts_rounded, color: Colors.white),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AccountScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.person, color: Colors.white),
             onPressed: () {
@@ -868,7 +1023,7 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
     final bool canAfford = userTokens >= StreakService.freezePrice;
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 118),
       physics: const BouncingScrollPhysics(),
       children: [
         GlassContainer(
@@ -949,45 +1104,81 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
           ),
         ),
         const SizedBox(height: 14),
+        const MyNativeAd(height: 65),
+        const SizedBox(height: 14),
         _buildBoosterCard(),
       ],
     );
   }
 
+  Widget _buildGridCardForItem(String category, Map<String, dynamic> item) {
+    bool isOwned = false;
+
+    if (category == 'avatars') {
+      isOwned = List<String>.from(_userProfile?['ownedAvatars'] ?? [])
+          .contains(item['id']);
+      final currentAvatar = _userProfile?['avatarIndex']?.toString();
+      if (!isOwned &&
+          UserService.hasAvatar(currentAvatar) &&
+          currentAvatar == item['id']) {
+        isOwned = true;
+      }
+    } else if (category == 'frames') {
+      isOwned = List<String>.from(_userProfile?['ownedFrames'] ?? [])
+          .contains(item['id']);
+    } else if (category == 'titles') {
+      isOwned = List<String>.from(_userProfile?['ownedTitles'] ?? [])
+          .contains(item['id']);
+    }
+
+    return _buildShopCard(category, item, isOwned);
+  }
+
   Widget _buildGrid(String category, List<Map<String, dynamic>> items) {
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
+    const chunkSize = 4;
+    final slivers = <Widget>[];
+    for (int offset = 0, chunkIdx = 0;
+        offset < items.length;
+        offset += chunkSize, chunkIdx++) {
+      final end = (offset + chunkSize).clamp(0, items.length);
+      final chunk = items.sublist(offset, end);
+      slivers.add(
+        SliverPadding(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            chunkIdx == 0 ? 12 : 2,
+            16,
+            12,
+          ),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.72,
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 14,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, i) => _buildGridCardForItem(category, chunk[i]),
+              childCount: chunk.length,
+            ),
+          ),
+        ),
+      );
+      if (chunkIdx == 0 || chunkIdx == 2) {
+        slivers.add(
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16, 2, 16, 14),
+              child: MyNativeAd(height: 65),
+            ),
+          ),
+        );
+      }
+    }
+    slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 104)));
+    return CustomScrollView(
       physics: const BouncingScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.72,
-        crossAxisSpacing: 14,
-        mainAxisSpacing: 14,
-      ),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final item = items[index];
-        bool isOwned = false;
-
-        if (category == 'avatars') {
-          isOwned = List<String>.from(_userProfile?['ownedAvatars'] ?? [])
-              .contains(item['id']);
-          final currentAvatar = _userProfile?['avatarIndex']?.toString();
-          if (!isOwned &&
-              UserService.hasAvatar(currentAvatar) &&
-              currentAvatar == item['id']) {
-            isOwned = true;
-          }
-        } else if (category == 'frames') {
-          isOwned = List<String>.from(_userProfile?['ownedFrames'] ?? [])
-              .contains(item['id']);
-        } else if (category == 'titles') {
-          isOwned = List<String>.from(_userProfile?['ownedTitles'] ?? [])
-              .contains(item['id']);
-        }
-
-        return _buildShopCard(category, item, isOwned);
-      },
+      slivers: slivers,
     );
   }
 
@@ -1135,7 +1326,7 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
         ),
         child: CircleAvatar(
           radius: size / 2,
-          backgroundColor: const Color(0xFF1E293B),
+          backgroundColor: AppColors.scaffoldGradientEnd,
           backgroundImage: ResizeImage(
             AssetImage(UserService.getAvatarPath(item['id'])),
             width: (size * 2).toInt(),

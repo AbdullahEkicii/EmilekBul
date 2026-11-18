@@ -7,6 +7,7 @@ import 'glass_alert_dialog.dart';
 import '../services/haptic_service.dart';
 import '../services/retention_engine.dart';
 import '../services/sound_service.dart';
+import '../theme/app_theme.dart';
 import 'confetti_burst.dart';
 
 /// Ana ekrandaki "Günlük hedef + ücretsiz sandık" kartı.
@@ -92,11 +93,11 @@ class _DailyGoalCardState extends State<DailyGoalCard> with WidgetsBindingObserv
     return showDialog<void>(
       context: context,
       builder: (ctx) => GlassAlertDialog(
-        backgroundColor: const Color(0xFF1E1B3A),
+        backgroundColor: AppColors.dialogSurface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            const Icon(Icons.redeem_rounded, color: Color(0xFFFBBF24)),
+            const Icon(Icons.redeem_rounded, color: AppColors.goldSoft),
             const SizedBox(width: 10),
             Expanded(
               child: Text('retention_hub.reward_title'.tr(),
@@ -107,7 +108,7 @@ class _DailyGoalCardState extends State<DailyGoalCard> with WidgetsBindingObserv
         content: Text(
           'retention_hub.reward_tokens'.tr(args: ['$tokens']),
           style: const TextStyle(
-              color: Color(0xFFFBBF24), fontSize: 26, fontWeight: FontWeight.bold),
+              color: AppColors.goldSoft, fontSize: 26, fontWeight: FontWeight.bold),
         ),
         actions: [
           TextButton(
@@ -128,6 +129,8 @@ class _DailyGoalCardState extends State<DailyGoalCard> with WidgetsBindingObserv
 
   @override
   Widget build(BuildContext context) {
+    EasyLocalization.of(context)?.locale;
+    Localizations.maybeLocaleOf(context);
     final progress = _goal.target == 0 ? 0.0 : (_goal.progress / _goal.target).clamp(0.0, 1.0);
     final goalDone = _goal.reached;
 
@@ -138,11 +141,13 @@ class _DailyGoalCardState extends State<DailyGoalCard> with WidgetsBindingObserv
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
           colors: [
-            const Color(0xFF4F46E5).withValues(alpha: 0.35),
-            const Color(0xFF7C3AED).withValues(alpha: 0.25),
+            AppColors.accent.withValues(alpha: 0.22),
+            AppColors.surfaceElevated.withValues(alpha: 0.72),
           ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [

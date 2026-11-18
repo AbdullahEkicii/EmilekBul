@@ -27,8 +27,6 @@ class PerformanceService {
     try {
       if (!Platform.isAndroid) return false;
       final info = await DeviceInfoPlugin().androidInfo;
-      // Emülatör yazılım GPU ile çizer; efekt yoğun ekranlar orada çöker. Gerçek cihazlar etkilenmez.
-      if (!info.isPhysicalDevice) return true;
       if (info.isLowRamDevice) return true;
       return info.physicalRamSize > 0 && info.physicalRamSize < 3000;
     } catch (_) {

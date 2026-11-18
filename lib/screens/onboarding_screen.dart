@@ -6,6 +6,7 @@ import '../main.dart';
 import '../services/analytics_service.dart';
 import '../services/haptic_service.dart';
 import '../services/whats_new_service.dart';
+import '../theme/app_theme.dart';
 
 /// İlk açılış: iki dokunmalı adım (günlük hedef, ilgi alanı) ve ardından
 /// kısa, kolay bir ilk quiz. Pasif slayt yok; oyuncu ilk turu hemen oynar.
@@ -18,9 +19,9 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
   static const _goalOptions = [1, 3, 5];
-  static const _accent = Color(0xFF6366F1);
-  static const _accentEnd = Color(0xFFA855F7);
-  static const _background = Color(0xFF090D16);
+  static const _accent = AppColors.indigo;
+  static const _accentEnd = AppColors.purple;
+  static const _background = AppColors.onboardingBackground;
 
   int _step = 0;
   int _goal = 3;

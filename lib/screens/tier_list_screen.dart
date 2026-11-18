@@ -1241,6 +1241,15 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
   // ---------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
+    EasyLocalization.of(context)?.locale;
+    Localizations.maybeLocaleOf(context);
+    _initializeCategories();
+    if (_selectedCategoryKey != null) {
+      final match = _categories.where((c) => c['id'] == _selectedCategoryKey);
+      if (match.isNotEmpty) {
+        _selectedCategoryName = match.first['name'] as String?;
+      }
+    }
     return Scaffold(
       backgroundColor: bgBase,
       extendBodyBehindAppBar: true,
@@ -1289,7 +1298,20 @@ class _PuanlarEkraniState extends State<PuanlarEkrani>
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
-                    return _buildUserCard(_topUsers[index], index);
+                    final card = _buildUserCard(_topUsers[index], index);
+                    if (index == 2 || index == 9) {
+                      return Column(
+                        children: [
+                          card,
+                          const Padding(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 8),
+                            child: MyNativeAd(height: 65),
+                          ),
+                        ],
+                      );
+                    }
+                    return card;
                   },
                   childCount: _topUsers.length,
                 ),

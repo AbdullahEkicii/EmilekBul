@@ -12,10 +12,13 @@ import '../services/ai_api_service.dart';
 import '../services/board_mode_service.dart';
 import '../services/database_helper.dart';
 import '../services/haptic_service.dart';
+import '../services/interstitial_ad_manager.dart';
 import '../services/offline_quiz_service.dart';
+import '../services/rewarded_boost.dart';
 import '../services/sound_service.dart';
 import '../utils/app_motion.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/my_native_ad.dart';
 import 'speed_round_screen.dart';
 
 enum _Phase { idle, loading, board, finished }
@@ -52,11 +55,16 @@ class _BoardModeScreenState extends State<BoardModeScreen> {
   int _best = 0;
   bool _newBest = false;
   Timer? _nextTimer;
+  final RewardedBoost _rewardedBoost = RewardedBoost();
+  int _lastPayout = 0;
+  bool _doubleRewardClaimed = false;
+  bool _doubleRewardLoading = false;
 
   @override
   void initState() {
     super.initState();
     _loadBest();
+    _rewardedBoost.load();
   }
 
   @override
@@ -137,6 +145,9 @@ class _BoardModeScreenState extends State<BoardModeScreen> {
       _qCursor = 0;
       _score = 0;
       _newBest = false;
+      _lastPayout = 0;
+      _doubleRewardClaimed = false;
+      _doubleRewardLoading = false;
       _phase = _Phase.board;
     });
   }
@@ -193,15 +204,17 @@ class _BoardModeScreenState extends State<BoardModeScreen> {
   Future<void> _finish() async {
     _nextTimer?.cancel();
     final score = _score;
+    final payout = score ~/ TokenEconomy.boardPointsPerToken;
     setState(() {
       _phase = _Phase.finished;
       _activeTile = null;
       _selected = null;
+      _lastPayout = payout;
     });
     HapticService.medium();
 
-    final payout = score ~/ TokenEconomy.boardPointsPerToken;
     if (payout > 0) {
+      _rewardedBoost.load();
       await TokenService.addTokens(payout, source: 'board_mode');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -224,6 +237,24 @@ class _BoardModeScreenState extends State<BoardModeScreen> {
     } catch (e) {
       debugPrint('Çarpanlı tahta en iyi skor kaydetme hatası: $e');
     }
+
+    unawaited(InterstitialAdManager.onTestFinished(source: 'board_mode'));
+  }
+
+  Future<void> _claimDoubleReward(int payout) async {
+    if (_doubleRewardClaimed || _doubleRewardLoading || payout <= 0) return;
+    setState(() => _doubleRewardLoading = true);
+    final claimed = await claimDoubleRewardWithAd(
+      context,
+      boost: _rewardedBoost,
+      payout: payout,
+      tokenSource: 'board_double_reward',
+    );
+    if (!mounted) return;
+    setState(() {
+      _doubleRewardLoading = false;
+      if (claimed) _doubleRewardClaimed = true;
+    });
   }
 
   @override
@@ -247,6 +278,10 @@ class _BoardModeScreenState extends State<BoardModeScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: _buildBody(context.locale.languageCode),
                 ),
+              ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 4, 16, 6),
+                child: MyNativeAd(height: 65),
               ),
             ],
           ),
@@ -563,7 +598,16 @@ class _BoardModeScreenState extends State<BoardModeScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 28),
+            if (_lastPayout > 0) ...[
+              const SizedBox(height: 16),
+              DoubleRewardCard(
+                payout: _lastPayout,
+                claimed: _doubleRewardClaimed,
+                loading: _doubleRewardLoading,
+                onTap: () => _claimDoubleReward(_lastPayout),
+              ),
+            ],
+            const SizedBox(height: 24),
             _buildPrimaryButton('board_mode.play_again'.tr(), _start),
           ],
         ),

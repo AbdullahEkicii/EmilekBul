@@ -1,23 +1,78 @@
 import 'package:flutter/material.dart';
 
-/// Apple HIG'den esinlenen renk tokenları (iOS koyu mod sistem renkleri).
-/// Netlik: yüksek kontrast metin. Derinlik: katmanlar arasında ince ışık ve gölge.
+/// Ferah, aydınlık ve göz yormayan "Coastal Twilight / Sky-Aurora" renk sistemi.
+/// Netlik: yüksek kontrastlı alçıtaşı beyazı metin ve berrak semantik vurgular.
+/// Derinlik: koyu çamur siyahı yerine nefes alan safir-gökyüzü katmanları ve ince speküler kenarlar.
 class AppColors {
   AppColors._();
 
-  static const Color backgroundTop = Color(0xFF0B1020);
-  static const Color backgroundBottom = Color(0xFF111A2E);
-  static const Color surface = Color(0xFF1C2438);
+  // Airy Luminous Background Canvas (açık nefes alan gökyüzü-safir derinliği)
+  static const Color backgroundTop = Color(0xFF152943);
+  static const Color backgroundMiddle = Color(0xFF1E3A5F);
+  static const Color backgroundBottom = Color(0xFF172D4A);
+  static const Color scaffoldGradientStart = Color(0xFF152943);
+  static const Color scaffoldGradientEnd = Color(0xFF213F66);
+  static const Color onboardingBackground = Color(0xFF12233A);
 
-  static const Color textPrimary = Colors.white;
-  static const Color textSecondary = Color(0x99EBEBF5); // iOS label secondary
-  static const Color textTertiary = Color(0x4DEBEBF5);
+  // Elevated Frosted Surfaces
+  static const Color surface = Color(0xFF213A5C);
+  static const Color surfaceElevated = Color(0xFF2A4870);
+  static const Color dialogSurface = Color(0xFF1E3554);
+  static const Color border = Color(0x33E0F2FE);
 
-  static const Color accent = Color(0xFF0A84FF); // iOS systemBlue
-  static const Color success = Color(0xFF30D158); // iOS systemGreen
-  static const Color danger = Color(0xFFFF453A); // iOS systemRed
-  static const Color warning = Color(0xFFFF9F0A); // iOS systemOrange
-  static const Color gold = Color(0xFFFFD60A); // iOS systemYellow
+  // Crisp High-Contrast Ink
+  static const Color textPrimary = Color(0xFFF8FAFC);
+  static const Color textSecondary = Color(0xCCBAE6FD);
+  static const Color textMuted = Color(0xFF94B4D4);
+  static const Color textTertiary = Color(0x66BAE6FD);
+
+  // Cohesive Uplifting Accents
+  static const Color accent = Color(0xFF38BDF8); // Refreshing Sky Cyan
+  static const Color accentSecondary = Color(0xFFFBBF24); // Sunlit Honey Gold
+  static const Color cyan = Color(0xFF22D3EE);
+  static const Color cyanDark = Color(0xFF0EA5E9);
+
+  static const Color indigo = Color(0xFF60A5FA);
+  static const Color indigoDark = Color(0xFF3B82F6);
+  static const Color indigoLight = Color(0xFF93C5FD);
+
+  static const Color purple = Color(0xFFA78BFA);
+  static const Color violet = Color(0xFF8B5CF6);
+
+  static const Color success = Color(0xFF34D399); // Fresh Sea Mint
+  static const Color emerald = Color(0xFF10B981);
+  static const Color emeraldDark = Color(0xFF059669);
+
+  static const Color danger = Color(0xFFFB7185); // Soft Rose Coral
+  static const Color coral = Color(0xFFF43F5E);
+  static const Color warning = Color(0xFFFBBF24);
+  static const Color amber = Color(0xFFFBBF24);
+  static const Color amberDark = Color(0xFFF59E0B);
+  static const Color gold = Color(0xFFFDE047);
+  static const Color goldSoft = Color(0xFFFBBF24);
+
+  /// Tüm ana ekranlarda paylaşılan ferah, iç açıcı gökyüzü arka plan gradyanı.
+  static const LinearGradient airyBackgroundGradient = LinearGradient(
+    colors: [
+      backgroundTop,
+      backgroundMiddle,
+      backgroundBottom,
+    ],
+    stops: [0.0, 0.52, 1.0],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  /// Cam kenarlıklarda ince prizmatik ışık çerçevesi.
+  static const LinearGradient glassBorderGradient = LinearGradient(
+    colors: [
+      Color(0x55FFFFFF),
+      Color(0x2238BDF8),
+      Color(0x28FBBF24),
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 }
 
 /// Köşe yarıçapları (iOS: kart 20-28, buton pill).

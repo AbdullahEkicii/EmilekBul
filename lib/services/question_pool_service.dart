@@ -192,7 +192,8 @@ class QuestionPoolService {
     if (resultQuestions.length < neededCount) {
       try {
         final existing = resultQuestions.map((q) => q.question).toSet();
-        final starter = OfflineQuizService.getFallbackQuestions(
+        final starter = OfflineQuizService.getCategoryQuestions(
+          category: category,
           languageCode: languageCode,
           count: neededCount - resultQuestions.length,
           exclude: existing,

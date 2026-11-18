@@ -1,10 +1,11 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../services/performance_service.dart';
+import '../theme/app_theme.dart';
 
-/// Kart ve yüzey malzemesi. Varsayılan: opak standart malzeme (cam efekti yok).
-/// Cam yalnızca kontrol katmanında kullanılır: `useBlur: true`.
-/// `scrim: true` ise cam altına %35 koyu katman ekler (parlak arka planda okunabilirlik).
+/// Ferah, ışık yakalayan buzlu yüzey malzemesi.
+/// Varsayılan: ince speküler kenarlı, nefes alan safir-cam görünüm (ağırlık yapan siyah gölge yok).
+/// Kontrol katmanlarında `useBlur: true` ile gerçek arka plan bulanıklığı sağlar.
 class GlassContainer extends StatelessWidget {
   final Widget child;
   final double blur;
@@ -36,41 +37,31 @@ class GlassContainer extends StatelessWidget {
     final bool effectiveUseBlur =
         useBlur && !PerformanceService.isPerformanceMode;
 
-    // In performance mode: use a solid opaque dark background instead of
-    // near-transparent glass (which looks invisible without the blur effect).
     final Color baseColor = color ?? Colors.white;
-    final Color bgColor = effectiveUseBlur
-        ? baseColor.withValues(alpha: opacity)
-        : (color != null
-            ? color!.withValues(alpha: (opacity + 0.6).clamp(0.0, 1.0))
-            : const Color(0xFF1E293B));
+    final List<Color> lightFrostedGradient = color != null
+        ? [
+            color!.withValues(alpha: (opacity + 0.58).clamp(0.0, 1.0)),
+            color!.withValues(alpha: (opacity + 0.42).clamp(0.0, 1.0)),
+          ]
+        : [
+            AppColors.surfaceElevated.withValues(alpha: 0.78),
+            AppColors.surface.withValues(alpha: 0.72),
+          ];
 
     Widget content = Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: effectiveUseBlur ? null : bgColor,
         gradient: effectiveUseBlur
             ? null
             : LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  color != null
-                      ? color!
-                          .withValues(alpha: (opacity + 0.65).clamp(0.0, 1.0))
-                      : const Color(0xFF1E293B),
-                  color != null
-                      ? color!
-                          .withValues(alpha: (opacity + 0.5).clamp(0.0, 1.0))
-                      : const Color(0xFF0F172A),
-                ],
+                colors: lightFrostedGradient,
               ),
         borderRadius: BorderRadius.circular(borderRadius),
         border: border ??
             Border.all(
-              color: effectiveUseBlur
-                  ? Colors.white.withValues(alpha: 0.2)
-                  : Colors.white.withValues(alpha: 0.12),
+              color: Colors.white.withValues(alpha: effectiveUseBlur ? 0.24 : 0.16),
               width: 1,
             ),
         boxShadow: boxShadow ??
@@ -78,9 +69,9 @@ class GlassContainer extends StatelessWidget {
                 ? null
                 : [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      color: const Color(0xFF0A192F).withValues(alpha: 0.22),
+                      blurRadius: 18,
+                      offset: const Offset(0, 6),
                     ),
                   ]),
       ),
@@ -99,14 +90,15 @@ class GlassContainer extends StatelessWidget {
       );
     }
 
-    // Liquid Glass benzeri: üstten alta ince bir ışık, kenarda parlak bir hat.
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
       child: Stack(
         children: [
           if (scrim)
             Positioned.fill(
-              child: ColoredBox(color: Colors.black.withValues(alpha: 0.35)),
+              child: ColoredBox(
+                color: AppColors.backgroundTop.withValues(alpha: 0.36),
+              ),
             ),
           BackdropFilter(
             filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
@@ -116,20 +108,20 @@ class GlassContainer extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    baseColor.withValues(alpha: opacity + 0.06),
-                    baseColor.withValues(alpha: opacity * 0.6),
+                    baseColor.withValues(alpha: (opacity + 0.08).clamp(0.0, 1.0)),
+                    baseColor.withValues(alpha: (opacity * 0.55).clamp(0.0, 1.0)),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(borderRadius),
                 border: border ??
                     Border.all(
-                      color: Colors.white.withValues(alpha: 0.22),
-                      width: 0.8,
+                      color: Colors.white.withValues(alpha: 0.24),
+                      width: 0.9,
                     ),
                 boxShadow: boxShadow ??
                     [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.18),
+                        color: const Color(0xFF09162B).withValues(alpha: 0.16),
                         blurRadius: 24,
                         offset: const Offset(0, 8),
                       ),

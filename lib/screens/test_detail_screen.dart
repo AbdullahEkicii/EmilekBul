@@ -111,21 +111,30 @@ class _TestDetailScreenState extends State<TestDetailScreen>
                 _buildStatsSummary(correct, wrong, successRate),
                 Expanded(
                   child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 10),
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
                     physics: const BouncingScrollPhysics(),
                     itemCount: widget.test.questions.length,
                     itemBuilder: (context, index) {
-                      return _buildQuestionDetailCard(
+                      final card = _buildQuestionDetailCard(
                           widget.test.questions[index], index);
+                      final showAdAfter = index == 2 ||
+                          index == 7 ||
+                          (index == widget.test.questions.length - 1 &&
+                              widget.test.questions.length < 3);
+                      if (!showAdAfter) return card;
+                      return Column(
+                        children: [
+                          card,
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 16),
+                            child: MyNativeAd(
+                              height: 65,
+                              keepDuringGrace: true,
+                            ),
+                          ),
+                        ],
+                      );
                     },
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-                  child: MyNativeAd(
-                    height: 65,
-                    keepDuringGrace: true,
                   ),
                 ),
               ],

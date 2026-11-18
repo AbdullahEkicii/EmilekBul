@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/my_native_ad.dart';
 import '../widgets/navigation_buttons.dart';
 import 'package:easy_localization/easy_localization.dart';
 
@@ -172,6 +173,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                           ),
                   ),
                 ),
+                const SizedBox(height: 24),
+                const MyNativeAd(height: 65),
               ],
             ),
           ),

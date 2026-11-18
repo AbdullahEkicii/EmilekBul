@@ -26,6 +26,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/app_categories.dart';
+import '../services/themed_event_service.dart';
 import '../services/notification_permission_manager.dart'; // Added for permission handling
 
 class TestSonucuScreen extends StatefulWidget {
@@ -335,8 +336,9 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
       await TokenService.awardTokensForDuelWin();
     }
 
-    // Haftalık 2X Bonus Kategori kontrolü
-    final bool isWeeklyBonus = AppCategories.isCategoryWeeklyBonus(widget.category);
+    // Haftalık / Gündem Özel 2X Bonus Kategori kontrolü
+    final bool isWeeklyBonus = AppCategories.isCategoryWeeklyBonus(widget.category) ||
+        ThemedEventService.isActiveCategory(widget.category);
     if (isWeeklyBonus) {
       totalPuan *= 2;
     }
@@ -379,8 +381,8 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
     final prefs = await SharedPreferences.getInstance();
     final bool welcomeBonusGiven = prefs.getBool('welcome_bonus_given') ?? false;
 
-    if (widget.isOnboarding && !welcomeBonusGiven) {
-      // Hoşgeldin bonusu (100 Token) sadece ilk sefer verilir
+    if (!welcomeBonusGiven && (widget.isOnboarding || !widget.isDuel)) {
+      // Hoşgeldin bonusu (${TokenEconomy.welcomeBonus} Token) ilk testte bir kez verilir
       await prefs.setBool('welcome_bonus_given', true);
       if (mounted) {
         setState(() {
@@ -391,9 +393,24 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
     } else {
       final bool isWeeklyBonus = AppCategories.isCategoryWeeklyBonus(widget.category);
       // Çevrimdışı quiz: sabit ödül. Düellolarda ödül düello sisteminde belirlenir.
-      _quizTokensEarned = widget.isDuel
+      final baseReward = widget.isDuel
           ? 0
           : await TokenService.awardOfflineQuizReward(weeklyBonus: isWeeklyBonus);
+      final perfBonus = widget.isDuel
+          ? 0
+          : await TokenService.awardQuizPerformanceBonus(
+              score: widget.score,
+              totalQuestions: widget.questions.length,
+            );
+      _quizTokensEarned = baseReward + perfBonus;
+      if (perfBonus > 0 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('result.performance_bonus'.tr(args: [perfBonus.toString()])),
+            backgroundColor: const Color(0xFF10B981),
+          ),
+        );
+      }
       final boosterBonus = await TokenService.applyBooster(_quizTokensEarned);
       if (boosterBonus > 0 && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -498,8 +515,8 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
       final result = await UserService.incrementCompletedQuizzes(user.uid);
       final int levelReward = (result['reward'] as int?) ?? 0;
       if (result['levelUp'] == true && levelReward > 0) {
-        // Ödül Firestore'a increment ile yazıldı; yerel jeton önbelleğini de güncelle ki sonraki mutlak yazım silmesin
-        await TokenService.updateTokenAmount(await TokenService.getTokenAmount() + levelReward);
+        // Ödül Firestore'a increment ile yazıldı; yerel jeton önbelleğini atomik olarak güncelle
+        await TokenService.applyLocalDelta(levelReward);
       }
       if (result['levelUp'] == true && mounted) {
         _showLevelUpDialog(result['newLevel'], result['reward']);
@@ -1225,7 +1242,8 @@ class _TestSonucuScreenState extends State<TestSonucuScreen>
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                "onboarding.gift_amount".tr(),
+                "onboarding.gift_amount"
+                    .tr(args: ['${TokenEconomy.welcomeBonus}']),
                 style: const TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.w900,

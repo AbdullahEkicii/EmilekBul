@@ -4,12 +4,15 @@ import '../widgets/glass_alert_dialog.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/my_native_ad.dart';
 import '../services/user_service.dart';
 import '../services/notification_service.dart';
 import '../services/notification_permission_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_utils.dart';
 import '../main.dart'; // For QuizFlow
+import '../theme/app_theme.dart';
+import '../widgets/background_orbs.dart';
 
 import '../constants/app_languages.dart';
 
@@ -180,26 +183,17 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: AppColors.backgroundTop,
       body: Stack(
         children: [
           // Background Gradient
           Container(
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFF0F172A),
-                  Color(0xFF1E293B),
-                  Color(0xFF0F172A)
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              gradient: AppColors.airyBackgroundGradient,
             ),
           ),
 
-          // Orbs if available, otherwise just gradient
-          // const BackgroundOrbs(),
+          const BackgroundOrbs(),
 
           SafeArea(
             child: Center(
@@ -295,6 +289,8 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
               },
             ),
           ),
+          const SizedBox(height: 12),
+          const MyNativeAd(height: 60),
         ],
       ),
     );

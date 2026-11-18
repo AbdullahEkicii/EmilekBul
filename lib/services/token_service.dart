@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'analytics_service.dart';
 import 'cloud_state_service.dart';
@@ -13,12 +15,31 @@ class TokenService {
   static const int _quizCost = TokenEconomy.quizEntryCost;
   static int get quizCost => _quizCost;
 
+  /// UI bileşenlerinin yerel/güncel jeton bakiyesini anlık takip etmesi için
+  static final ValueNotifier<int> balanceNotifier = ValueNotifier<int>(0);
+
+  /// Eşzamanlı jeton okuma/yazma yarışlarını önlemek için sıralı kilit
+  static Future<void> _opLock = Future<void>.value();
+
+  static Future<T> _synchronized<T>(Future<T> Function() fn) {
+    final completer = Completer<T>();
+    _opLock = _opLock.then((_) async {
+      try {
+        final result = await fn();
+        completer.complete(result);
+      } catch (e, st) {
+        completer.completeError(e, st);
+      }
+    });
+    return completer.future;
+  }
+
   // Günlük ücretsiz test hakkı (giriş ücreti alınmaz)
-  static const int freeQuizzesPerDay = 3;
+  static const int freeQuizzesPerDay = 2;
   static const String _freeDateKey = 'free_quiz_date';
   static const String _freeUsedKey = 'free_quiz_used';
   static const int _duelCost = TokenEconomy.duelEntryCost;
-  static const int _duelReward = 40;
+  static const int _duelReward = 55;
 
   // Jeton Güçlendirici: sonraki N testte test jeton ödülü 2 katına çıkar
   static const String _boosterKey = 'token_booster_remaining';
@@ -77,29 +98,59 @@ class TokenService {
   // Token miktarını al
   static Future<int> getTokenAmount() async {
     final prefs = await _getPrefs();
-    return prefs.getInt(_tokenKey) ?? 0;
+    final amount = prefs.getInt(_tokenKey) ?? 0;
+    if (balanceNotifier.value != amount) {
+      balanceNotifier.value = amount;
+    }
+    return amount;
+  }
+
+  static Future<void> _writeTokenAmountLocked(int amount,
+      {bool syncRemote = true}) async {
+    final clamped = amount < 0 ? 0 : amount;
+    final prefs = await _getPrefs();
+    await prefs.setInt(_tokenKey, clamped);
+    if (balanceNotifier.value != clamped) {
+      balanceNotifier.value = clamped;
+    }
+    if (syncRemote) {
+      // Firestore'u da güncelle (TokenWidget reactivity için)
+      await UserService.updateUserTokens(clamped);
+    }
   }
 
   // Token miktarını güncelle
-  static Future<void> updateTokenAmount(int amount) async {
-    final prefs = await _getPrefs();
-    await prefs.setInt(_tokenKey, amount);
-    // Firestore'u da güncelle (TokenWidget reactivity için)
-    await UserService.updateUserTokens(amount);
+  static Future<void> updateTokenAmount(int amount,
+      {bool syncRemote = true}) async {
+    await _synchronized(
+        () => _writeTokenAmountLocked(amount, syncRemote: syncRemote));
   }
 
   // Geri dönüş penceresinde 2 katına çıkan kazanım kaynakları (düello bahis ödülleri kasıtlı olarak dışarıda)
   static const Set<String> _comebackDoubledSources = {'quiz', 'daily_reward'};
 
-  // Token ekle
+  // Token ekle (yarış koşullarını önlemek için kilit içinde atomik okuma+yazma)
   static Future<void> addTokens(int amount, {String source = 'other'}) async {
     var gained = amount;
     if (amount > 0 && _comebackDoubledSources.contains(source) && await _isComebackActive()) {
       gained = amount * 2;
     }
-    final currentTokens = await getTokenAmount();
-    await updateTokenAmount(currentTokens + gained);
+    await _synchronized(() async {
+      final prefs = await _getPrefs();
+      final currentTokens = prefs.getInt(_tokenKey) ?? 0;
+      await _writeTokenAmountLocked(currentTokens + gained);
+    });
     if (gained > 0) AnalyticsService.logTokenEarned(amount: gained, source: source);
+  }
+
+  /// Firestore tarafında zaten artırılmış bir bakiyenin (ör. level up) yerel önbelleğe atomik işlenmesi
+  static Future<void> applyLocalDelta(int delta) async {
+    if (delta == 0) return;
+    await _synchronized(() async {
+      final prefs = await _getPrefs();
+      final currentTokens = prefs.getInt(_tokenKey) ?? 0;
+      await _writeTokenAmountLocked(currentTokens + delta, syncRemote: false);
+    });
   }
 
   static Future<bool> _isComebackActive() async {
@@ -110,13 +161,19 @@ class TokenService {
 
   // Token çıkar
   static Future<bool> spendTokens(int amount, {String reason = 'other'}) async {
-    final currentTokens = await getTokenAmount();
-    if (currentTokens >= amount) {
-      await updateTokenAmount(currentTokens - amount);
-      if (amount > 0) AnalyticsService.logTokenSpent(amount: amount, reason: reason);
-      return true;
+    final success = await _synchronized(() async {
+      final prefs = await _getPrefs();
+      final currentTokens = prefs.getInt(_tokenKey) ?? 0;
+      if (currentTokens >= amount) {
+        await _writeTokenAmountLocked(currentTokens - amount);
+        return true;
+      }
+      return false;
+    });
+    if (success && amount > 0) {
+      AnalyticsService.logTokenSpent(amount: amount, reason: reason);
     }
-    return false;
+    return success;
   }
 
   static Future<int> getBoosterRemaining() async {
@@ -248,13 +305,37 @@ class TokenService {
     return reward;
   }
 
-  // Token Arena mini oyunları: bahis düşer, kazanılırsa çarpanlı geri ödeme yapılır
-  static Future<bool> stakeMiniGame(String gameId) async {
-    return spendTokens(TokenEconomy.miniGameStake, reason: 'mini_$gameId');
+  /// Doğru oranına göre performans bonusu verir; kazanılan jeton sayısını döner.
+  static Future<int> awardQuizPerformanceBonus({
+    required int score,
+    required int totalQuestions,
+  }) async {
+    final bonus = TokenEconomy.offlinePerformanceBonus(
+      score: score,
+      totalQuestions: totalQuestions,
+    );
+    if (bonus > 0) {
+      await addTokens(bonus, source: 'quiz_performance_bonus');
+    }
+    return bonus;
   }
 
-  static Future<void> payMiniGame(String gameId) async {
-    await addTokens(TokenArenaRules.payout(TokenEconomy.miniGameStake),
-        source: 'mini_${gameId}_win');
+  // Token Arena mini oyunları: seçilen bahis düşer, kazanılırsa çarpanlı/özel geri ödeme yapılır
+  static Future<bool> stakeMiniGame(
+    String gameId, {
+    int stake = TokenEconomy.miniGameStake,
+  }) async {
+    return spendTokens(stake, reason: 'mini_$gameId');
+  }
+
+  static Future<int> payMiniGame(
+    String gameId, {
+    int stake = TokenEconomy.miniGameStake,
+    int? customPayout,
+  }) async {
+    final amount = customPayout ?? TokenArenaRules.payout(stake);
+    if (amount <= 0) return 0;
+    await addTokens(amount, source: 'mini_${gameId}_win');
+    return amount;
   }
 }

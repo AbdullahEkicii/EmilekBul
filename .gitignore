@@ -19,6 +19,8 @@ android/app/key.properties
 # Ruflo local secrets and runtime data
 .env.local
 .env.*.local
+functions/node_modules/
+functions/.env
 .claude-flow/data/
 .claude-flow/logs/
 .claude-flow/sessions/

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -8,8 +9,10 @@ import '../models/category_model.dart';
 import '../models/friend_model.dart';
 import '../services/friend_service.dart';
 import '../services/haptic_service.dart';
+import '../services/interstitial_ad_manager.dart';
 import '../services/tournament_service.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/my_native_ad.dart';
 import 'speed_round_screen.dart';
 
 /// Arkadaş turnuvaları: kendi turnuvalarımın listesi, skor sıralaması, tur oynama ve oluşturma.
@@ -88,6 +91,7 @@ class _TournamentScreenState extends State<TournamentScreen> {
     _showMessage(ok
         ? 'tournament.score_saved'.tr(args: ['$score'])
         : 'tournament.score_failed'.tr());
+    unawaited(InterstitialAdManager.onTestFinished(source: 'tournament'));
   }
 
   Future<void> _finish(Tournament t) async {
@@ -133,6 +137,10 @@ class _TournamentScreenState extends State<TournamentScreen> {
             children: [
               _buildTopBar(),
               Expanded(child: _buildBody()),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 4, 16, 6),
+                child: MyNativeAd(height: 65),
+              ),
             ],
           ),
         ),

@@ -1,8 +1,9 @@
-import '../services/performance_service.dart';
 import 'package:flutter/material.dart';
 import 'package:emilekbul/services/database_helper.dart';
-import 'package:emilekbul/screens/welcome_screen.dart';
 import 'package:emilekbul/screens/past_tests_screen.dart';
+import '../main.dart';
+import '../theme/app_theme.dart';
+import '../widgets/background_orbs.dart';
 import '../widgets/my_native_ad.dart';
 import 'package:emilekbul/widgets/glass_container.dart';
 import 'package:emilekbul/widgets/navigation_buttons.dart';
@@ -18,14 +19,11 @@ class BasariHesaplaScreen extends StatefulWidget {
 }
 
 class _BasariHesaplaScreenState extends State<BasariHesaplaScreen>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   Map<String, Map<String, int>> _categoryStats = {};
   bool _loading = true;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
-
-  late AnimationController _orbController;
-  late Animation<double> _orbAnimation;
 
   @override
   void initState() {
@@ -38,25 +36,12 @@ class _BasariHesaplaScreenState extends State<BasariHesaplaScreen>
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
 
-    _orbController = AnimationController(
-      duration: const Duration(seconds: 10),
-      vsync: this,
-    );
-    if (!PerformanceService.isPerformanceMode) {
-      _orbController.repeat(reverse: true);
-    }
-
-    _orbAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _orbController, curve: Curves.easeInOut),
-    );
-
     WidgetsBinding.instance.addPostFrameCallback((_) => _fetchStats());
   }
 
   @override
   void dispose() {
     _animationController.dispose();
-    _orbController.dispose();
     super.dispose();
   }
 
@@ -85,62 +70,18 @@ class _BasariHesaplaScreenState extends State<BasariHesaplaScreen>
     }
   }
 
-  Widget _buildBackgroundOrbs() {
-    return AnimatedBuilder(
-      animation: _orbAnimation,
-      builder: (context, child) {
-        return Stack(
-          children: [
-            Positioned(
-              top: 100 + (20 * _orbAnimation.value),
-              left: -30,
-              child: _buildOrb(200, const Color(0xFF667eea).withValues(alpha: 0.2)),
-            ),
-            Positioned(
-              bottom: 150 - (30 * _orbAnimation.value),
-              right: -50,
-              child: _buildOrb(250, const Color(0xFF764ba2).withValues(alpha: 0.15)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildOrb(double size, Color color) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(color: color, blurRadius: 60, spreadRadius: 10),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.backgroundTop,
       body: Stack(
         children: [
-          // Deep Gradient Background
           Container(
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFF0F172A),
-                  Color(0xFF1E293B),
-                  Color(0xFF0F172A)
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              gradient: AppColors.airyBackgroundGradient,
             ),
           ),
-          RepaintBoundary(child: _buildBackgroundOrbs()),
+          const BackgroundOrbs(),
 
           SafeArea(
             child: Column(
@@ -151,15 +92,16 @@ class _BasariHesaplaScreenState extends State<BasariHesaplaScreen>
                     children: [
                       AppHomeButton(
                         onTap: () {
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(
-                              builder: (context) => WelcomeScreen(
-                                onStart: widget.onStart,
-                                skipLoading: true,
+                          if (Navigator.of(context).canPop()) {
+                            Navigator.of(context).pop();
+                          } else {
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (context) => const QuizFlow(),
                               ),
-                            ),
-                            (route) => false,
-                          );
+                              (route) => false,
+                            );
+                          }
                         },
                       ),
                       const SizedBox(width: 12),
@@ -199,12 +141,6 @@ class _BasariHesaplaScreenState extends State<BasariHesaplaScreen>
                       : _categoryStats.isEmpty
                           ? _buildEmptyState()
                           : _buildStatsList(),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: MyNativeAd(
-                    height: 65,
-                  ),
                 ),
                 const SizedBox(height: 5),
                 _buildFooterButton(),
@@ -287,7 +223,20 @@ class _BasariHesaplaScreenState extends State<BasariHesaplaScreen>
         itemCount: _categoryStats.length,
         itemBuilder: (context, index) {
           final entry = _categoryStats.entries.elementAt(index);
-          return _buildCategoryCard(entry, index);
+          final card = _buildCategoryCard(entry, index);
+          final showAdAfter = (index + 1) % 3 == 0 ||
+              (index == _categoryStats.length - 1 &&
+                  _categoryStats.length < 3);
+          if (!showAdAfter) return card;
+          return Column(
+            children: [
+              card,
+              const Padding(
+                padding: EdgeInsets.only(bottom: 16),
+                child: MyNativeAd(height: 65),
+              ),
+            ],
+          );
         },
       ),
     );

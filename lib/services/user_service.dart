@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
+import 'token_economy.dart';
 import 'token_service.dart';
 import 'league_service.dart';
 import 'referral_service.dart';
@@ -43,7 +44,7 @@ class UserService {
         'isEmailVerified': true, // E-posta doğrulanmış sayıyoruz artık
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
-        'tokens': 50, // Default start token
+        'tokens': TokenEconomy.startingTokens, // Başlangıç bakiyesi (hoşgeldin hediyesi ilk testte verilir)
         'level': 1,
         'completedQuizzes': 0,
         'ownedAvatars': initialOwnedAvatars,
@@ -52,6 +53,10 @@ class UserService {
         'equippedFrame': '0',
         'equippedTitle': 'yok',
       });
+      await TokenService.updateTokenAmount(
+        TokenEconomy.startingTokens,
+        syncRemote: false,
+      );
       AnalyticsService.setUserId(uid);
       AnalyticsService.logSignUp(signUpMethod: email.isNotEmpty ? 'email' : 'anonymous');
       return true;
@@ -337,6 +342,19 @@ class UserService {
 
         final username = 'Misafir$guestNumber';
 
+        int initialTokens = TokenEconomy.startingTokens;
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final existingLocal = prefs.getInt('user_tokens') ?? 0;
+          if (existingLocal > initialTokens) {
+            initialTokens = existingLocal;
+          }
+          await prefs.setInt('user_tokens', initialTokens);
+          TokenService.balanceNotifier.value = initialTokens;
+        } catch (prefError) {
+          debugPrint('Error reading/setting guest tokens in SharedPreferences: $prefError');
+        }
+
         await _firestore.collection(usersCollection).doc(user.uid).set({
           'username': username,
           'username_lower': username.toLowerCase(),
@@ -351,7 +369,7 @@ class UserService {
           'correctAnswers': 0,
           'level': 1,
           'completedQuizzes': 0,
-          'tokens': 50, // Default start token
+          'tokens': initialTokens,
           'isGuest': true,
           'ownedAvatars': <String>[],
           'ownedFrames': ['0'],
@@ -361,14 +379,6 @@ class UserService {
         }, SetOptions(merge: true)).timeout(const Duration(seconds: 4), onTimeout: () {
           // Zayıf ağda yazma yerel kuyruğa alınır ve sonra tamamlanır; kullanıcıyı bekletme
         });
-
-        // HIZLI JETON EŞİTLEMESİ (Misafir için SharedPreferences güncellemesi)
-        try {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setInt('user_tokens', 50);
-        } catch (prefError) {
-          debugPrint('Error setting guest tokens in SharedPreferences: $prefError');
-        }
 
         // Analytics Kaydı
         AnalyticsService.setUserId(user.uid);
@@ -653,10 +663,10 @@ class UserService {
     if (uid == null) return;
 
     try {
-      await _firestore.collection(usersCollection).doc(uid).update({
+      await _firestore.collection(usersCollection).doc(uid).set({
         'tokens': tokens,
         'updatedAt': FieldValue.serverTimestamp(),
-      });
+      }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Error updating user tokens in Firestore: $e');
     }
